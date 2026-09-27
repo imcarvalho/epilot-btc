@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { GuessPhase } from "@/lib/guess-phase";
 import { resultSentence } from "@/lib/guess-phase";
 import { formatAge, formatUsd } from "./format";
+import { styles } from "./Announcer.styles";
 
 /** The sentence for a phase change, or null for one that needs no announcement. */
 function announcementFor(phase: GuessPhase): string | null {
@@ -48,17 +49,3 @@ export function Announcer({ phase }: { phase: GuessPhase | null }) {
     </div>
   );
 }
-
-const styles = stylex.create({
-  visuallyHidden: {
-    border: 0,
-    clip: "rect(0 0 0 0)",
-    height: 1,
-    margin: -1,
-    overflow: "hidden",
-    padding: 0,
-    position: "absolute",
-    whiteSpace: "nowrap",
-    width: 1,
-  },
-});

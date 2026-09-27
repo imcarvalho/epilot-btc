@@ -7,12 +7,12 @@ import { hourChange } from "@/lib/candles";
 import type { GuessPhase } from "@/lib/guess-phase";
 import { standing } from "@/lib/live-minute";
 import { ChangeBadge, Eyebrow, Numeric, Panel } from "@/components/ui";
-import { palette } from "@/components/ui/tokens.stylex";
 import { formatAge, formatCountdown, formatUsd } from "./format";
 import { HourChart } from "./HourChart";
 import { MinuteChart } from "./MinuteChart";
 import { useCandles } from "./useCandles";
 import type { LiveMinute } from "./useLiveMinute";
+import { styles } from "./PriceCard.styles";
 
 export type ChartView = "hour" | "minute";
 
@@ -130,60 +130,3 @@ export function PriceCard({
     </Panel>
   );
 }
-
-const styles = stylex.create({
-  header: {
-    alignItems: "flex-end",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "var(--spacing-4)",
-    justifyContent: "space-between",
-  },
-  headline: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "var(--spacing-5)",
-  },
-  figure: {
-    alignItems: "center",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "var(--spacing-5)",
-  },
-  side: {
-    alignItems: "center",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "var(--spacing-5)",
-  },
-  caption: {
-    color: "var(--color-text-secondary)",
-    fontSize: "var(--font-size-sm)",
-  },
-  updated: {
-    fontSize: "var(--font-size-lg)",
-    margin: 0,
-  },
-  stale: {
-    color: "var(--color-warning)",
-  },
-  countdown: {
-    alignItems: "flex-end",
-    borderInlineEndColor: "var(--color-border)",
-    borderInlineEndStyle: "solid",
-    borderInlineEndWidth: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "var(--spacing-1)",
-    paddingInlineEnd: "var(--spacing-5)",
-  },
-  countdownValue: {
-    color: palette.purple,
-    fontSize: "var(--font-size-4xl)",
-    fontWeight: "var(--font-weight-bold)",
-    lineHeight: 1,
-  },
-  countdownDone: {
-    color: palette.yellow,
-  },
-});

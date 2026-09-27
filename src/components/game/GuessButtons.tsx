@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { GuessPhase } from "@/lib/guess-phase";
 import type { Direction } from "@/lib/resolve-guess";
 import { DirectionButton, type DirectionButtonMode } from "@/components/ui";
+import { styles } from "./GuessButtons.styles";
 
 /** What each button says and does in each phase (product spec §5 screens). */
 function buttonFor(direction: Direction, phase: GuessPhase | null): { mode: DirectionButtonMode; hint: string } {
@@ -42,14 +43,3 @@ export function GuessButtons({
     </div>
   );
 }
-
-const styles = stylex.create({
-  grid: {
-    display: "grid",
-    gap: "var(--spacing-4)",
-    gridTemplateColumns: {
-      default: "1fr 1fr",
-      "@media (max-width: 640px)": "1fr",
-    },
-  },
-});

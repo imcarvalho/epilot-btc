@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Text } from "@astryxdesign/core/Text";
+import { styles } from "./PanelHeader.styles";
 
 /** Icon, title and an optional right-aligned note, as at the top of every panel. */
 export function PanelHeader({
@@ -34,24 +35,3 @@ export function PanelHeader({
     </div>
   );
 }
-
-const styles = stylex.create({
-  row: {
-    alignItems: "center",
-    display: "flex",
-    gap: "var(--spacing-3)",
-  },
-  icon: (color: string) => ({
-    color,
-    display: "inline-flex",
-  }),
-  title: {
-    color: "var(--color-text-primary)",
-    fontSize: "var(--font-size-lg)",
-    fontWeight: "var(--font-weight-medium)",
-    margin: 0,
-  },
-  meta: {
-    marginInlineStart: "auto",
-  },
-});

@@ -4,10 +4,11 @@ import * as stylex from "@stylexjs/stylex";
 import { Skeleton } from "@astryxdesign/core/Skeleton";
 import type { PendingGuess } from "@/lib/contracts";
 import { buildMinuteChart, standing } from "@/lib/live-minute";
-import { palette } from "@/components/ui/tokens.stylex";
-import { Axis, CHART_HEIGHT, CHART_PADDING, GridLines, LockedLine, PointTag, frame, useWidth } from "./chart-parts";
+import { Axis, CHART_HEIGHT, CHART_PADDING, GridLines, LockedLine, PointTag, useWidth } from "./chart-parts";
+import { frame } from "./chart-parts.styles";
 import { formatUsd } from "./format";
 import type { LiveMinute } from "./useLiveMinute";
+import { styles } from "./MinuteChart.styles";
 
 const plain = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -103,38 +104,3 @@ export function MinuteChart({ guess, live, now }: { guess: PendingGuess; live: L
     </div>
   );
 }
-
-const styles = stylex.create({
-  future: {
-    fill: "rgba(0, 0, 0, 0.18)",
-  },
-  area: {
-    stroke: "none",
-  },
-  aheadArea: { fill: "rgba(125, 251, 170, 0.14)" },
-  behindArea: { fill: "rgba(255, 138, 138, 0.14)" },
-  levelArea: { fill: "rgba(241, 250, 140, 0.08)" },
-  offArea: { fill: "rgba(255, 255, 255, 0.04)" },
-  line: {
-    fill: "none",
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    strokeWidth: 2,
-  },
-  aheadLine: { stroke: palette.upFrom },
-  behindLine: { stroke: "var(--color-error)" },
-  levelLine: { stroke: palette.yellow },
-  offLine: { stroke: "var(--color-text-disabled)" },
-  aheadDot: { fill: palette.upFrom },
-  behindDot: { fill: "var(--color-error)" },
-  levelDot: { fill: palette.yellow },
-  offDot: { fill: "var(--color-text-disabled)" },
-  note: {
-    color: "var(--color-text-secondary)",
-    fontSize: "var(--font-size-sm)",
-    insetBlockStart: "var(--spacing-2)",
-    insetInlineStart: "var(--spacing-2)",
-    margin: 0,
-    position: "absolute",
-  },
-});

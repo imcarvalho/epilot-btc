@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
+import { styles } from "./Numeric.styles";
 
 /**
  * Numbers in the monospaced face with tabular figures, so a price or a score
@@ -16,17 +17,3 @@ export function Numeric({
 }) {
   return <span {...stylex.props(styles.base, size === "hero" && styles.hero, xstyle)}>{children}</span>;
 }
-
-const styles = stylex.create({
-  base: {
-    fontFamily: "var(--font-family-code)",
-    fontVariantNumeric: "tabular-nums",
-  },
-  hero: {
-    color: "var(--color-text-primary)",
-    fontSize: "clamp(2.75rem, 6vw, 4.5rem)",
-    fontWeight: "var(--font-weight-bold)",
-    letterSpacing: "-0.02em",
-    lineHeight: 1,
-  },
-});

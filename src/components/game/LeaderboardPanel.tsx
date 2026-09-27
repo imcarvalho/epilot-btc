@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Trophy } from "lucide-react";
 import { EmptyMessage, Panel, PanelHeader } from "@/components/ui";
 import { palette } from "@/components/ui/tokens.stylex";
+import { styles } from "./LeaderboardPanel.styles";
 
 /** Empty until the leaderboard exists (build order item 6). */
 export function LeaderboardPanel() {
@@ -15,7 +16,3 @@ export function LeaderboardPanel() {
     </Panel>
   );
 }
-
-const styles = stylex.create({
-  panel: { display: "flex", flexDirection: "column", minHeight: 280 },
-});

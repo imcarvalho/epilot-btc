@@ -5,6 +5,7 @@ import { Icon } from "@astryxdesign/core/Icon";
 import { Skeleton } from "@astryxdesign/core/Skeleton";
 import { successRate } from "@/lib/stats";
 import { BrandMark, PlayerChip, ScoreChip, SourceBadge } from "@/components/ui";
+import { styles } from "./TopBar.styles";
 
 export function TopBar({
   player,
@@ -48,28 +49,3 @@ export function TopBar({
     </header>
   );
 }
-
-const styles = stylex.create({
-  bar: {
-    alignItems: "center",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "var(--spacing-4)",
-    justifyContent: "space-between",
-  },
-  group: {
-    alignItems: "center",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "var(--spacing-4)",
-  },
-  end: {
-    gap: "var(--spacing-3)",
-  },
-  title: {
-    color: "var(--color-text-primary)",
-    fontSize: "var(--font-size-xl)",
-    fontWeight: "var(--font-weight-semibold)",
-    marginInlineEnd: "var(--spacing-2)",
-  },
-});
