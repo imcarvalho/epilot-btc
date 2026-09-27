@@ -54,6 +54,8 @@ export interface ChartSize {
   windowEnd: number;
   /** Vertical breathing room, so the extremes do not touch the edges. */
   padding?: number;
+  /** A price the range must include: the locked price of a guess in play. */
+  includePrice?: number;
 }
 
 export interface PlacedCandle {
@@ -74,18 +76,24 @@ export interface CandleChart {
   /** Where the dashed line at the latest price goes; null with no candles. */
   lastCloseY: number | null;
   yFor: (price: number) => number;
+  /** x for a moment in the hour, epoch ms. */
+  xFor: (time: number) => number;
 }
 
 /** A flat candle (open = close) still draws as a visible dash. */
 const MIN_BODY = 1.5;
 
-export function buildCandleChart(candles: Candle[], { width, height, windowEnd, padding = 8 }: ChartSize): CandleChart {
+export function buildCandleChart(
+  candles: Candle[],
+  { width, height, windowEnd, padding = 8, includePrice }: ChartSize,
+): CandleChart {
   const windowStart = windowEnd - HOUR_MS;
   const slot = width / 60;
   const bodyWidth = Math.max(1, slot * 0.55);
 
-  const lo = Math.min(...candles.map((c) => c.low));
-  const hi = Math.max(...candles.map((c) => c.high));
+  const extra = includePrice === undefined ? [] : [includePrice];
+  const lo = Math.min(...candles.map((c) => c.low), ...extra);
+  const hi = Math.max(...candles.map((c) => c.high), ...extra);
   const span = hi - lo;
   const inner = height - 2 * padding;
   // An hour without a single price change is a flat line through the middle.
@@ -117,7 +125,8 @@ export function buildCandleChart(candles: Candle[], { width, height, windowEnd, 
   }
 
   const last = candles[candles.length - 1];
-  return { ...paths, candles: placed, lastCloseY: last ? yFor(last.close) : null, yFor };
+  const xFor = (time: number) => ((time - windowStart) / MINUTE_MS) * slot;
+  return { ...paths, candles: placed, lastCloseY: last ? yFor(last.close) : null, yFor, xFor };
 }
 
 /** Two decimals are plenty for pixels, and keep the path strings short. */

@@ -114,7 +114,10 @@ The screen (build order item 1, client half, first-visit state):
 - `src/lib/guess-phase.ts` - which state the guess strip is in (first visit, idle, locked, time up, stale, result) and the result sentence, as pure functions; the buttons, the strip and the `aria-live` announcer all render from it
 - `useGame` places guesses (`POST /api/guess`) and runs the §3.1 cadence through `shouldAsk`; with no browser ticker yet it polls only once the minute is up and nothing has moved
 
-Not built yet: the chart's locked-in line and shaded minute, success rate and streaks in the score chip, confetti, the live minute and its "so far" figure (needs the ticker), sign-in and the leaderboard.
+- `src/lib/live-minute.ts` - the live minute (eng §5.1) as pure functions: parsing ticker messages, one sample per second, ahead/behind, the minute chart's geometry; `useLiveMinute` owns the browser's Coinbase WebSocket, open only while a guess is pending, and feeds the cadence so the client asks when the ticker shows a move
+- `MinuteChart` and `HourChart` share `chart-parts.tsx`; during a guess the hour view carries the locked-in line and the shaded minute, and the price card has a "Last hour / This guess" toggle that follows the guess
+
+Not built yet: success rate and streaks in the score chip, confetti, sign-in and the leaderboard.
 
 ## Scaffolding note
 

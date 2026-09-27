@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { shouldAsk } from "@/lib/ask-scheduler";
 import type { GuessResponse, StateResponse } from "@/lib/contracts";
 import type { Direction } from "@/lib/resolve-guess";
@@ -10,6 +10,12 @@ export type GameStatus =
   | { kind: "loading" }
   | { kind: "ready"; state: StateResponse; clockOffset: number }
   | { kind: "error" };
+
+/** What the browser-side ticker currently says, read by the cadence. */
+export interface TickerSnapshot {
+  price: number | null;
+  isAlive: boolean;
+}
 
 /** Why the last guess did not go through, if it did not. */
 export type GuessError = "price-unavailable" | "failed" | null;
@@ -41,7 +47,7 @@ async function fetchState(): Promise<StateResponse> {
  * `clockOffset` is server time minus local time, taken from `serverNow`, so
  * the countdown runs on the server's clock (§7.2).
  */
-export function useGame() {
+export function useGame(ticker?: RefObject<TickerSnapshot>) {
   const [status, setStatus] = useState<GameStatus>({ kind: "loading" });
   const [watchedGuessId, setWatchedGuessId] = useState<string | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);
@@ -130,10 +136,10 @@ export function useGame() {
       const decision = shouldAsk({
         countdownEnded: now >= resolvableAt,
         lockedPrice: guess?.priceAtGuess ?? null,
-        // No browser-side ticker yet (build order item 7), so the scheduler
-        // falls back to polling once the minute is up and nothing moved.
-        lastTickerPrice: null,
-        socketAlive: false,
+        // The live minute's ticker, when it is up: the client asks when the
+        // price has visibly moved rather than polling blindly (§3.1).
+        lastTickerPrice: ticker?.current?.price ?? null,
+        socketAlive: ticker?.current?.isAlive ?? false,
         visible: document.visibilityState !== "hidden",
         msSinceLastAsk: now - state.serverNow,
         askedSinceCountdownEnded: state.serverNow >= resolvableAt,

@@ -154,7 +154,7 @@ Both halves of the resolution condition are visible to the client. The minute is
 | During the minute | Nothing. The countdown is local and there is nothing to learn |
 | At t+60 s | One `GET /api/state` |
 | Resolved | Stop. No further requests |
-| Not resolved (price unchanged) | Wait for the ticker to print a price different from the locked one, then `GET /api/state` |
+| Not resolved (price unchanged) | Wait for the ticker to print a price different from the locked one, then `GET /api/state` - at most every 2 s, since the exchange ticker and the server's spot price rarely agree to the cent |
 | Socket down, or no ticks arriving | Fall back to polling every 5 s, backing off to 10 s |
 
 A normal guess therefore costs **two requests**: one when the app opens and one when the minute is up. Sustained polling exists only in the unchanged-price case, which on BTC is rare and is exactly the case the UI has a screen for.

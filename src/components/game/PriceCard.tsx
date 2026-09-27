@@ -1,70 +1,148 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Skeleton } from "@astryxdesign/core/Skeleton";
 import { hourChange } from "@/lib/candles";
+import type { GuessPhase } from "@/lib/guess-phase";
+import { standing } from "@/lib/live-minute";
 import { ChangeBadge, Eyebrow, Numeric, Panel } from "@/components/ui";
-import { formatAge, formatUsd } from "./format";
+import { palette } from "@/components/ui/tokens.stylex";
+import { formatAge, formatCountdown, formatUsd } from "./format";
 import { HourChart } from "./HourChart";
+import { MinuteChart } from "./MinuteChart";
 import { useCandles } from "./useCandles";
+import type { LiveMinute } from "./useLiveMinute";
+
+export type ChartView = "hour" | "minute";
+
+const WORD = { up: "Higher", down: "Lower" } as const;
 
 /**
- * The price, always visible (rule R1), how old it is, and the last hour of
- * candles beneath it. The headline figure is the server's game price; the
- * chart and its hour change come from Coinbase in the browser and are
- * cosmetic (engineering spec §5).
+ * The price, always visible (rule R1), and the chart beneath it in one of
+ * two views (product spec §6.1): the last hour of candles, or - while a
+ * guess is in play - the minute itself, live.
+ *
+ * The hour view's figure is the server's game price. The minute view's is
+ * the browser's ticker, and says so: it is what makes the minute worth
+ * watching, and it decides nothing (engineering spec §5.1).
  */
 export function PriceCard({
   price,
   priceUpdatedAt,
   priceStale,
   now,
+  phase,
+  live,
+  view,
+  onViewChange,
 }: {
   price: number | null;
   priceUpdatedAt: number | null;
   priceStale: boolean;
-  /** Server clock, so the age is not skewed by the local one. */
+  /** Server clock. */
   now: number | null;
+  phase: GuessPhase | null;
+  live: LiveMinute;
+  view: ChartView;
+  onViewChange: (view: ChartView) => void;
 }) {
   const candles = useCandles();
-  const change = candles.kind === "ready" ? hourChange(candles.candles) : null;
+  const guess = phase && "guess" in phase ? phase.guess : null;
+  const showMinute = view === "minute" && guess !== null && now !== null;
+
+  // The hour chart carries the guess while it runs and while its result shows.
+  const marked = guess ?? (phase?.kind === "result" ? phase.result : null);
+  const lock = marked ? { price: marked.priceAtGuess, at: marked.createdAt } : null;
+
   const age = priceUpdatedAt !== null && now !== null ? formatAge(now - priceUpdatedAt) : null;
+  const secondsLeft = phase?.kind === "locked" ? phase.secondsLeft : 0;
+
+  // While a guess runs, the browser does not ask the server (§3.1), so the
+  // game price on screen is as old as the guess. The header follows the
+  // live ticker instead - provisional, like everything drawn from it - and
+  // makes no claim about movement until the ticker has spoken.
+  const tickerPrice = guess ? live.price : null;
+  let figure: number | null = tickerPrice ?? price;
+  let badge: React.ReactNode = null;
+  if (guess && tickerPrice !== null) {
+    if (showMinute) {
+      const { margin } = standing(guess.direction, guess.priceAtGuess, tickerPrice);
+      badge = <ChangeBadge change={margin} period={margin >= 0 ? "ahead" : "behind"} flatLabel="level with your guess" />;
+    } else {
+      badge = (
+        <ChangeBadge change={tickerPrice - guess.priceAtGuess} period="since your guess" flatLabel="unchanged since your guess" />
+      );
+    }
+  } else if (!guess && candles.kind === "ready") {
+    const change = hourChange(candles.candles);
+    if (change !== null) badge = <ChangeBadge change={change} period="in the last hour" />;
+  }
 
   return (
     <Panel aria-labelledby="price-heading">
-      <Eyebrow>
-        <span id="price-heading">Bitcoin · US Dollar</span>
-      </Eyebrow>
-      <div {...stylex.props(styles.row)}>
-        <div {...stylex.props(styles.figure)}>
-          {price !== null ? (
-            <Numeric size="hero">{formatUsd(price)}</Numeric>
-          ) : (
-            <Skeleton width={420} height={72} />
-          )}
-          {change !== null && <ChangeBadge change={change} period="in the last hour" />}
+      <div {...stylex.props(styles.header)}>
+        <div {...stylex.props(styles.headline)}>
+          <Eyebrow>
+            <span id="price-heading">{showMinute && guess ? `Your minute · ${WORD[guess.direction]}` : "Bitcoin · US Dollar"}</span>
+          </Eyebrow>
+          <div {...stylex.props(styles.figure)}>
+            {figure !== null ? <Numeric size="hero">{formatUsd(figure)}</Numeric> : <Skeleton width={420} height={72} />}
+            {badge}
+          </div>
         </div>
-        {age !== null && (
-          <p {...stylex.props(styles.updated, priceStale && styles.stale)}>
-            {priceStale
-              ? `Price feed delayed. Last updated ${age}. Nothing is settled until it catches up.`
-              : `Updated ${age}`}
-          </p>
-        )}
+
+        <div {...stylex.props(styles.side)}>
+          {showMinute ? (
+            <div {...stylex.props(styles.countdown)}>
+              <Numeric xstyle={[styles.countdownValue, phase?.kind !== "locked" && styles.countdownDone]}>
+                {formatCountdown(secondsLeft)}
+              </Numeric>
+              <span {...stylex.props(styles.caption)}>
+                {phase?.kind === "locked" ? "left in the minute" : "the minute is up"}
+              </span>
+            </div>
+          ) : tickerPrice !== null ? (
+            <p {...stylex.props(styles.caption, styles.updated)}>Live · provisional</p>
+          ) : (
+            age !== null && (
+              <p {...stylex.props(styles.caption, styles.updated, priceStale && styles.stale)}>
+                {priceStale
+                  ? `Price feed delayed. Last updated ${age}. Nothing is settled until it catches up.`
+                  : `Updated ${age}`}
+              </p>
+            )
+          )}
+          {guess && (
+            <SegmentedControl label="Chart view" value={view} onChange={(v) => onViewChange(v as ChartView)} size="sm">
+              <SegmentedControlItem value="hour" label="Last hour" />
+              <SegmentedControlItem value="minute" label="This guess" />
+            </SegmentedControl>
+          )}
+        </div>
       </div>
-      <HourChart state={candles} />
+
+      {showMinute && guess && now !== null ? (
+        <MinuteChart guess={guess} live={live} now={now} />
+      ) : (
+        <HourChart state={candles} lock={lock} />
+      )}
     </Panel>
   );
 }
 
 const styles = stylex.create({
-  row: {
+  header: {
     alignItems: "flex-end",
     display: "flex",
     flexWrap: "wrap",
     gap: "var(--spacing-4)",
     justifyContent: "space-between",
-    marginTop: "var(--spacing-5)",
+  },
+  headline: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "var(--spacing-5)",
   },
   figure: {
     alignItems: "center",
@@ -72,12 +150,40 @@ const styles = stylex.create({
     flexWrap: "wrap",
     gap: "var(--spacing-5)",
   },
-  updated: {
+  side: {
+    alignItems: "center",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "var(--spacing-5)",
+  },
+  caption: {
     color: "var(--color-text-secondary)",
+    fontSize: "var(--font-size-sm)",
+  },
+  updated: {
     fontSize: "var(--font-size-lg)",
     margin: 0,
   },
   stale: {
     color: "var(--color-warning)",
+  },
+  countdown: {
+    alignItems: "flex-end",
+    borderInlineEndColor: "var(--color-border)",
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: "var(--spacing-1)",
+    paddingInlineEnd: "var(--spacing-5)",
+  },
+  countdownValue: {
+    color: palette.purple,
+    fontSize: "var(--font-size-4xl)",
+    fontWeight: "var(--font-weight-bold)",
+    lineHeight: 1,
+  },
+  countdownDone: {
+    color: palette.yellow,
   },
 });

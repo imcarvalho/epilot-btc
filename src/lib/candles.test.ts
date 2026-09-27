@@ -83,6 +83,17 @@ describe("buildCandleChart", () => {
     for (const c of chart.candles) expect(Number.isFinite(c.bodyY)).toBe(true);
   });
 
+  it("stretches the range to include a locked price outside the hour's candles", () => {
+    const chart = buildCandleChart([candle(0, 100, 110, 100, 110)], { ...size, includePrice: 130 });
+    expect(chart.yFor(130)).toBeGreaterThanOrEqual(0);
+    expect(chart.yFor(130)).toBeLessThan(chart.yFor(110));
+  });
+
+  it("places a moment in the hour on the x-axis", () => {
+    const chart = buildCandleChart([candle(0, 100, 110)], size);
+    expect(chart.xFor(size.windowEnd - 30 * 60_000)).toBeCloseTo(size.width / 2);
+  });
+
   it("draws nothing, without failing, for an empty hour", () => {
     const chart = buildCandleChart([], size);
     expect(chart.upBodies).toBe("");

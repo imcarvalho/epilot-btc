@@ -36,6 +36,14 @@ export type CadenceDecision =
 export const FALLBACK_POLL_MS = 5_000;
 export const FALLBACK_POLL_BACKOFF_MS = 10_000;
 
+/**
+ * The exchange ticker and the server's spot price rarely agree to the cent,
+ * so "the ticker differs from the locked price" can stay true for a while
+ * after an ask that came back unsettled. Re-asking every second would only
+ * hit the server's price cache again; this spaces the retries.
+ */
+export const PRICE_MOVED_MIN_GAP_MS = 2_000;
+
 export function shouldAsk(input: CadenceInput): CadenceDecision {
   // A hidden tab asks for nothing. It resyncs immediately on becoming visible,
   // which is the `msSinceLastAsk === null` case below.
@@ -60,7 +68,8 @@ export function shouldAsk(input: CadenceInput): CadenceDecision {
   if (input.socketAlive) {
     if (
       input.lastTickerPrice !== null &&
-      input.lastTickerPrice !== input.lockedPrice
+      input.lastTickerPrice !== input.lockedPrice &&
+      input.msSinceLastAsk >= PRICE_MOVED_MIN_GAP_MS
     ) {
       return { ask: true, reason: "price-moved" };
     }

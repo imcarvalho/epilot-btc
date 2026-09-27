@@ -8,17 +8,19 @@ import { BrandMark, PlayerChip, ScoreChip, SourceBadge } from "@/components/ui";
 export function TopBar({
   player,
   isLive,
+  source,
 }: {
   /** Null while the first state read is in flight. */
   player: { name: string; score: number } | null;
   isLive: boolean;
+  source: "candles" | "ticker";
 }) {
   return (
     <header {...stylex.props(styles.bar)}>
       <div {...stylex.props(styles.group)}>
         <BrandMark />
         <span {...stylex.props(styles.title)}>BTC Guess</span>
-        <SourceBadge isLive={isLive} />
+        <SourceBadge isLive={isLive} source={source} />
       </div>
       <div {...stylex.props(styles.group, styles.end)}>
         {player ? (

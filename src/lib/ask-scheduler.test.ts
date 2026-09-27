@@ -73,9 +73,20 @@ describe("shouldAsk", () => {
           countdownEnded: true,
           askedSinceCountdownEnded: true,
           lastTickerPrice: 100_012,
+          msSinceLastAsk: 2_000,
         }),
       ),
     ).toEqual({ ask: true, reason: "price-moved" });
+  });
+
+  it("spaces repeat asks while the ticker still differs but the server has not settled", () => {
+    const moved = {
+      countdownEnded: true,
+      askedSinceCountdownEnded: true,
+      lastTickerPrice: 100_012,
+    };
+    expect(shouldAsk(base({ ...moved, msSinceLastAsk: 1_000 }))).toEqual({ ask: false });
+    expect(shouldAsk(base({ ...moved, msSinceLastAsk: 2_000 }))).toEqual({ ask: true, reason: "price-moved" });
   });
 
   it("falls back to polling only when the socket is down", () => {

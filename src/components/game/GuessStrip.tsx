@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { ArrowDown, ArrowUp, Check, Clock, Loader } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Clock, Loader, Minus } from "lucide-react";
 import { Icon } from "@astryxdesign/core/Icon";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import type { GuessPhase } from "@/lib/guess-phase";
@@ -9,6 +9,9 @@ import { IconTile, Numeric, Panel } from "@/components/ui";
 import { palette } from "@/components/ui/tokens.stylex";
 import { formatAge, formatCountdown, formatElapsed, formatUsd } from "./format";
 import type { GuessError } from "./useGameState";
+import type { LiveMinute } from "./useLiveMinute";
+
+const usdSigned = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatUsd(Math.abs(n))}`;
 
 const WORD = { up: "Higher", down: "Lower" } as const;
 
@@ -22,14 +25,19 @@ export function GuessStrip({
   name,
   guessError,
   now,
+  live,
+  isMinuteView,
 }: {
   phase: GuessPhase | null;
   name: string | null;
   guessError: GuessError;
   now: number;
+  live: LiveMinute;
+  /** The chart header carries the countdown in the minute view. */
+  isMinuteView: boolean;
 }) {
   if (phase?.kind === "locked" || phase?.kind === "time-up" || phase?.kind === "stale") {
-    return <LockedStrip phase={phase} now={now} />;
+    return <LockedStrip phase={phase} now={now} live={live} showClock={!isMinuteView} />;
   }
   if (phase?.kind === "result") {
     return <ResultBanner phase={phase} />;
@@ -69,25 +77,33 @@ function Prompt({ firstVisit, name, guessError }: { firstVisit: boolean; name: s
 function LockedStrip({
   phase,
   now,
+  live,
+  showClock,
 }: {
   phase: Extract<GuessPhase, { kind: "locked" | "time-up" | "stale" }>;
   now: number;
+  live: LiveMinute;
+  showClock: boolean;
 }) {
   const { guess } = phase;
   const secondsLeft = phase.kind === "locked" ? phase.secondsLeft : 0;
   const elapsed = Math.min(GUESS_WINDOW_MS, Math.max(0, now - guess.createdAt));
   const waiting = phase.kind !== "locked";
 
+  const moved = live.price === null ? null : live.price - guess.priceAtGuess;
+
   const caption =
     phase.kind === "locked"
-      ? "Resolves when the minute is up and the price has moved."
+      ? showClock
+        ? "Resolves when the minute is up and the price has moved."
+        : "The line is indicative. The result is settled on the server with its own price, which may differ by a few cents."
       : phase.kind === "time-up"
         ? "Time is up - waiting for the price to change."
         : `Price feed delayed. Last updated ${formatAge(phase.ageMs)}. Nothing is settled until it catches up.`;
 
   return (
     <Panel as="div" tone={waiting ? "warning" : "neutral"} xstyle={styles.compact}>
-      <div {...stylex.props(styles.locked)}>
+      <div {...stylex.props(styles.locked, !showClock && styles.lockedNoClock, moved !== null && styles.lockedWithMoved)}>
         <div {...stylex.props(styles.row)}>
           <IconTile icon={guess.direction === "up" ? ArrowUp : ArrowDown} tone={guess.direction} />
           <div {...stylex.props(styles.stack)}>
@@ -98,6 +114,7 @@ function LockedStrip({
           </div>
         </div>
 
+        {showClock && (
         <div {...stylex.props(styles.row, styles.clock)}>
           <span {...stylex.props(styles.clockIcon)}>
             <Icon icon={Clock} size="md" />
@@ -107,6 +124,7 @@ function LockedStrip({
             <span {...stylex.props(styles.muted)}>{waiting ? "the minute is up" : "until it can resolve"}</span>
           </div>
         </div>
+        )}
 
         <div {...stylex.props(styles.progress)}>
           <ProgressBar
@@ -118,6 +136,17 @@ function LockedStrip({
           />
           <span {...stylex.props(styles.muted)}>{caption}</span>
         </div>
+
+        {moved !== null && (
+          // From the browser's ticker: the live gap (product spec §7), provisional.
+          <div {...stylex.props(styles.movedBox, moved === 0 ? styles.movedFlat : styles.movedYes)}>
+            <Icon icon={moved === 0 ? Minus : Check} size="sm" />
+            <div {...stylex.props(styles.stack)}>
+              <span>{moved === 0 ? "Price has not moved" : "Price has moved"}</span>
+              <Numeric xstyle={styles.movedFigure}>{usdSigned(moved)} so far</Numeric>
+            </div>
+          </div>
+        )}
       </div>
     </Panel>
   );
@@ -193,6 +222,42 @@ const styles = stylex.create({
       default: "auto auto 1fr",
       "@media (max-width: 860px)": "1fr 1fr",
     },
+  },
+  lockedNoClock: {
+    gridTemplateColumns: {
+      default: "auto 1fr",
+      "@media (max-width: 860px)": "1fr",
+    },
+  },
+  lockedWithMoved: {
+    gridTemplateColumns: {
+      default: "auto auto 1fr auto",
+      "@media (max-width: 860px)": "1fr 1fr",
+    },
+  },
+  movedBox: {
+    alignItems: "center",
+    borderRadius: "var(--radius-element)",
+    borderStyle: "solid",
+    borderWidth: 1,
+    display: "flex",
+    fontSize: "var(--font-size-sm)",
+    gap: "var(--spacing-3)",
+    paddingBlock: "var(--spacing-2)",
+    paddingInline: "var(--spacing-4)",
+  },
+  movedYes: {
+    backgroundColor: "rgba(125, 251, 170, 0.06)",
+    borderColor: "rgba(125, 251, 170, 0.35)",
+    color: palette.upFrom,
+  },
+  movedFlat: {
+    backgroundColor: "rgba(241, 250, 140, 0.06)",
+    borderColor: "rgba(241, 250, 140, 0.35)",
+    color: palette.yellow,
+  },
+  movedFigure: {
+    color: "var(--color-text-secondary)",
   },
   strong: {
     color: "var(--color-text-primary)",
