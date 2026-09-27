@@ -1,24 +1,24 @@
 {
-  "name": "btc-guess-infra",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "build": "tsc --noEmit",
-    "test": "vitest run",
-    "synth": "cdk synth",
-    "diff": "cdk diff",
-    "deploy": "cdk deploy",
-    "cdk": "cdk"
-  },
-  "devDependencies": {
-    "@aws-sdk/client-ssm": "^3.1141.0",
-    "@types/node": "^26.6.3",
-    "aws-cdk": "^2.1143.0",
-    "aws-cdk-lib": "^2.271.0",
-    "constructs": "^10.8.1",
-    "source-map-support": "^0.5.21",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
-    "vitest": "^5.0.2"
-  }
+	"name": "btc-guess-infra",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"build": "tsc --noEmit",
+		"test": "vitest run",
+		"synth": "cdk synth",
+		"diff": "cdk diff",
+		"deploy": "cdk deploy",
+		"cdk": "cdk"
+	},
+	"devDependencies": {
+		"@aws-sdk/client-ssm": "^3.1141.0",
+		"@types/node": "^26.6.3",
+		"aws-cdk": "^2.1143.0",
+		"aws-cdk-lib": "^2.271.0",
+		"constructs": "^10.8.1",
+		"source-map-support": "^0.5.21",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.9.3",
+		"vitest": "^5.0.2"
+	}
 }

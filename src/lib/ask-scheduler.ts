@@ -12,25 +12,28 @@
  */
 
 export interface CadenceInput {
-  /** Has the 60-second window elapsed, by the server-derived clock? */
-  countdownEnded: boolean;
-  /** The price the guess was locked at, or null when nothing is pending. */
-  lockedPrice: number | null;
-  /** Latest price seen on the Coinbase ticker, or null if none yet. */
-  lastTickerPrice: number | null;
-  /** Is the browser-side ticker socket connected and delivering? */
-  socketAlive: boolean;
-  /** document.visibilityState !== "hidden" */
-  visible: boolean;
-  /** Milliseconds since the last GET /api/state, or null if none yet. */
-  msSinceLastAsk: number | null;
-  /** Has the client already asked once since the countdown ended? */
-  askedSinceCountdownEnded: boolean;
+	/** Has the 60-second window elapsed, by the server-derived clock? */
+	countdownEnded: boolean;
+	/** The price the guess was locked at, or null when nothing is pending. */
+	lockedPrice: number | null;
+	/** Latest price seen on the Coinbase ticker, or null if none yet. */
+	lastTickerPrice: number | null;
+	/** Is the browser-side ticker socket connected and delivering? */
+	socketAlive: boolean;
+	/** document.visibilityState !== "hidden" */
+	visible: boolean;
+	/** Milliseconds since the last GET /api/state, or null if none yet. */
+	msSinceLastAsk: number | null;
+	/** Has the client already asked once since the countdown ended? */
+	askedSinceCountdownEnded: boolean;
 }
 
 export type CadenceDecision =
-  | { ask: true; reason: "mount" | "countdown-ended" | "price-moved" | "fallback-poll" }
-  | { ask: false };
+	| {
+			ask: true;
+			reason: 'mount' | 'countdown-ended' | 'price-moved' | 'fallback-poll';
+	  }
+	| { ask: false };
 
 /** Fallback polling only, for when the ticker cannot tell us anything. */
 export const FALLBACK_POLL_MS = 5_000;
@@ -46,44 +49,44 @@ export const FALLBACK_POLL_BACKOFF_MS = 10_000;
 export const PRICE_MOVED_MIN_GAP_MS = 2_000;
 
 export function shouldAsk(input: CadenceInput): CadenceDecision {
-  // A hidden tab asks for nothing. It resyncs immediately on becoming visible,
-  // which is the `msSinceLastAsk === null` case below.
-  if (!input.visible) return { ask: false };
+	// A hidden tab asks for nothing. It resyncs immediately on becoming visible,
+	// which is the `msSinceLastAsk === null` case below.
+	if (!input.visible) return { ask: false };
 
-  // First contact, or the first tick after the tab came back.
-  if (input.msSinceLastAsk === null) return { ask: true, reason: "mount" };
+	// First contact, or the first tick after the tab came back.
+	if (input.msSinceLastAsk === null) return { ask: true, reason: 'mount' };
 
-  // Nothing pending: the score and price already arrived with the last read.
-  if (input.lockedPrice === null) return { ask: false };
+	// Nothing pending: the score and price already arrived with the last read.
+	if (input.lockedPrice === null) return { ask: false };
 
-  // During the minute there is nothing to learn - the countdown is local.
-  if (!input.countdownEnded) return { ask: false };
+	// During the minute there is nothing to learn - the countdown is local.
+	if (!input.countdownEnded) return { ask: false };
 
-  // The minute is up: ask once. Most of the time this resolves it.
-  if (!input.askedSinceCountdownEnded) {
-    return { ask: true, reason: "countdown-ended" };
-  }
+	// The minute is up: ask once. Most of the time this resolves it.
+	if (!input.askedSinceCountdownEnded) {
+		return { ask: true, reason: 'countdown-ended' };
+	}
 
-  // Still pending, so the price had not moved. Wait for the ticker to say it
-  // has, rather than polling blindly.
-  if (input.socketAlive) {
-    if (
-      input.lastTickerPrice !== null &&
-      input.lastTickerPrice !== input.lockedPrice &&
-      input.msSinceLastAsk >= PRICE_MOVED_MIN_GAP_MS
-    ) {
-      return { ask: true, reason: "price-moved" };
-    }
-    return { ask: false };
-  }
+	// Still pending, so the price had not moved. Wait for the ticker to say it
+	// has, rather than polling blindly.
+	if (input.socketAlive) {
+		if (
+			input.lastTickerPrice !== null &&
+			input.lastTickerPrice !== input.lockedPrice &&
+			input.msSinceLastAsk >= PRICE_MOVED_MIN_GAP_MS
+		) {
+			return { ask: true, reason: 'price-moved' };
+		}
+		return { ask: false };
+	}
 
-  // No ticker to lean on: this is the one case that polls.
-  const interval =
-    input.msSinceLastAsk >= FALLBACK_POLL_BACKOFF_MS
-      ? FALLBACK_POLL_BACKOFF_MS
-      : FALLBACK_POLL_MS;
+	// No ticker to lean on: this is the one case that polls.
+	const interval =
+		input.msSinceLastAsk >= FALLBACK_POLL_BACKOFF_MS
+			? FALLBACK_POLL_BACKOFF_MS
+			: FALLBACK_POLL_MS;
 
-  return input.msSinceLastAsk >= interval
-    ? { ask: true, reason: "fallback-poll" }
-    : { ask: false };
+	return input.msSinceLastAsk >= interval
+		? { ask: true, reason: 'fallback-poll' }
+		: { ask: false };
 }

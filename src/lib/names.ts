@@ -17,23 +17,61 @@
 // alphabetical, and keep out anything that could read as a slur, a body-shape
 // comment or a political term when paired with an animal.
 export const ADJECTIVES = [
-  "Audacious", "Brisk", "Candid", "Dapper", "Eager", "Fearless", "Gallant",
-  "Hearty", "Intrepid", "Jaunty", "Keen", "Lively", "Merry", "Nimble",
-  "Patient", "Quiet", "Radiant", "Solemn", "Tranquil", "Upbeat", "Valiant",
-  "Whimsical", "Zealous",
+	'Audacious',
+	'Brisk',
+	'Candid',
+	'Dapper',
+	'Eager',
+	'Fearless',
+	'Gallant',
+	'Hearty',
+	'Intrepid',
+	'Jaunty',
+	'Keen',
+	'Lively',
+	'Merry',
+	'Nimble',
+	'Patient',
+	'Quiet',
+	'Radiant',
+	'Solemn',
+	'Tranquil',
+	'Upbeat',
+	'Valiant',
+	'Whimsical',
+	'Zealous',
 ] as const;
 
 export const ANIMALS = [
-  "Badger", "Cormorant", "Dormouse", "Egret", "Ferret", "Gannet", "Heron",
-  "Ibex", "Jackdaw", "Kestrel", "Lynx", "Marten", "Newt", "Otter", "Puffin",
-  "Quokka", "Raccoon", "Shrike", "Tapir", "Umbrette", "Vole", "Wombat",
+	'Badger',
+	'Cormorant',
+	'Dormouse',
+	'Egret',
+	'Ferret',
+	'Gannet',
+	'Heron',
+	'Ibex',
+	'Jackdaw',
+	'Kestrel',
+	'Lynx',
+	'Marten',
+	'Newt',
+	'Otter',
+	'Puffin',
+	'Quokka',
+	'Raccoon',
+	'Shrike',
+	'Tapir',
+	'Umbrette',
+	'Vole',
+	'Wombat',
 ] as const;
 
 /** Injected so the function stays pure and tests stay deterministic. */
 export type RandomSource = () => number;
 
 export function generateName(random: RandomSource = Math.random): string {
-  const adjective = ADJECTIVES[Math.floor(random() * ADJECTIVES.length)];
-  const animal = ANIMALS[Math.floor(random() * ANIMALS.length)];
-  return `${adjective}${animal}`;
+	const adjective = ADJECTIVES[Math.floor(random() * ADJECTIVES.length)];
+	const animal = ANIMALS[Math.floor(random() * ANIMALS.length)];
+	return `${adjective}${animal}`;
 }

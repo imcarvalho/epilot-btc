@@ -1,12 +1,17 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { MINUTE_MS, candlesUrl, parseCandles, type Candle } from "@/lib/candles";
+import { useEffect, useRef, useState } from 'react';
+import {
+	MINUTE_MS,
+	candlesUrl,
+	parseCandles,
+	type Candle,
+} from '@/lib/candles';
 
 export type CandlesState =
-  | { kind: "loading" }
-  | { kind: "ready"; candles: Candle[]; windowEnd: number }
-  | { kind: "error" };
+	| { kind: 'loading' }
+	| { kind: 'ready'; candles: Candle[]; windowEnd: number }
+	| { kind: 'error' };
 
 /** A few seconds past the minute, so Coinbase has closed the candle. */
 const SETTLE_MS = 2_000;
@@ -21,44 +26,46 @@ const SETTLE_MS = 2_000;
  * minutes, which would freeze the chart.
  */
 export function useCandles(): CandlesState {
-  const [state, setState] = useState<CandlesState>({ kind: "loading" });
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const [state, setState] = useState<CandlesState>({ kind: 'loading' });
+	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => {
-    let cancelled = false;
+	useEffect(() => {
+		let cancelled = false;
 
-    const load = async () => {
-      clearTimeout(timer.current);
-      const now = Date.now();
-      try {
-        const res = await fetch(candlesUrl(now), { cache: "no-store" });
-        if (!res.ok) throw new Error(`candles ${res.status}`);
-        const candles = parseCandles(await res.json());
-        if (!cancelled) setState({ kind: "ready", candles, windowEnd: now });
-      } catch {
-        // Keep the last good chart on a failed refresh; only an empty one
-        // becomes an error.
-        if (!cancelled) setState((s) => (s.kind === "ready" ? s : { kind: "error" }));
-      }
-      if (!cancelled && document.visibilityState === "visible") {
-        const untilNextMinute = MINUTE_MS - (Date.now() % MINUTE_MS) + SETTLE_MS;
-        timer.current = setTimeout(load, untilNextMinute);
-      }
-    };
+		const load = async () => {
+			clearTimeout(timer.current);
+			const now = Date.now();
+			try {
+				const res = await fetch(candlesUrl(now), { cache: 'no-store' });
+				if (!res.ok) throw new Error(`candles ${res.status}`);
+				const candles = parseCandles(await res.json());
+				if (!cancelled) setState({ kind: 'ready', candles, windowEnd: now });
+			} catch {
+				// Keep the last good chart on a failed refresh; only an empty one
+				// becomes an error.
+				if (!cancelled)
+					setState((s) => (s.kind === 'ready' ? s : { kind: 'error' }));
+			}
+			if (!cancelled && document.visibilityState === 'visible') {
+				const untilNextMinute =
+					MINUTE_MS - (Date.now() % MINUTE_MS) + SETTLE_MS;
+				timer.current = setTimeout(load, untilNextMinute);
+			}
+		};
 
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") void load();
-      else clearTimeout(timer.current);
-    };
+		const onVisibility = () => {
+			if (document.visibilityState === 'visible') void load();
+			else clearTimeout(timer.current);
+		};
 
-    void load();
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer.current);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, []);
+		void load();
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => {
+			cancelled = true;
+			clearTimeout(timer.current);
+			document.removeEventListener('visibilitychange', onVisibility);
+		};
+	}, []);
 
-  return state;
+	return state;
 }

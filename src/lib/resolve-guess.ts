@@ -12,32 +12,31 @@
  * exactly that state (product spec §6.2).
  */
 
-export type Direction = "up" | "down";
+export type Direction = 'up' | 'down';
 
 export interface Guess {
-  direction: Direction;
-  /** The price at the moment the guess was locked in, decided server-side. */
-  priceAtGuess: number;
-  /** Epoch milliseconds, server clock. */
-  createdAt: number;
+	direction: Direction;
+	/** The price at the moment the guess was locked in, decided server-side. */
+	priceAtGuess: number;
+	/** Epoch milliseconds, server clock. */
+	createdAt: number;
 }
 
 export type Resolution =
-  | { resolved: false }
-  | { resolved: true; delta: 1 | -1 };
+	{ resolved: false } | { resolved: true; delta: 1 | -1 };
 
 export const GUESS_WINDOW_MS = 60_000;
 
 export function resolveGuess(
-  guess: Guess,
-  priceNow: number,
-  now: number,
+	guess: Guess,
+	priceNow: number,
+	now: number,
 ): Resolution {
-  if (now - guess.createdAt < GUESS_WINDOW_MS) return { resolved: false };
-  if (priceNow === guess.priceAtGuess) return { resolved: false };
+	if (now - guess.createdAt < GUESS_WINDOW_MS) return { resolved: false };
+	if (priceNow === guess.priceAtGuess) return { resolved: false };
 
-  const wentUp = priceNow > guess.priceAtGuess;
-  const correct = guess.direction === "up" ? wentUp : !wentUp;
+	const wentUp = priceNow > guess.priceAtGuess;
+	const correct = guess.direction === 'up' ? wentUp : !wentUp;
 
-  return { resolved: true, delta: correct ? 1 : -1 };
+	return { resolved: true, delta: correct ? 1 : -1 };
 }

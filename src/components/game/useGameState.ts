@@ -1,24 +1,30 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { shouldAsk } from "@/lib/ask-scheduler";
-import type { GuessResponse, StateResponse } from "@/lib/contracts";
-import type { Direction } from "@/lib/resolve-guess";
-import { GUESS_WINDOW_MS } from "@/lib/resolve-guess";
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	type RefObject,
+} from 'react';
+import { shouldAsk } from '@/lib/ask-scheduler';
+import type { GuessResponse, StateResponse } from '@/lib/contracts';
+import type { Direction } from '@/lib/resolve-guess';
+import { GUESS_WINDOW_MS } from '@/lib/resolve-guess';
 
 export type GameStatus =
-  | { kind: "loading" }
-  | { kind: "ready"; state: StateResponse; clockOffset: number }
-  | { kind: "error" };
+	| { kind: 'loading' }
+	| { kind: 'ready'; state: StateResponse; clockOffset: number }
+	| { kind: 'error' };
 
 /** What the browser-side ticker currently says, read by the cadence. */
 export interface TickerSnapshot {
-  price: number | null;
-  isAlive: boolean;
+	price: number | null;
+	isAlive: boolean;
 }
 
 /** Why the last guess did not go through, if it did not. */
-export type GuessError = "price-unavailable" | "failed" | null;
+export type GuessError = 'price-unavailable' | 'failed' | null;
 
 /**
  * First contact is "ask for state; if there is no player yet, create one and
@@ -28,15 +34,16 @@ export type GuessError = "price-unavailable" | "failed" | null;
 let playerCreation: Promise<Response> | null = null;
 
 async function fetchState(): Promise<StateResponse> {
-  let res = await fetch("/api/state", { cache: "no-store" });
-  if (res.status === 401) {
-    playerCreation ??= fetch("/api/player", { method: "POST" });
-    const created = await playerCreation;
-    if (!created.ok) throw new Error(`player creation failed: ${created.status}`);
-    res = await fetch("/api/state", { cache: "no-store" });
-  }
-  if (!res.ok) throw new Error(`state failed: ${res.status}`);
-  return res.json();
+	let res = await fetch('/api/state', { cache: 'no-store' });
+	if (res.status === 401) {
+		playerCreation ??= fetch('/api/player', { method: 'POST' });
+		const created = await playerCreation;
+		if (!created.ok)
+			throw new Error(`player creation failed: ${created.status}`);
+		res = await fetch('/api/state', { cache: 'no-store' });
+	}
+	if (!res.ok) throw new Error(`state failed: ${res.status}`);
+	return res.json();
 }
 
 /**
@@ -48,116 +55,127 @@ async function fetchState(): Promise<StateResponse> {
  * the countdown runs on the server's clock (§7.2).
  */
 export function useGame(ticker?: RefObject<TickerSnapshot>) {
-  const [status, setStatus] = useState<GameStatus>({ kind: "loading" });
-  const [watchedGuessId, setWatchedGuessId] = useState<string | null>(null);
-  const [isPlacing, setIsPlacing] = useState(false);
-  const [guessError, setGuessError] = useState<GuessError>(null);
-  const inFlight = useRef(false);
+	const [status, setStatus] = useState<GameStatus>({ kind: 'loading' });
+	const [watchedGuessId, setWatchedGuessId] = useState<string | null>(null);
+	const [isPlacing, setIsPlacing] = useState(false);
+	const [guessError, setGuessError] = useState<GuessError>(null);
+	const inFlight = useRef(false);
 
-  const accept = useCallback((state: StateResponse) => {
-    setStatus({ kind: "ready", state, clockOffset: state.serverNow - Date.now() });
-    // A guess seen pending is one this session watches: its result is a
-    // moment on screen, even if the page was reloaded mid-minute.
-    if (state.pendingGuess) setWatchedGuessId(state.pendingGuess.id);
-  }, []);
+	const accept = useCallback((state: StateResponse) => {
+		setStatus({
+			kind: 'ready',
+			state,
+			clockOffset: state.serverNow - Date.now(),
+		});
+		// A guess seen pending is one this session watches: its result is a
+		// moment on screen, even if the page was reloaded mid-minute.
+		if (state.pendingGuess) setWatchedGuessId(state.pendingGuess.id);
+	}, []);
 
-  const refresh = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    try {
-      accept(await fetchState());
-    } catch {
-      setStatus((current) => (current.kind === "ready" ? current : { kind: "error" }));
-    } finally {
-      inFlight.current = false;
-    }
-  }, [accept]);
+	const refresh = useCallback(async () => {
+		if (inFlight.current) return;
+		inFlight.current = true;
+		try {
+			accept(await fetchState());
+		} catch {
+			setStatus((current) =>
+				current.kind === 'ready' ? current : { kind: 'error' },
+			);
+		} finally {
+			inFlight.current = false;
+		}
+	}, [accept]);
 
-  const placeGuess = useCallback(
-    async (direction: Direction) => {
-      setIsPlacing(true);
-      setGuessError(null);
-      try {
-        const res = await fetch("/api/guess", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ direction }),
-        });
-        if (res.status === 201) {
-          const { pendingGuess, serverNow } = (await res.json()) as GuessResponse;
-          setWatchedGuessId(pendingGuess.id);
-          setStatus((current) =>
-            current.kind === "ready"
-              ? { kind: "ready", state: { ...current.state, pendingGuess, serverNow }, clockOffset: serverNow - Date.now() }
-              : current,
-          );
-        } else if (res.status === 503) {
-          setGuessError("price-unavailable");
-        } else if (res.status === 409 || res.status === 401) {
-          // Another tab got there first, or the player needs re-establishing:
-          // either way the server's state is the answer.
-          await refresh();
-        } else {
-          setGuessError("failed");
-        }
-      } catch {
-        setGuessError("failed");
-      } finally {
-        setIsPlacing(false);
-      }
-    },
-    [refresh],
-  );
+	const placeGuess = useCallback(
+		async (direction: Direction) => {
+			setIsPlacing(true);
+			setGuessError(null);
+			try {
+				const res = await fetch('/api/guess', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ direction }),
+				});
+				if (res.status === 201) {
+					const { pendingGuess, serverNow } =
+						(await res.json()) as GuessResponse;
+					setWatchedGuessId(pendingGuess.id);
+					setStatus((current) =>
+						current.kind === 'ready'
+							? {
+									kind: 'ready',
+									state: { ...current.state, pendingGuess, serverNow },
+									clockOffset: serverNow - Date.now(),
+								}
+							: current,
+					);
+				} else if (res.status === 503) {
+					setGuessError('price-unavailable');
+				} else if (res.status === 409 || res.status === 401) {
+					// Another tab got there first, or the player needs re-establishing:
+					// either way the server's state is the answer.
+					await refresh();
+				} else {
+					setGuessError('failed');
+				}
+			} catch {
+				setGuessError('failed');
+			} finally {
+				setIsPlacing(false);
+			}
+		},
+		[refresh],
+	);
 
-  // On mount, and whenever the tab becomes visible again.
-  useEffect(() => {
-    void refresh();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void refresh();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [refresh]);
+	// On mount, and whenever the tab becomes visible again.
+	useEffect(() => {
+		void refresh();
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') void refresh();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		return () => document.removeEventListener('visibilitychange', onVisible);
+	}, [refresh]);
 
-  // The cadence around a pending guess: a pure decision, checked once a second.
-  const latest = useRef(status);
-  useEffect(() => {
-    latest.current = status;
-  }, [status]);
-  useEffect(() => {
-    const id = setInterval(() => {
-      const current = latest.current;
-      if (current.kind !== "ready") return;
-      const { state, clockOffset } = current;
-      const guess = state.pendingGuess;
-      const now = Date.now() + clockOffset;
-      const resolvableAt = guess ? guess.createdAt + GUESS_WINDOW_MS : Infinity;
+	// The cadence around a pending guess: a pure decision, checked once a second.
+	const latest = useRef(status);
+	useEffect(() => {
+		latest.current = status;
+	}, [status]);
+	useEffect(() => {
+		const id = setInterval(() => {
+			const current = latest.current;
+			if (current.kind !== 'ready') return;
+			const { state, clockOffset } = current;
+			const guess = state.pendingGuess;
+			const now = Date.now() + clockOffset;
+			const resolvableAt = guess ? guess.createdAt + GUESS_WINDOW_MS : Infinity;
 
-      const decision = shouldAsk({
-        countdownEnded: now >= resolvableAt,
-        lockedPrice: guess?.priceAtGuess ?? null,
-        // The live minute's ticker, when it is up: the client asks when the
-        // price has visibly moved rather than polling blindly (§3.1).
-        lastTickerPrice: ticker?.current?.price ?? null,
-        socketAlive: ticker?.current?.isAlive ?? false,
-        visible: document.visibilityState !== "hidden",
-        msSinceLastAsk: now - state.serverNow,
-        askedSinceCountdownEnded: state.serverNow >= resolvableAt,
-      });
-      if (decision.ask) void refresh();
-    }, 1_000);
-    return () => clearInterval(id);
-  }, [refresh]);
+			const decision = shouldAsk({
+				countdownEnded: now >= resolvableAt,
+				lockedPrice: guess?.priceAtGuess ?? null,
+				// The live minute's ticker, when it is up: the client asks when the
+				// price has visibly moved rather than polling blindly (§3.1).
+				lastTickerPrice: ticker?.current?.price ?? null,
+				socketAlive: ticker?.current?.isAlive ?? false,
+				visible: document.visibilityState !== 'hidden',
+				msSinceLastAsk: now - state.serverNow,
+				askedSinceCountdownEnded: state.serverNow >= resolvableAt,
+			});
+			if (decision.ask) void refresh();
+		}, 1_000);
+		return () => clearInterval(id);
+	}, [refresh]);
 
-  return { status, refresh, placeGuess, isPlacing, guessError, watchedGuessId };
+	return { status, refresh, placeGuess, isPlacing, guessError, watchedGuessId };
 }
 
 /** The current time on the server's clock, re-rendering once a second. */
 export function useServerNow(clockOffset: number): number {
-  const [now, setNow] = useState(() => Date.now() + clockOffset);
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now() + clockOffset), 1_000);
-    return () => clearInterval(id);
-  }, [clockOffset]);
-  return now;
+	const [now, setNow] = useState(() => Date.now() + clockOffset);
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now() + clockOffset), 1_000);
+		return () => clearInterval(id);
+	}, [clockOffset]);
+	return now;
 }

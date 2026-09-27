@@ -8,66 +8,66 @@
  * is visible in the contract itself, not only in the handler.
  */
 
-import { z } from "zod";
-import type { Direction } from "./resolve-guess";
+import { z } from 'zod';
+import type { Direction } from './resolve-guess';
 
 export const GuessRequestSchema = z.strictObject({
-  direction: z.enum(["up", "down"]),
+	direction: z.enum(['up', 'down']),
 });
 
 export type GuessRequest = z.infer<typeof GuessRequestSchema>;
 
 export interface PendingGuess {
-  id: string;
-  direction: Direction;
-  /** Server-side price at the moment the guess was locked in. */
-  priceAtGuess: number;
-  /** Epoch ms, server clock. The countdown runs from here. */
-  createdAt: number;
+	id: string;
+	direction: Direction;
+	/** Server-side price at the moment the guess was locked in. */
+	priceAtGuess: number;
+	/** Epoch ms, server clock. The countdown runs from here. */
+	createdAt: number;
 }
 
 export interface ResolvedGuess extends PendingGuess {
-  priceAtResolve: number;
-  resolvedAt: number;
-  delta: 1 | -1;
+	priceAtResolve: number;
+	resolvedAt: number;
+	delta: 1 | -1;
 }
 
 export interface Stats {
-  wins: number;
-  losses: number;
-  /** Signed: +3 is three wins in a row, -2 is two losses in a row. */
-  currentStreak: number;
-  bestStreak: number;
+	wins: number;
+	losses: number;
+	/** Signed: +3 is three wins in a row, -2 is two losses in a row. */
+	currentStreak: number;
+	bestStreak: number;
 }
 
 export interface StateResponse {
-  publicName: string;
-  score: number;
-  stats: Stats;
-  /** Null only if no price has ever been fetched. */
-  price: number | null;
-  priceUpdatedAt: number | null;
-  /** True when the price is too old to resolve against (§3, 15 s). */
-  priceStale: boolean;
-  serverNow: number;
-  pendingGuess: PendingGuess | null;
-  /** The most recent resolution, newest first in `history` too. */
-  lastResult: ResolvedGuess | null;
-  history: ResolvedGuess[];
+	publicName: string;
+	score: number;
+	stats: Stats;
+	/** Null only if no price has ever been fetched. */
+	price: number | null;
+	priceUpdatedAt: number | null;
+	/** True when the price is too old to resolve against (§3, 15 s). */
+	priceStale: boolean;
+	serverNow: number;
+	pendingGuess: PendingGuess | null;
+	/** The most recent resolution, newest first in `history` too. */
+	lastResult: ResolvedGuess | null;
+	history: ResolvedGuess[];
 }
 
 export interface GuessResponse {
-  pendingGuess: PendingGuess;
-  serverNow: number;
+	pendingGuess: PendingGuess;
+	serverNow: number;
 }
 
 export type ApiErrorCode =
-  | "no-player"
-  | "invalid-request"
-  | "guess-pending"
-  | "price-unavailable"
-  | "unauthorized";
+	| 'no-player'
+	| 'invalid-request'
+	| 'guess-pending'
+	| 'price-unavailable'
+	| 'unauthorized';
 
 export interface ApiError {
-  error: ApiErrorCode;
+	error: ApiErrorCode;
 }

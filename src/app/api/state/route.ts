@@ -1,7 +1,7 @@
-import type { NextRequest } from "next/server";
-import { getDeps } from "@/lib/deps";
-import { getState } from "@/lib/game";
-import { error, json, playerIdFrom } from "../respond";
+import type { NextRequest } from 'next/server';
+import { getDeps } from '@/lib/deps';
+import { getState } from '@/lib/game';
+import { error, json, playerIdFrom } from '../respond';
 
 /**
  * The player's whole game state, and the normal resolution path (engineering
@@ -10,11 +10,11 @@ import { error, json, playerIdFrom } from "../respond";
  * decides the answer.
  */
 export async function GET(request: NextRequest) {
-  const playerId = playerIdFrom(request);
-  if (!playerId) return error("no-player", 401);
+	const playerId = playerIdFrom(request);
+	if (!playerId) return error('no-player', 401);
 
-  const state = await getState(getDeps(), playerId);
-  if (!state) return error("no-player", 401);
+	const state = await getState(getDeps(), playerId);
+	if (!state) return error('no-player', 401);
 
-  return json(state);
+	return json(state);
 }

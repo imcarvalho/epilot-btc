@@ -1,18 +1,23 @@
-import * as stylex from "@stylexjs/stylex";
-import { Trophy } from "lucide-react";
-import { EmptyMessage, Panel, PanelHeader } from "@/components/ui";
-import { palette } from "@/components/ui/tokens.stylex";
-import { styles } from "./LeaderboardPanel.styles";
+import * as stylex from '@stylexjs/stylex';
+import { Trophy } from 'lucide-react';
+import { EmptyMessage, Panel, PanelHeader } from '@/components/ui';
+import { palette } from '@/components/ui/tokens.stylex';
+import { styles } from './LeaderboardPanel.styles';
 
 /** Empty until the leaderboard exists (build order item 6). */
 export function LeaderboardPanel() {
-  return (
-    <Panel aria-labelledby="leaderboard-heading" xstyle={styles.panel}>
-      <PanelHeader id="leaderboard-heading" icon={Trophy} iconColor={palette.yellow} title="Leaderboard" />
-      <EmptyMessage
-        title="No one on the board yet."
-        body="Sign in and the first correct guess puts you at the top of it."
-      />
-    </Panel>
-  );
+	return (
+		<Panel aria-labelledby="leaderboard-heading" xstyle={styles.panel}>
+			<PanelHeader
+				id="leaderboard-heading"
+				icon={Trophy}
+				iconColor={palette.yellow}
+				title="Leaderboard"
+			/>
+			<EmptyMessage
+				title="No one on the board yet."
+				body="Sign in and the first correct guess puts you at the top of it."
+			/>
+		</Panel>
+	);
 }

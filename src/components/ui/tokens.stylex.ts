@@ -8,32 +8,32 @@
  * and the Dracula hues used as icon accents.
  */
 
-import * as stylex from "@stylexjs/stylex";
+import * as stylex from '@stylexjs/stylex';
 
 export const palette = stylex.defineVars({
-  // Dracula accents
-  green: "#50FA7B",
-  cyan: "#8BE9FD",
-  pink: "#FF79C6",
-  purple: "#BD93F9",
-  yellow: "#F1FA8C",
+	// Dracula accents
+	green: '#50FA7B',
+	cyan: '#8BE9FD',
+	pink: '#FF79C6',
+	purple: '#BD93F9',
+	yellow: '#F1FA8C',
 
-  // Pastel ends of the two hero gradients
-  upFrom: "#7DFBAA",
-  upTo: "#89E4FA",
-  downFrom: "#FFA3D7",
-  downTo: "#C7A5FF",
+	// Pastel ends of the two hero gradients
+	upFrom: '#7DFBAA',
+	upTo: '#89E4FA',
+	downFrom: '#FFA3D7',
+	downTo: '#C7A5FF',
 
-  // Faint fills behind an up or down figure (the hour-change badge)
-  upWash: "rgba(125, 251, 170, 0.12)",
-  downWash: "rgba(255, 163, 215, 0.12)",
+	// Faint fills behind an up or down figure (the hour-change badge)
+	upWash: 'rgba(125, 251, 170, 0.12)',
+	downWash: 'rgba(255, 163, 215, 0.12)',
 
-  // Text on a pastel gradient: dark, never white
-  ink: "#1A1726",
-  inkSoft: "#3B3452",
+	// Text on a pastel gradient: dark, never white
+	ink: '#1A1726',
+	inkSoft: '#3B3452',
 
-  // Soft coloured light under the hero buttons and behind the page
-  upGlow: "rgba(125, 251, 170, 0.22)",
-  downGlow: "rgba(255, 163, 215, 0.2)",
-  pageGlow: "rgba(189, 147, 249, 0.10)",
+	// Soft coloured light under the hero buttons and behind the page
+	upGlow: 'rgba(125, 251, 170, 0.22)',
+	downGlow: 'rgba(255, 163, 215, 0.2)',
+	pageGlow: 'rgba(189, 147, 249, 0.10)',
 });
