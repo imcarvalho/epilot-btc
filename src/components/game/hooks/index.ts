@@ -10,4 +10,5 @@ export {
 	type TickerSnapshot,
 	type GuessError,
 } from './useGame';
+export { useLeaderboard } from './useLeaderboard';
 export { useLiveMinute, type LiveMinute } from './useLiveMinute';

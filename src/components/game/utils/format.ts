@@ -29,3 +29,8 @@ export function formatElapsed(ms: number): string {
 	if (s < 60) return `${s}s`;
 	return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
 }
+
+/** A score with its sign, as the board shows it: "+42", "-2", "0". */
+export function formatScore(score: number): string {
+	return score > 0 ? `+${score}` : `${score}`;
+}

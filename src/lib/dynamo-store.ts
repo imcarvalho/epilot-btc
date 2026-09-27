@@ -28,6 +28,8 @@ import {
 import type { PendingGuess } from './contracts';
 import type { Scoreboard } from './scoring';
 import type {
+	BoardEntry,
+	CachedPodium,
 	CachedPrice,
 	GameStore,
 	PlayerRecord,
@@ -35,6 +37,13 @@ import type {
 } from './store';
 
 export const PRICE_KEY = 'PRICE#BTCUSD';
+export const BOARD_INDEX = 'byScore';
+/** The one board: the partition key every eligible player shares (§6.4). */
+export const BOARD = 'GLOBAL';
+/** Counter item: players on the board, incremented as they join. */
+export const BOARD_TOTAL_KEY = 'BOARD#GLOBAL';
+/** Cache item: the podium, identical for everyone, kept for ten seconds. */
+export const PODIUM_KEY = 'BOARD#PODIUM';
 export const PENDING_INDEX = 'byPending';
 export const PENDING_BUCKET = 'PENDING';
 
@@ -102,6 +111,7 @@ function toPlayer(item: Record<string, unknown>): PlayerRecord {
 		bestStreak: item.bestStreak as number,
 		history: (item.history as PlayerRecord['history']) ?? [],
 		pendingGuess: (item.pendingGuess as PendingGuess | undefined) ?? null,
+		onBoard: item.board === BOARD,
 		createdAt: item.createdAt as number,
 		updatedAt: item.updatedAt as number,
 	};
@@ -125,7 +135,7 @@ export class DynamoStore implements GameStore {
 	}
 
 	async createPlayer(player: PlayerRecord) {
-		const { pendingGuess, ...rest } = player;
+		const { pendingGuess, onBoard, ...rest } = player;
 		try {
 			await this.client.send(
 				new PutCommand({
@@ -133,6 +143,9 @@ export class DynamoStore implements GameStore {
 					Item: {
 						...rest,
 						...(pendingGuess ? { pendingGuess } : {}),
+						// Sparse: written only for a player on the board, so everyone
+						// else stays out of the leaderboard index entirely.
+						...(onBoard ? { board: BOARD } : {}),
 						ttl: ttlFrom(player.createdAt),
 					},
 					ConditionExpression: 'attribute_not_exists(#playerId)',
@@ -281,5 +294,86 @@ export class DynamoStore implements GameStore {
 			// Another instance cached a newer price first. Theirs stands.
 			if (!isConditionFailure(error)) throw error;
 		}
+	}
+
+	async listTopOfBoard(limit: number): Promise<BoardEntry[]> {
+		const { Items = [] } = await this.client.send(
+			new QueryCommand({
+				TableName: this.tableName,
+				IndexName: BOARD_INDEX,
+				KeyConditionExpression: '#board = :board',
+				ExpressionAttributeNames: { '#board': 'board' },
+				ExpressionAttributeValues: { ':board': BOARD },
+				ScanIndexForward: false,
+				Limit: limit,
+			}),
+		);
+		return Items.map((item) => ({
+			playerId: item.playerId as string,
+			publicName: item.publicName as string,
+			score: item.score as number,
+			wins: item.wins as number,
+			losses: item.losses as number,
+		}));
+	}
+
+	async countAboveOnBoard(score: number): Promise<number> {
+		// A COUNT query still reads what it counts, a page (1 MB) at a time, so
+		// it follows LastEvaluatedKey. O(players above you) - the known cost,
+		// and the scale answer is in §6.4.
+		let count = 0;
+		let start: Record<string, unknown> | undefined;
+		do {
+			const page = await this.client.send(
+				new QueryCommand({
+					TableName: this.tableName,
+					IndexName: BOARD_INDEX,
+					KeyConditionExpression: '#board = :board AND #score > :score',
+					ExpressionAttributeNames: { '#board': 'board', '#score': 'score' },
+					ExpressionAttributeValues: { ':board': BOARD, ':score': score },
+					Select: 'COUNT',
+					ExclusiveStartKey: start,
+				}),
+			);
+			count += page.Count ?? 0;
+			start = page.LastEvaluatedKey;
+		} while (start);
+		return count;
+	}
+
+	async getBoardTotal(): Promise<number> {
+		const { Item } = await this.client.send(
+			new GetCommand({
+				TableName: this.tableName,
+				Key: { playerId: BOARD_TOTAL_KEY },
+			}),
+		);
+		return (Item?.total as number | undefined) ?? 0;
+	}
+
+	async getCachedPodium(): Promise<CachedPodium | null> {
+		const { Item } = await this.client.send(
+			new GetCommand({
+				TableName: this.tableName,
+				Key: { playerId: PODIUM_KEY },
+			}),
+		);
+		return Item
+			? {
+					entries: Item.entries as BoardEntry[],
+					updatedAt: Item.updatedAt as number,
+				}
+			: null;
+	}
+
+	async putCachedPodium({ entries, updatedAt }: CachedPodium) {
+		// Last write wins: every writer read the index within the same few
+		// seconds, and the cache only has to be no older than ten.
+		await this.client.send(
+			new PutCommand({
+				TableName: this.tableName,
+				Item: { playerId: PODIUM_KEY, entries, updatedAt },
+			}),
+		);
 	}
 }

@@ -62,6 +62,33 @@ export interface StateResponse {
 	history: ResolvedGuess[];
 }
 
+/**
+ * One row of the board (product spec §6.7): the same numbers as the player's
+ * own scoreboard, under the generated name only - never a player id, never
+ * a Google display name.
+ */
+export interface LeaderboardRow {
+	/** Players on equal scores share a rank; the next rank skips. */
+	rank: number;
+	publicName: string;
+	score: number;
+	/** Whole percent, or null before the first result. */
+	successRate: number | null;
+	guesses: number;
+	isYou: boolean;
+}
+
+export interface LeaderboardResponse {
+	/** The top three, best first. */
+	podium: LeaderboardRow[];
+	/** The caller's own row when it is not already on the podium. */
+	you: LeaderboardRow | null;
+	/** How many players are on the board. */
+	total: number;
+	/** Whether the caller is on the board at all: signed-in players only. */
+	isEligible: boolean;
+}
+
 export interface GuessResponse {
 	pendingGuess: PendingGuess;
 	serverNow: number;

@@ -1,4 +1,10 @@
-import { formatAge, formatCountdown, formatElapsed, formatUsd } from './format';
+import {
+	formatAge,
+	formatCountdown,
+	formatElapsed,
+	formatScore,
+	formatUsd,
+} from './format';
 
 describe('formatUsd', () => {
 	it('always shows two decimals, whatever Coinbase sent', () => {
@@ -34,5 +40,13 @@ describe('formatElapsed', () => {
 		expect(formatElapsed(58_000)).toBe('58s');
 		expect(formatElapsed(64_000)).toBe('1m 04s');
 		expect(formatElapsed(72_400)).toBe('1m 12s');
+	});
+});
+
+describe('formatScore', () => {
+	it('signs a positive score, and leaves zero and negatives as they are', () => {
+		expect(formatScore(42)).toBe('+42');
+		expect(formatScore(0)).toBe('0');
+		expect(formatScore(-2)).toBe('-2');
 	});
 });

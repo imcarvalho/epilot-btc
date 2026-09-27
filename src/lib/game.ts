@@ -44,6 +44,7 @@ export function newPlayerRecord(
 		bestStreak: 0,
 		history: [],
 		pendingGuess: null,
+		onBoard: false,
 		createdAt: now,
 		updatedAt: now,
 	};

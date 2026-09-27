@@ -19,6 +19,9 @@ import {
 import { mockClient } from 'aws-sdk-client-mock';
 import { newPlayerRecord } from './game';
 import {
+	BOARD,
+	BOARD_INDEX,
+	BOARD_TOTAL_KEY,
 	DynamoStore,
 	PENDING_BUCKET,
 	PENDING_INDEX,
@@ -260,6 +263,99 @@ describe('DynamoStore', () => {
 				price: 100,
 				updatedAt: T,
 			});
+		});
+	});
+
+	describe('leaderboard', () => {
+		it('writes the board attribute only for a player on the board', async () => {
+			ddb.on(PutCommand).resolves({});
+			await store.createPlayer(newPlayerRecord('anon:a', 'BriskOtter', T));
+			await store.createPlayer({
+				...newPlayerRecord('google:b', 'SolemnOtter', T),
+				onBoard: true,
+			});
+			const [anon, signedIn] = ddb
+				.commandCalls(PutCommand)
+				.map((c) => c.args[0].input.Item);
+			expect(anon).not.toHaveProperty('board');
+			expect(anon).not.toHaveProperty('onBoard');
+			expect(signedIn).toMatchObject({ board: BOARD });
+			expect(signedIn).not.toHaveProperty('onBoard');
+		});
+
+		it('reads the board attribute back as onBoard', async () => {
+			ddb.on(GetCommand).resolves({
+				Item: {
+					...newPlayerRecord('google:b', 'SolemnOtter', T),
+					board: BOARD,
+				},
+			});
+			await expect(store.getPlayer('google:b')).resolves.toMatchObject({
+				onBoard: true,
+			});
+		});
+
+		it('takes the podium from the index, best first, never scanning', async () => {
+			ddb.on(QueryCommand).resolves({
+				Items: [
+					{
+						playerId: 'google:b',
+						publicName: 'SolemnOtter',
+						score: 42,
+						wins: 50,
+						losses: 8,
+						board: BOARD,
+					},
+				],
+			});
+			await expect(store.listTopOfBoard(3)).resolves.toEqual([
+				{
+					playerId: 'google:b',
+					publicName: 'SolemnOtter',
+					score: 42,
+					wins: 50,
+					losses: 8,
+				},
+			]);
+			const input = ddb.commandCalls(QueryCommand)[0].args[0].input;
+			expect(input).toMatchObject({
+				IndexName: BOARD_INDEX,
+				ScanIndexForward: false,
+				Limit: 3,
+			});
+			expectPlaceholdersToMatch(input);
+		});
+
+		it('counts the players above a score across every page of the index', async () => {
+			ddb
+				.on(QueryCommand)
+				.resolvesOnce({ Count: 1000, LastEvaluatedKey: { playerId: 'x' } })
+				.resolvesOnce({ Count: 37 });
+			await expect(store.countAboveOnBoard(-2)).resolves.toBe(1037);
+			const calls = ddb.commandCalls(QueryCommand);
+			expect(calls).toHaveLength(2);
+			expect(calls[0].args[0].input).toMatchObject({
+				Select: 'COUNT',
+				IndexName: BOARD_INDEX,
+			});
+			expect(calls[1].args[0].input.ExclusiveStartKey).toEqual({
+				playerId: 'x',
+			});
+			expect(calls[0].args[0].input.ExpressionAttributeValues).toEqual({
+				':board': BOARD,
+				':score': -2,
+			});
+			expectPlaceholdersToMatch(calls[0].args[0].input);
+		});
+
+		it('reads the total from the counter item, zero if nobody has joined', async () => {
+			ddb
+				.on(GetCommand, { Key: { playerId: BOARD_TOTAL_KEY } })
+				.resolves({ Item: { playerId: BOARD_TOTAL_KEY, total: 1204 } });
+			await expect(store.getBoardTotal()).resolves.toBe(1204);
+			ddb.reset();
+			ddb.on(GetCommand).resolves({});
+			await expect(store.getBoardTotal()).resolves.toBe(0);
 		});
 	});
 });

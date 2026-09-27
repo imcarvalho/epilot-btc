@@ -12,6 +12,8 @@
 import type { PendingGuess } from '../contracts';
 import type { Scoreboard } from '../scoring';
 import type {
+	BoardEntry,
+	CachedPodium,
 	CachedPrice,
 	GameStore,
 	PlayerRecord,
@@ -23,7 +25,9 @@ const tick = () => new Promise<void>((r) => setImmediate(r));
 export class MemoryStore implements GameStore {
 	players = new Map<string, PlayerRecord>();
 	price: CachedPrice | null = null;
+	podium: CachedPodium | null = null;
 	settleWrites = 0;
+	boardQueries = 0;
 
 	async getPlayer(playerId: string) {
 		await tick();
@@ -87,5 +91,47 @@ export class MemoryStore implements GameStore {
 		await tick();
 		if (this.price && this.price.updatedAt >= price.updatedAt) return;
 		this.price = { ...price };
+	}
+
+	private board(): BoardEntry[] {
+		return [...this.players.values()]
+			.filter((p) => p.onBoard)
+			.map(({ playerId, publicName, score, wins, losses }) => ({
+				playerId,
+				publicName,
+				score,
+				wins,
+				losses,
+			}));
+	}
+
+	async listTopOfBoard(limit: number) {
+		await tick();
+		this.boardQueries++;
+		return this.board()
+			.sort((a, b) => b.score - a.score)
+			.slice(0, limit);
+	}
+
+	async countAboveOnBoard(score: number) {
+		await tick();
+		this.boardQueries++;
+		return this.board().filter((e) => e.score > score).length;
+	}
+
+	// The DynamoDB store keeps a counter; here the count is the same number.
+	async getBoardTotal() {
+		await tick();
+		return this.board().length;
+	}
+
+	async getCachedPodium() {
+		await tick();
+		return this.podium ? structuredClone(this.podium) : null;
+	}
+
+	async putCachedPodium(podium: CachedPodium) {
+		await tick();
+		this.podium = structuredClone(podium);
 	}
 }

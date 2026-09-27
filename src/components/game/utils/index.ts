@@ -1,4 +1,10 @@
 /**
  * Formatting for what the screen shows.
  */
-export { formatUsd, formatAge, formatCountdown, formatElapsed } from './format';
+export {
+	formatUsd,
+	formatAge,
+	formatCountdown,
+	formatElapsed,
+	formatScore,
+} from './format';

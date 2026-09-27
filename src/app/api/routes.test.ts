@@ -11,6 +11,7 @@ import { POST as createPlayer } from './player/route';
 import { GET as getState } from './state/route';
 import { POST as guess } from './guess/route';
 import { POST as resolve } from './cron/resolve/route';
+import { GET as leaderboard } from './leaderboard/route';
 
 const T0 = 1_700_000_000_000;
 let clock = T0;
@@ -263,5 +264,25 @@ describe('POST /api/cron/resolve', () => {
 			resolved: 0,
 			priceStale: false,
 		});
+	});
+});
+
+describe('GET /api/leaderboard', () => {
+	it('answers without a player, with no row of theirs', async () => {
+		const res = await leaderboard(request('/api/leaderboard'));
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+		expect(await res.json()).toEqual({
+			podium: [],
+			you: null,
+			total: 0,
+			isEligible: false,
+		});
+	});
+
+	it('tells an anonymous player they are not on the board', async () => {
+		const cookie = await newPlayerCookie();
+		const res = await leaderboard(request('/api/leaderboard', { cookie }));
+		expect(await res.json()).toMatchObject({ isEligible: false, you: null });
 	});
 });

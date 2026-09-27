@@ -128,7 +128,9 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/lib/confetti.ts` + `Confetti` - confetti on a win only, laid out by a pure function over an injected random source; aria-hidden, and never generated under `prefers-reduced-motion`
 
-Not built yet: sign-in and the leaderboard.
+- `src/lib/leaderboard.ts` - the board: podium from the sparse `byScore` index (cached 10 s), the caller's rank by a COUNT query (equal scores share a rank), the total from a counter item; `GET /api/leaderboard`; no ids or real names in any response. Only players with the `board` attribute are on it, and nothing writes that attribute until sign-in - so the board is empty until then
+
+Not built yet: sign-in (which must add a player to the board: write `board`, increment the `BOARD#GLOBAL` counter).
 
 ## Scaffolding note
 

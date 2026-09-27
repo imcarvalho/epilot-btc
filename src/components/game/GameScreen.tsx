@@ -19,6 +19,7 @@ import {
 	useGame,
 	useServerNow,
 	type TickerSnapshot,
+	useLeaderboard,
 	useLiveMinute,
 } from './hooks';
 import { styles } from './GameScreen.styles';
@@ -41,6 +42,8 @@ export function GameScreen() {
 	const phase = state ? guessPhase(state, now, watchedGuessId) : null;
 
 	const pending = state?.pendingGuess ?? null;
+	// The board moves only when a result does.
+	const board = useLeaderboard(state?.lastResult?.id ?? null);
 	const live = useLiveMinute(pending, ready?.clockOffset ?? 0);
 	useEffect(() => {
 		ticker.current = { price: live.price, isAlive: live.isAlive };
@@ -115,7 +118,7 @@ export function GameScreen() {
 						/>
 
 						<div {...stylex.props(styles.panels)}>
-							<LeaderboardPanel />
+							<LeaderboardPanel board={board} />
 							<HistoryPanel
 								history={state?.history ?? []}
 								pending={state?.pendingGuess ?? null}

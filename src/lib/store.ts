@@ -13,7 +13,27 @@ export interface PlayerRecord extends Scoreboard {
 	playerId: string;
 	publicName: string;
 	pendingGuess: PendingGuess | null;
+	/**
+	 * On the leaderboard: stored as the sparse `board` attribute, written only
+	 * for signed-in players, so anonymous ones never enter the index (§6.4).
+	 */
+	onBoard: boolean;
 	createdAt: number;
+	updatedAt: number;
+}
+
+/** What the leaderboard index projects: exactly what a row needs (§6.4). */
+export interface BoardEntry {
+	playerId: string;
+	publicName: string;
+	score: number;
+	wins: number;
+	losses: number;
+}
+
+export interface CachedPodium {
+	entries: BoardEntry[];
+	/** Epoch ms, server clock. */
 	updatedAt: number;
 }
 
@@ -57,4 +77,16 @@ export interface GameStore {
 
 	/** Never moves the cache backwards in time: an older write loses. */
 	putCachedPrice(price: CachedPrice): Promise<void>;
+
+	/** The best `limit` players on the board, best first, from the sparse index. */
+	listTopOfBoard(limit: number): Promise<BoardEntry[]>;
+
+	/** How many players on the board score strictly more than `score`. */
+	countAboveOnBoard(score: number): Promise<number>;
+
+	/** Players on the board, from a counter kept as they join (§6.4). */
+	getBoardTotal(): Promise<number>;
+
+	getCachedPodium(): Promise<CachedPodium | null>;
+	putCachedPodium(podium: CachedPodium): Promise<void>;
 }
