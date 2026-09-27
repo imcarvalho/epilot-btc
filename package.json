@@ -20,6 +20,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "^0.6.3",
     "@babel/preset-react": "^8.0.1",
     "@babel/preset-typescript": "^8.0.1",
     "@stylexjs/babel-plugin": "^0.19.1",
@@ -29,6 +30,7 @@
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.6.1",
     "aws-sdk-client-mock": "^4.1.0",
+    "lucide-react": "^1.48.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.2"
   },

@@ -104,6 +104,14 @@ The backend cycle (build order item 1, server half) is built on top of them:
 
 The sweep is scheduled from `infra/`: EventBridge Scheduler invokes `infra/lambda/sweep-trigger`, which POSTs to `/api/cron/resolve` with the secret from SSM (`/btc-guess/cron-secret`). The Amplify app's env vars are set and copied into `.env.production` by `amplify.yml`.
 
+The screen (build order item 1, client half, first-visit state):
+
+- `src/themes/dracula.theme.ts` - the Dracula token set; `dracula.{css,js,d.ts}` beside it are **generated** by `npx astryx theme build src/themes/dracula.theme.ts -o src/themes/dracula.css` (needs Node >= 22.13) - rebuild after editing it or upgrading Astryx
+- `src/components/ui/` - the design language as atoms (`Panel`, `Pill`, `DirectionButton`, `Numeric`, ...), built on Astryx primitives and tokens; `tokens.stylex.ts` holds what the theme has no slot for
+- `src/components/game/` - the screen's sections and `useGameState` (state from `GET /api/state` only)
+
+Not wired yet, by design: the guess buttons (with the waiting states), sign-in, the chart.
+
 ## Scaffolding note
 
 There is no `package.json` yet, deliberately - the versions should be current at the time of the build, and day one starts from the Astryx Next example. When scaffolding:
