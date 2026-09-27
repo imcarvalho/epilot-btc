@@ -67,7 +67,7 @@ Three parameters in SSM Parameter Store, never in the repository:
 
 ## Nothing needed
 
-**Coinbase.** The spot, candles and ticker endpoints are public - no account, no API key, no auth. If you find yourself signing up, you are reading the docs for the authenticated API, which is a different product.
+**Coinbase.** The Exchange ticker, candles and WebSocket feed are public - no account, no API key, no auth. If you find yourself signing up, you are reading the docs for the authenticated API, which is a different product.
 
 **A domain.** Amplify's URL is enough.
 

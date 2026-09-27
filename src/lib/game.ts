@@ -19,7 +19,7 @@ import type { CachedPrice, GameStore, PlayerRecord } from "./store";
 
 export interface GameDeps {
   store: GameStore;
-  fetchSpot: () => Promise<number>;
+  fetchPrice: () => Promise<number>;
   now: () => number;
   newId: () => string;
   random?: () => number;

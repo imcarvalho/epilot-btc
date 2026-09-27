@@ -96,7 +96,7 @@ The backend cycle (build order item 1, server half) is built on top of them:
 
 - `src/lib/game.ts` - `getState` (lazy resolution), `placeGuess`, `sweep`, and the one resolution path they share
 - `src/lib/scoring.ts` - what a resolution does to score, counters, streaks and history; pure
-- `src/lib/price.ts` - the Coinbase spot fetch, the shared price cache, the 15 s stale guard
+- `src/lib/price.ts` - the Coinbase Exchange ticker fetch (the same market as the chart), the shared price cache, the 15 s stale guard
 - `src/lib/store.ts`, `dynamo-store.ts` - the storage interface and its DynamoDB implementation, every once-only write conditional
 - `src/lib/testing/memory-store.ts` - the same conditional semantics in memory, so races are testable
 - `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client

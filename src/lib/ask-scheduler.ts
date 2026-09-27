@@ -37,10 +37,11 @@ export const FALLBACK_POLL_MS = 5_000;
 export const FALLBACK_POLL_BACKOFF_MS = 10_000;
 
 /**
- * The exchange ticker and the server's spot price rarely agree to the cent,
- * so "the ticker differs from the locked price" can stay true for a while
- * after an ask that came back unsettled. Re-asking every second would only
- * hit the server's price cache again; this spaces the retries.
+ * The server's price is cached for a few seconds, so the browser's ticker
+ * can show a move the server has not read yet, and "the ticker differs from
+ * the locked price" stays true after an ask that came back unsettled.
+ * Re-asking every second would only hit that cache again; this spaces the
+ * retries.
  */
 export const PRICE_MOVED_MIN_GAP_MS = 2_000;
 

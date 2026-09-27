@@ -154,7 +154,7 @@ Both halves of the resolution condition are visible to the client. The minute is
 | During the minute | Nothing. The countdown is local and there is nothing to learn |
 | At t+60 s | One `GET /api/state` |
 | Resolved | Stop. No further requests |
-| Not resolved (price unchanged) | Wait for the ticker to print a price different from the locked one, then `GET /api/state` - at most every 2 s, since the exchange ticker and the server's spot price rarely agree to the cent |
+| Not resolved (price unchanged) | Wait for the ticker to print a price different from the locked one, then `GET /api/state` - at most every 2 s, since the server's price is cached for a few seconds and can lag the ticker |
 | Socket down, or no ticks arriving | Fall back to polling every 5 s, backing off to 10 s |
 
 A normal guess therefore costs **two requests**: one when the app opens and one when the minute is up. Sustained polling exists only in the unchanged-price case, which on BTC is rare and is exactly the case the UI has a screen for.
@@ -196,9 +196,9 @@ It also bounds the failure mode. If the scheduler stops, work accumulates visibl
 | **Game price** (guess and resolution) | Server, shared cache | Fairness; from the client it would be forgeable |
 | **Chart** (history and ticker) | Comes from the client | Cosmetic; saves server invocations and cuts latency |
 
-Two public Coinbase API families, both unauthenticated, neither needing an account or a key:
+Public Coinbase Exchange endpoints, unauthenticated, needing neither an account nor a key:
 
-- Spot price: `https://api.coinbase.com/v2/prices/BTC-USD/spot`
+- Ticker (the game price, server-side): `https://api.exchange.coinbase.com/products/BTC-USD/ticker`
 - One-minute candles: `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60`
 - Live ticker: WebSocket `wss://ws-feed.exchange.coinbase.com`, `ticker` channel
 
@@ -207,6 +207,8 @@ Two public Coinbase API families, both unauthenticated, neither needing an accou
 So the chart fetches Coinbase directly and there is no proxy route. **The fallback stays in the README rather than in the code**: if the policy ever changes, the chart moves behind a cached `GET /api/history` using the same cache-item pattern as the price. Worth one paragraph there, because a third party's CORS policy is not ours to rely on forever - and because the change would put candles through our Lambda, where a cold start stops being invisible.
 
 None of this touches the game price, which is read server-side whether or not the browser could read it too.
+
+**One market for everything.** The game price is the Exchange ticker's last trade, the same book the chart's candles and the live minute's WebSocket read. It was first specified as Coinbase's retail spot price (`api.coinbase.com/v2/prices/BTC-USD/spot`), which runs $20-30 away from the Exchange price: the live minute then opened "ahead by $29" before the market had moved at all. Settling on the same market the player watches keeps the provisional line honest; the game is exactly as fair either way, since one source decides every outcome.
 
 **Caching:** the latest price lives in its own DynamoDB item with a timestamp and a few seconds of TTL, so one Coinbase call per window serves every player. Per-request calls would hit rate limits with two players and an open tab.
 

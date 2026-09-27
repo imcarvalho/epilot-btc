@@ -23,7 +23,7 @@ vi.mock("@/lib/deps", () => ({
     store,
     now: () => clock,
     newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, "0")}`,
-    fetchSpot: async () => {
+    fetchPrice: async () => {
       if (!feedUp) throw new Error("feed down");
       return 100_000;
     },

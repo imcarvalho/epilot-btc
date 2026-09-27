@@ -23,7 +23,7 @@ function setup(initialPrice = 100_000) {
     now: () => clock,
     newId: () => `id-${++ids}`,
     random: () => 0,
-    fetchSpot: async () => {
+    fetchPrice: async () => {
       if (!feedUp) throw new Error("feed down");
       return market;
     },

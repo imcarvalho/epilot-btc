@@ -13,7 +13,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { DynamoStore } from "./dynamo-store";
 import type { GameDeps } from "./game";
-import { fetchSpotPrice } from "./price";
+import { fetchTickerPrice } from "./price";
 
 let deps: GameDeps | undefined;
 
@@ -33,7 +33,7 @@ export function getDeps(): GameDeps {
 
   deps = {
     store: new DynamoStore(client, tableName),
-    fetchSpot: () => fetchSpotPrice(),
+    fetchPrice: () => fetchTickerPrice(),
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
   };
