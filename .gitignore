@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+build/
+dist/
+
+# CDK
+infra/cdk.out/
+infra/cdk.context.json
+
+# env and secrets — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+
+# test and coverage
+coverage/
+.nyc_output/
+
+# editors and OS
+.DS_Store
+.idea/
+*.swp
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local tooling
+.vercel
+.amplify/
+.turbo/
+*.tsbuildinfo

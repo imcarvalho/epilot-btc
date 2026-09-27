@@ -1,0 +1,23 @@
+flowchart LR
+    A([Arrives at the app]) --> B[First guess<br/>Price and chart are live<br/>Score 0, no history yet<br/>Prompt: make your first guess]
+    B -- "picks up or down" --> C[Waiting<br/>Countdown from 60s<br/>Guess card shows the locked price<br/>and how far the price has moved<br/>Buttons off, chart still live]
+    C -- "the minute passes,<br/>price has moved" --> D{Right or wrong?}
+    C -- "the minute passes,<br/>price has not moved" --> E[Still waiting<br/>Countdown at 0<br/>Waiting for the price to change]
+    E --> D
+    C -- "price feed goes quiet" --> F[Price delayed<br/>Last price shown with its time<br/>Nothing is decided meanwhile]
+    F --> C
+
+    D -- right --> G[Win<br/>+1, confetti<br/>New row on top of the history]
+    D -- wrong --> H[Loss<br/>-1, plain result<br/>New row on top of the history]
+    G --> I[Ready for the next guess<br/>Score, success rate and streak updated<br/>Buttons back on]
+    H --> I
+    I -- "picks up or down" --> C
+
+    C -.->|closes the tab| J([Leaves])
+    J -.->|comes back| K[Returns<br/>The guess was settled while away<br/>Result and updated score are waiting]
+    K --> I
+
+    I -. "keep your score<br/>across devices" .-> L[Signs in with Google<br/>Anonymous score, streak and history<br/>carried over]
+    L -.-> I
+    L -.->|opens the app elsewhere| M[Another device<br/>Signs in, same score and history]
+    M -.-> I
