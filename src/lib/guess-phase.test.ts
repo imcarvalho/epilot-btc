@@ -60,6 +60,12 @@ describe('guessPhase', () => {
 		});
 	});
 
+	it('never shows more than the minute, if the local clock estimate trails the server', () => {
+		expect(
+			guessPhase(state({ pendingGuess: pending }), T0 - 300, 'g1'),
+		).toMatchObject({ kind: 'locked', secondsLeft: 60 });
+	});
+
 	it('is time-up once the minute has passed and the guess is still pending', () => {
 		expect(
 			guessPhase(state({ pendingGuess: pending }), T0 + 60_000, 'g1'),

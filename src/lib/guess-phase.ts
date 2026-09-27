@@ -33,8 +33,15 @@ export function guessPhase(
 
 	if (guess) {
 		const msLeft = guess.createdAt + GUESS_WINDOW_MS - now;
-		if (msLeft > 0)
-			return { kind: 'locked', guess, secondsLeft: Math.ceil(msLeft / 1000) };
+		if (msLeft > 0) {
+			// Capped: the clock offset is an estimate, and a few hundred ms of
+			// error must not show "61s to go".
+			const secondsLeft = Math.min(
+				GUESS_WINDOW_MS / 1000,
+				Math.ceil(msLeft / 1000),
+			);
+			return { kind: 'locked', guess, secondsLeft };
+		}
 		if (state.priceStale)
 			return {
 				kind: 'stale',
