@@ -1,7 +1,9 @@
 'use client';
 
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { nearestIndex, stepIndex } from '@/lib/chart-inspect';
+import type { Readout } from '../utils';
 import { styles } from './chart-parts.styles';
 
 /** Both charts share one height, so switching views does not move the page. */
@@ -129,6 +131,112 @@ export function Axis({ ticks }: { ticks: { at: number; label: string }[] }) {
 					{t.label}
 				</span>
 			))}
+		</div>
+	);
+}
+
+/**
+ * Reads a chart tick by tick, for the pointer and the keyboard alike. It is
+ * a transparent slider laid over the plot (WAI-ARIA APG slider): hovering
+ * or dragging picks the nearest tick; focused, the arrows step through them,
+ * Home and End jump, Escape puts it away. A screen reader hears each tick's
+ * `aria-valuetext` as it moves, so the tooltip is never the only way in.
+ *
+ * The picture underneath keeps its own summary as its accessible name.
+ */
+export function Inspector({
+	xs,
+	index,
+	onIndex,
+	label,
+	valueText,
+}: {
+	/** Each tick's x, ascending. */
+	xs: number[];
+	index: number | null;
+	onIndex: (index: number | null) => void;
+	label: string;
+	valueText: (index: number) => string;
+}) {
+	const last = xs.length - 1;
+	const shown = index ?? last;
+	const pick = (e: PointerEvent<HTMLDivElement>) => {
+		const rect = e.currentTarget.getBoundingClientRect();
+		const next = nearestIndex(xs, e.clientX - rect.left);
+		if (next !== index) onIndex(next);
+	};
+	return (
+		<div
+			role="slider"
+			tabIndex={xs.length > 0 ? 0 : -1}
+			aria-label={label}
+			aria-valuemin={1}
+			aria-valuemax={Math.max(1, xs.length)}
+			aria-valuenow={Math.max(1, shown + 1)}
+			aria-valuetext={shown >= 0 ? valueText(shown) : undefined}
+			onPointerMove={pick}
+			onPointerDown={pick}
+			// Kept while focused: a tap focuses it, and the reading stays until
+			// the player looks away.
+			onPointerLeave={(e) => {
+				if (document.activeElement !== e.currentTarget) onIndex(null);
+			}}
+			onFocus={() => {
+				if (index === null && last >= 0) onIndex(last);
+			}}
+			onBlur={() => onIndex(null)}
+			onKeyDown={(e) => {
+				const next = stepIndex(index, e.key, xs.length);
+				if (next === undefined) return;
+				e.preventDefault();
+				onIndex(next);
+			}}
+			{...stylex.props(styles.inspector)}
+		/>
+	);
+}
+
+/** Where the inspector is: a vertical rule through the tick, and a ring on its value. */
+export function Crosshair({ x, y }: { x: number; y: number }) {
+	return (
+		<g aria-hidden>
+			<line
+				x1={x}
+				x2={x}
+				y1={0}
+				y2={CHART_HEIGHT}
+				{...stylex.props(styles.crosshair)}
+			/>
+			<circle cx={x} cy={y} r={4.5} {...stylex.props(styles.crosshairDot)} />
+		</g>
+	);
+}
+
+/**
+ * The tick's values beside the crosshair, on whichever side has room.
+ * Hidden from assistive technology: the inspector already says all of it.
+ */
+export function ReadoutTip({
+	readout,
+	x,
+	width,
+}: {
+	readout: Readout;
+	x: number;
+	width: number;
+}) {
+	const flip = x > width / 2;
+	return (
+		<div aria-hidden {...stylex.props(styles.tip, styles.tipAt(x, flip))}>
+			<div {...stylex.props(styles.tipTitle)}>{readout.title}</div>
+			<dl {...stylex.props(styles.tipRows)}>
+				{readout.rows.map((row) => (
+					<div key={row.label} {...stylex.props(styles.tipRow)}>
+						<dt {...stylex.props(styles.tipLabel)}>{row.label}</dt>
+						<dd {...stylex.props(styles.tipValue)}>{row.value}</dd>
+					</div>
+				))}
+			</dl>
 		</div>
 	);
 }

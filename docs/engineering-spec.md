@@ -338,7 +338,9 @@ What it pulls in, and must be set up first:
 - **The official examples as the starting point.** Astryx ships example applications for both Next.js - including one for the StyleX integration specifically - and Vite. Cloning the Next example and diffing against it is a faster and more reliable day one than wiring the build from the documentation, and it is also the cheapest way to test the Vite fallback in 2.1 if it is ever needed.
 - **A Dracula theme.** Astryx themes are token-based, so the palette is a token set rather than overrides: near-black ground (`#17171F`), `#21222C` surfaces as in the rendered screens, and the Dracula accents. It lives in `src/themes/dracula.theme.ts`, extends Neutral, and is compiled with `astryx theme build` so it is present on first paint rather than injected at hydration. What the theme has no slot for - the two hero gradients and the ink on them - is a small StyleX token file of the app's own (`src/components/ui/tokens.stylex.ts`). The two hero buttons carry pastel gradients (mint to cyan for higher, pink to lilac for lower), which is the one place gradient is used. Outcomes never rely on hue alone - each direction has an arrow and a word, and the loss banner uses a pastel coral rather than full `#FF5555`.
 
-**The charts are hand-built SVG, not a charting library.** Sixty candles are four `path` elements - up bodies, down bodies, up wicks, down wicks - and the live minute is one path plus a filled area. A charting library would bring a bundle, a theming layer to fight and defaults to undo, for a picture with no tooltips, no zoom and no axes worth configuring. It also means the dashed locked-in line, the shaded minute and the provisional label are ordinary elements rather than plugin points.
+**The charts are hand-built SVG, not a charting library.** Sixty candles are four `path` elements - up bodies, down bodies, up wicks, down wicks - and the live minute is one path plus a filled area. A charting library would bring a bundle, a theming layer to fight and defaults to undo, for a picture with one simple tooltip, no zoom and no axes worth configuring. It also means the dashed locked-in line, the shaded minute and the provisional label are ordinary elements rather than plugin points.
+
+**Each tick can be read, by pointer or keyboard.** Hovering either chart shows the nearest tick - a minute's open, high, low and close, or a second's price and how the guess stood - with a crosshair. The same reading is reachable without a mouse: a transparent slider (`role="slider"`, the WAI-ARIA pattern) lies over the plot, so Tab reaches it, the arrows step one tick, Page Up and Down ten, Home and End jump to the ends and Escape puts it away. Its `aria-valuetext` is the tick as a sentence, which a screen reader reads as it moves; the picture keeps its one-sentence summary. Which tick a pointer or key lands on is a pure function (`src/lib/chart-inspect.ts`).
 
 ### 7.2 Behaviour
 
@@ -349,7 +351,7 @@ What it pulls in, and must be set up first:
 - **Multiple tabs reconcile** on every `GET /state`; the server is the truth and a pending guess disables the buttons everywhere.
 - **Explicit loading and error states:** first load, offline, 409 on a duplicate guess, delayed feed.
 - **Price formatting** with `Intl.NumberFormat` and fixed decimals, so the number does not jump; the delta against the guess price is derived, not stored.
-- **Accessibility:** results announced through one `aria-live="polite"` region, confetti `aria-hidden` and skipped under `prefers-reduced-motion`, and no meaning carried by colour alone.
+- **Accessibility:** results announced through one `aria-live="polite"` region, confetti `aria-hidden` and skipped under `prefers-reduced-motion`, no meaning carried by colour alone, and every chart tick readable from the keyboard (7.1).
 
 ---
 

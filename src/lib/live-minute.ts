@@ -97,7 +97,8 @@ export interface MinuteChart {
 	line: string;
 	/** The line closed back to the locked price: the margin, shaded. */
 	area: string;
-	points: { x: number; y: number }[];
+	/** The seed at the locked price, then one per sample: where, and what. */
+	points: { x: number; y: number; t: number; price: number }[];
 	lockedY: number;
 	nowX: number;
 	/** A minute after the guess, or later while it waits for a move. */
@@ -129,10 +130,10 @@ export function buildMinuteChart(
 
 	// The line starts where the guess did: at the locked price, at t = 0.
 	const points = [
-		{ x: 0, y: lockedY },
+		{ x: 0, y: lockedY, t: start, price: lockedPrice },
 		...samples
 			.filter((s) => s.t > start)
-			.map((s) => ({ x: r(xFor(s.t)), y: r(yFor(s.price)) })),
+			.map((s) => ({ x: r(xFor(s.t)), y: r(yFor(s.price)), ...s })),
 	];
 
 	const line = points

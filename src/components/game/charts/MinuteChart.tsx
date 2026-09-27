@@ -1,6 +1,7 @@
 'use client';
 
 import * as stylex from '@stylexjs/stylex';
+import { useState } from 'react';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import type { PendingGuess } from '@/lib/contracts';
 import { buildMinuteChart, standing } from '@/lib/live-minute';
@@ -8,13 +9,16 @@ import {
 	Axis,
 	CHART_HEIGHT,
 	CHART_PADDING,
+	Crosshair,
 	GridLines,
+	Inspector,
 	LockedLine,
 	PointTag,
+	ReadoutTip,
 	useWidth,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
-import { formatUsd } from '../utils';
+import { formatUsd, sampleReadout, standingPhrase } from '../utils';
 import type { LiveMinute } from '../hooks';
 import { styles } from './MinuteChart.styles';
 
@@ -23,17 +27,12 @@ const plain = new Intl.NumberFormat('en-US', {
 	maximumFractionDigits: 2,
 });
 
-/** "ahead by $118.20", "behind by $4.10", "level". */
-export function standingPhrase(margin: number): string {
-	if (margin === 0) return 'level';
-	return `${margin > 0 ? 'ahead' : 'behind'} by ${formatUsd(Math.abs(margin))}`;
-}
-
 /**
  * The minute itself (product spec §6.1, "This guess"): one point per second
  * from the browser's ticker, against the dashed line where the guess was
  * locked. The shaded area between them is the margin the player is winning
- * or losing by, and the axis is the countdown.
+ * or losing by, and the axis is the countdown. Any second can be read back
+ * through the inspector, by pointer or keyboard.
  *
  * Indicative, and it says so: the result is settled on the server with its
  * own price, which may differ by a few cents.
@@ -48,6 +47,7 @@ export function MinuteChart({
 	now: number;
 }) {
 	const [ref, width] = useWidth<HTMLDivElement>();
+	const [inspected, setInspected] = useState<number | null>(null);
 	const chart =
 		width > 0
 			? buildMinuteChart(live.samples, {
@@ -71,6 +71,11 @@ export function MinuteChart({
 				? 'ahead'
 				: 'behind';
 	const last = chart?.points[chart.points.length - 1];
+	const at =
+		chart && inspected !== null
+			? Math.min(inspected, chart.points.length - 1)
+			: null;
+	const point = at !== null ? chart!.points[at] : null;
 	const totalSeconds = chart
 		? Math.round((chart.windowEnd - guess.createdAt) / 1000)
 		: 60;
@@ -130,7 +135,7 @@ export function MinuteChart({
 										live.isAlive ? styles[`${tone}Dot`] : styles.offDot,
 									)}
 								/>
-								{current && live.isAlive && (
+								{current && live.isAlive && !point && (
 									<PointTag
 										width={width}
 										x={last.x}
@@ -141,9 +146,26 @@ export function MinuteChart({
 								)}
 							</>
 						)}
+						{point && <Crosshair x={point.x} y={point.y} />}
 					</svg>
 				) : (
 					<Skeleton width="100%" height={CHART_HEIGHT} />
+				)}
+				{point && (
+					<ReadoutTip
+						readout={sampleReadout(point, guess)}
+						x={point.x}
+						width={width}
+					/>
+				)}
+				{chart && (
+					<Inspector
+						xs={chart.points.map((p) => p.x)}
+						index={at}
+						onIndex={setInspected}
+						label="This guess, second by second"
+						valueText={(i) => sampleReadout(chart.points[i], guess).text}
+					/>
 				)}
 				{!live.isAlive && (
 					<p {...stylex.props(styles.note)}>

@@ -1,18 +1,22 @@
 'use client';
 
 import * as stylex from '@stylexjs/stylex';
+import { useState } from 'react';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { buildCandleChart, type Candle } from '@/lib/candles';
 import {
 	Axis,
 	CHART_HEIGHT,
 	CHART_PADDING,
+	Crosshair,
 	GridLines,
+	Inspector,
 	LockedLine,
+	ReadoutTip,
 	useWidth,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
-import { formatUsd } from '../utils';
+import { candleReadout, formatUsd } from '../utils';
 import type { CandlesState } from '../hooks';
 import { styles } from './HourChart.styles';
 
@@ -33,8 +37,9 @@ function describe(candles: Candle[]): string {
  * The last hour of one-minute candles (engineering spec §7.1): four paths,
  * light gridlines, a dashed line at the latest price. While a guess is in
  * play or just settled, it carries the guess (product spec §6.1): a dashed
- * line at the locked price and the minute since the guess shaded.
- * Cosmetic by construction - nothing here reaches the server.
+ * line at the locked price and the minute since the guess shaded. Each
+ * minute can be read on its own, by pointer or keyboard, through the
+ * inspector. Cosmetic by construction - nothing here reaches the server.
  */
 export function HourChart({
 	state,
@@ -45,6 +50,7 @@ export function HourChart({
 	lock: { price: number; at: number } | null;
 }) {
 	const [ref, width] = useWidth<HTMLDivElement>();
+	const [inspected, setInspected] = useState<number | null>(null);
 
 	const chart =
 		state.kind === 'ready' && width > 0
@@ -58,6 +64,13 @@ export function HourChart({
 			: null;
 	const lockX =
 		chart && lock ? Math.max(0, Math.min(width, chart.xFor(lock.at))) : null;
+	const candles = state.kind === 'ready' ? state.candles : [];
+	// The hour refreshes under the inspector; hold it to the candles there are.
+	const at =
+		chart && inspected !== null
+			? Math.min(inspected, chart.candles.length - 1)
+			: null;
+	const point = at !== null && at >= 0 ? chart!.candles[at] : null;
 
 	return (
 		<div {...stylex.props(frame.wrap)}>
@@ -111,9 +124,28 @@ export function HourChart({
 								label="locked in"
 							/>
 						)}
+						{point && (
+							<Crosshair x={point.x} y={chart.yFor(candles[at!].close)} />
+						)}
 					</svg>
 				) : (
 					<Skeleton width="100%" height={CHART_HEIGHT} />
+				)}
+				{point && (
+					<ReadoutTip
+						readout={candleReadout(candles[at!])}
+						x={point.x}
+						width={width}
+					/>
+				)}
+				{chart && (
+					<Inspector
+						xs={chart.candles.map((c) => c.x)}
+						index={at}
+						onIndex={setInspected}
+						label="Last hour, minute by minute"
+						valueText={(i) => candleReadout(candles[i]).text}
+					/>
 				)}
 			</div>
 			<Axis

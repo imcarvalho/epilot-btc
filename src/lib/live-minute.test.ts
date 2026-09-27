@@ -120,7 +120,13 @@ describe('buildMinuteChart', () => {
 			...size,
 			now: T0 + 1_000,
 		});
-		expect(chart.points[0]).toEqual({ x: 0, y: chart.lockedY });
+		expect(chart.points[0]).toEqual({
+			x: 0,
+			y: chart.lockedY,
+			t: T0,
+			price: 100,
+		});
+		expect(chart.points[1]).toMatchObject({ t: T0 + 1_000, price: 105 });
 		expect(chart.line.startsWith('M0 ')).toBe(true);
 	});
 
