@@ -1,4 +1,4 @@
-# BTC Guess — project context
+# BTC Guess - project context
 
 This file is the entry point for an agent working in this repository. Read it fully before doing anything else.
 
@@ -12,16 +12,16 @@ It is being judged as a product-engineering exercise, not a coding puzzle. Clear
 
 Both live in `docs/` and were written and reviewed before any code:
 
-- **`docs/product-spec.md`** — what is being built and why. Rules, scope, user flow, the six screens with screenshots, the reasoning behind each state, copy, acceptance criteria, build order.
-- **`docs/engineering-spec.md`** — how it is built. Architecture, data model, API, resolution, concurrency, price data, identity, leaderboard, frontend notes, operations, test plan, definition of done, risks.
+- **`docs/product-spec.md`** - what is being built and why. Rules, scope, user flow, the six screens with screenshots, the reasoning behind each state, copy, acceptance criteria, build order.
+- **`docs/engineering-spec.md`** - how it is built. Architecture, data model, API, resolution, concurrency, price data, identity, leaderboard, frontend notes, operations, test plan, definition of done, risks.
 
-**Do not redesign what these settle.** If something seems wrong, say so and ask — do not quietly diverge. If a change is agreed, update the spec in the same change as the code, so the two never drift.
+**Do not redesign what these settle.** If something seems wrong, say so and ask - do not quietly diverge. If a change is agreed, update the spec in the same change as the code, so the two never drift.
 
 Section numbers are referred to throughout this file; they are stable.
 
 ## The principle everything hangs off
 
-**The server is the only source of truth about game state.** The browser sends two things: who it is (an identity cookie) and what it guesses (`up` or `down`). Nothing else it says counts — not prices, not timestamps. Those fields do not exist in the API contracts in the first place.
+**The server is the only source of truth about game state.** The browser sends two things: who it is (an identity cookie) and what it guesses (`up` or `down`). Nothing else it says counts - not prices, not timestamps. Those fields do not exist in the API contracts in the first place.
 
 This is the answer to the brief's one explicit requirement, that guesses be "resolved fairly". Every design choice defers to it. See engineering spec §1.
 
@@ -31,7 +31,7 @@ These are settled. The reasoning is in the specs; this is the index.
 
 | Area | Decision | Where |
 |---|---|---|
-| Framework | Next.js App Router, for deployment risk and Auth.js — **not** for rendering | eng §2.1 |
+| Framework | Next.js App Router, for deployment risk and Auth.js - **not** for rendering | eng §2.1 |
 | Rendering | No server rendering of game data. Server components render the shell only; all state arrives by `fetch` to route handlers | eng §2.1 |
 | Hosting | Amplify Hosting for the web tier; CDK for table, indexes, scheduler, IAM | eng §8 |
 | Region | eu-central-1 | eng §2 |
@@ -55,7 +55,7 @@ These are settled. The reasoning is in the specs; this is the index.
 In this order, because each one can invalidate work done after it:
 
 1. **StyleX compiling**, with a real Astryx component on screen and atomic CSS emitted. Start from Astryx's own Next.js StyleX example rather than a blank project. Next needs `@stylexjs/babel-plugin` and `@stylexjs/postcss-plugin` with the `next/babel` preset.
-2. **An infrastructure hello-world deployed** — Amplify Hosting serving the app, and the Amplify compute role reaching a DynamoDB table. Not at the end; AWS is the least familiar part of this stack.
+2. **An infrastructure hello-world deployed** - Amplify Hosting serving the app, and the Amplify compute role reaching a DynamoDB table. Not at the end; AWS is the least familiar part of this stack.
 3. **Coinbase endpoints checked with `curl`** for response shape and CORS (eng §5).
 
 ## Build order
@@ -77,7 +77,7 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 
 - **TypeScript throughout.** Types are defined once and imported by both halves; request bodies are validated at the boundary with Zod and the inferred types are what the client uses.
 - **Pure functions where the logic lives.** `resolveGuess`, the name generator and the request scheduler are pure and fully unit-tested without infrastructure. Anything that can be pure should be.
-- **Route handlers on the Node runtime**, not the edge — they need the AWS SDK and the hosting role's credentials.
+- **Route handlers on the Node runtime**, not the edge - they need the AWS SDK and the hosting role's credentials.
 - **Every write that must happen once is a DynamoDB conditional write.** Guess creation is conditioned on `attribute_not_exists(pendingGuess)`; resolution is conditioned on the pending guess id. Never a read-then-write.
 - **Counters move in the same write as the score.** Never recomputed from `history`, which is trimmed to 10 entries.
 - **Accessibility is not a later pass.** Results announced through one `aria-live="polite"` region, no meaning carried by colour alone, confetti skipped under `prefers-reduced-motion`.
@@ -85,16 +85,16 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 
 ## What is already here
 
-- `src/lib/resolve-guess.ts` — the resolution rule, exactly as specified, with its tests
-- `src/lib/names.ts` — the generated-name function, with its tests
-- `src/lib/ask-scheduler.ts` — the request cadence from eng §3.1 as a pure decision function, with its tests
-- `docs/` — both specs, the screen designs, the user-flow diagram
+- `src/lib/resolve-guess.ts` - the resolution rule, exactly as specified, with its tests
+- `src/lib/names.ts` - the generated-name function, with its tests
+- `src/lib/ask-scheduler.ts` - the request cadence from eng §3.1 as a pure decision function, with its tests
+- `docs/` - both specs, the screen designs, the user-flow diagram
 
 These three modules are the parts the specs single out as testable without any infrastructure. They are deliberately framework-free: scaffolding must **merge around them**, not overwrite them.
 
 ## Scaffolding note
 
-There is no `package.json` yet, deliberately — the versions should be current at the time of the build, and day one starts from the Astryx Next example. When scaffolding:
+There is no `package.json` yet, deliberately - the versions should be current at the time of the build, and day one starts from the Astryx Next example. When scaffolding:
 
 - Preserve `CLAUDE.md`, `README.md`, `docs/` and `src/lib/` intact.
 - If the scaffolder refuses to run in a non-empty directory, scaffold into a temporary directory and merge, rather than deleting anything here.
@@ -104,8 +104,18 @@ There is no `package.json` yet, deliberately — the versions should be current 
 - A public git repository
 - A deployed, reachable link
 - A README covering the design, how to run it, and how to deploy it
-- Tests are encouraged — and here they are part of the argument, since fairness is the thing being demonstrated
+- Tests are encouraged - and here they are part of the argument, since fairness is the thing being demonstrated
 
 ## Definition of done
 
 Engineering spec §10. The short version: no client-supplied price or timestamp can affect an outcome and this is visible in the network tab; guess creation and resolution are each idempotent under concurrent calls; a guess abandoned by a closed browser still resolves; a stale feed blocks resolution and says so; sign-in rejects malformed, expired and wrongly-audienced tokens; the leaderboard and the sweep are both served from indexes rather than scans.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

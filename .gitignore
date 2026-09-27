@@ -13,7 +13,7 @@ dist/
 infra/cdk.out/
 infra/cdk.context.json
 
-# env and secrets — never commit these
+# env and secrets - never commit these
 .env
 .env.*
 !.env.example
@@ -40,3 +40,4 @@ yarn-error.log*
 .amplify/
 .turbo/
 *.tsbuildinfo
+.playwright-mcp/
