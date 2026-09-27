@@ -11,6 +11,7 @@ const fresh: Scoreboard = {
 	wins: 0,
 	losses: 0,
 	currentStreak: 0,
+	previousStreak: 0,
 	bestStreak: 0,
 	history: [],
 };
@@ -65,6 +66,18 @@ describe('applyResolution', () => {
 			currentStreak: -1,
 			bestStreak: 0,
 		});
+	});
+
+	it('remembers the streak a result broke, so a loss can say what ended', () => {
+		const onARoll = {
+			...fresh,
+			score: 2,
+			wins: 2,
+			currentStreak: 2,
+			bestStreak: 2,
+		};
+		const after = applyResolution(onARoll, guess(), 99_990, 61_000, -1);
+		expect(after).toMatchObject({ currentStreak: -1, previousStreak: 2 });
 	});
 
 	it('keeps the best streak when the current one breaks', () => {

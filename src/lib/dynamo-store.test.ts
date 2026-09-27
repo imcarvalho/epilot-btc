@@ -79,6 +79,7 @@ const board = {
 	wins: 1,
 	losses: 0,
 	currentStreak: 1,
+	previousStreak: 0,
 	bestStreak: 1,
 	history: [],
 };
@@ -86,6 +87,19 @@ const board = {
 beforeEach(() => ddb.reset());
 
 describe('DynamoStore', () => {
+	it('reads a record written before previousStreak existed as 0', async () => {
+		const { previousStreak: _, ...old } = newPlayerRecord(
+			'anon:a',
+			'BriskOtter',
+			T,
+		);
+		ddb.on(GetCommand).resolves({ Item: { ...old, currentStreak: -1 } });
+		await expect(store.getPlayer('anon:a')).resolves.toMatchObject({
+			currentStreak: -1,
+			previousStreak: 0,
+		});
+	});
+
 	it('reads a player with a strongly consistent read', async () => {
 		ddb
 			.on(GetCommand)
@@ -182,6 +196,7 @@ describe('DynamoStore', () => {
 				'wins',
 				'losses',
 				'currentStreak',
+				'previousStreak',
 				'bestStreak',
 				'history',
 			]) {

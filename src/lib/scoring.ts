@@ -36,6 +36,7 @@ export function applyResolution(
 		wins: before.wins + (delta === 1 ? 1 : 0),
 		losses: before.losses + (delta === -1 ? 1 : 0),
 		currentStreak,
+		previousStreak: before.currentStreak,
 		bestStreak: Math.max(before.bestStreak, currentStreak),
 		history: [entry, ...before.history].slice(0, HISTORY_LIMIT),
 	};

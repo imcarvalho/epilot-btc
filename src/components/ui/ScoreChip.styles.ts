@@ -13,7 +13,7 @@ export const styles = stylex.create({
 		marginInline: 'var(--spacing-1)',
 		width: 1,
 	},
-	rate: {
+	secondary: {
 		color: 'var(--color-text-secondary)',
 	},
 	visuallyHidden: {

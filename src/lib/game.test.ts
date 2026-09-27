@@ -59,7 +59,13 @@ describe('a new player', () => {
 		expect(state).toMatchObject({
 			publicName: 'AudaciousBadger',
 			score: 0,
-			stats: { wins: 0, losses: 0, currentStreak: 0, bestStreak: 0 },
+			stats: {
+				wins: 0,
+				losses: 0,
+				currentStreak: 0,
+				previousStreak: 0,
+				bestStreak: 0,
+			},
 			price: 100_000,
 			priceStale: false,
 			pendingGuess: null,

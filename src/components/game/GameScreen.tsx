@@ -58,8 +58,7 @@ export function GameScreen() {
 						state && {
 							name: state.publicName,
 							score: state.score,
-							wins: state.stats.wins,
-							losses: state.stats.losses,
+							stats: state.stats,
 						}
 					}
 					isLive={

@@ -118,9 +118,9 @@ The screen (build order item 1, client half, first-visit state):
 - `src/lib/live-minute.ts` - the live minute (eng §5.1) as pure functions: parsing ticker messages, one sample per second, ahead/behind, the minute chart's geometry; `useLiveMinute` owns the browser's Coinbase WebSocket, open only while a guess is pending, and feeds the cadence so the client asks when the ticker shows a move
 - `MinuteChart` and `HourChart` share `chart-parts.tsx`; during a guess the hour view carries the locked-in line and the shaded minute, and the price card has a "Last hour / This guess" toggle that follows the guess
 
-- `src/lib/stats.ts` - the success rate (correct over resolved, from the counters, null before the first result), shown in the score chip
+- `src/lib/stats.ts` - the success rate and the streak wording ("2 wins in a row", "streak ended at 2"), from the counters; the streak a loss broke is stored as `previousStreak` in the same settle write, never derived from the trimmed history
 
-Not built yet: streaks in the score chip, confetti, sign-in and the leaderboard.
+Not built yet: confetti, sign-in and the leaderboard.
 
 ## Scaffolding note
 

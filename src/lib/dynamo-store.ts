@@ -51,6 +51,7 @@ const NAMES = {
 	'#wins': 'wins',
 	'#losses': 'losses',
 	'#currentStreak': 'currentStreak',
+	'#previousStreak': 'previousStreak',
 	'#bestStreak': 'bestStreak',
 	'#history': 'history',
 	'#pendingGuess': 'pendingGuess',
@@ -71,6 +72,7 @@ const SETTLE_NAMES = pick(
 	'#wins',
 	'#losses',
 	'#currentStreak',
+	'#previousStreak',
 	'#bestStreak',
 	'#history',
 	'#pendingGuess',
@@ -95,6 +97,8 @@ function toPlayer(item: Record<string, unknown>): PlayerRecord {
 		wins: item.wins as number,
 		losses: item.losses as number,
 		currentStreak: item.currentStreak as number,
+		// Absent on records written before the attribute existed.
+		previousStreak: (item.previousStreak as number | undefined) ?? 0,
 		bestStreak: item.bestStreak as number,
 		history: (item.history as PlayerRecord['history']) ?? [],
 		pendingGuess: (item.pendingGuess as PendingGuess | undefined) ?? null,
@@ -198,7 +202,8 @@ export class DynamoStore implements GameStore {
 					Key: { playerId },
 					UpdateExpression:
 						'SET #score = :score, #wins = :wins, #losses = :losses, #currentStreak = :currentStreak, ' +
-						'#bestStreak = :bestStreak, #history = :history, #updatedAt = :now, #ttl = :ttl ' +
+						'#previousStreak = :previousStreak, #bestStreak = :bestStreak, #history = :history, ' +
+						'#updatedAt = :now, #ttl = :ttl ' +
 						'REMOVE #pendingGuess, #pendingAt, #pendingBucket',
 					ConditionExpression: '#pendingGuess.#id = :guessId',
 					ExpressionAttributeNames: SETTLE_NAMES,
@@ -207,6 +212,7 @@ export class DynamoStore implements GameStore {
 						':wins': board.wins,
 						':losses': board.losses,
 						':currentStreak': board.currentStreak,
+						':previousStreak': board.previousStreak,
 						':bestStreak': board.bestStreak,
 						':history': board.history,
 						':now': now,

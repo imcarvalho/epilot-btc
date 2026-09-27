@@ -79,6 +79,8 @@ Players
      pendingBucket       "PENDING" while a guess is pending, else absent (3.2)
      wins, losses        numbers, incremented at resolution
      currentStreak       signed number (+3 = three wins, -2 = two losses)
+     previousStreak      currentStreak just before the latest result, so a
+                         loss can read "streak ended at 2" (product spec 6.4)
      bestStreak          number
      history             last 10 resolved guesses
                          { id, direction, priceAtGuess, priceAtResolve,

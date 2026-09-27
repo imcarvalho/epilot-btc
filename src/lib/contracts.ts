@@ -37,6 +37,12 @@ export interface Stats {
 	losses: number;
 	/** Signed: +3 is three wins in a row, -2 is two losses in a row. */
 	currentStreak: number;
+	/**
+	 * The streak just before the latest result, so a loss can read "streak
+	 * ended at 2" rather than a bare -1. Stored, not derived: history is
+	 * trimmed, and counters are never recomputed from it.
+	 */
+	previousStreak: number;
 	bestStreak: number;
 }
 
