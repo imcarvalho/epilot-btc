@@ -1,4 +1,4 @@
-import { formatAge, formatUsd } from "./format";
+import { formatAge, formatCountdown, formatElapsed, formatUsd } from "./format";
 
 describe("formatUsd", () => {
   it("always shows two decimals, whatever Coinbase sent", () => {
@@ -17,5 +17,22 @@ describe("formatAge", () => {
 
   it("never shows a negative age from a small clock difference", () => {
     expect(formatAge(-800)).toBe("0s ago");
+  });
+});
+
+describe("formatCountdown", () => {
+  it("shows minutes and zero-padded seconds, never below zero", () => {
+    expect(formatCountdown(60)).toBe("1:00");
+    expect(formatCountdown(47)).toBe("0:47");
+    expect(formatCountdown(5)).toBe("0:05");
+    expect(formatCountdown(-3)).toBe("0:00");
+  });
+});
+
+describe("formatElapsed", () => {
+  it("reads as seconds under a minute, then minutes and padded seconds", () => {
+    expect(formatElapsed(58_000)).toBe("58s");
+    expect(formatElapsed(64_000)).toBe("1m 04s");
+    expect(formatElapsed(72_400)).toBe("1m 12s");
   });
 });

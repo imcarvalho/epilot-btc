@@ -2,27 +2,30 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { guessPhase } from "@/lib/guess-phase";
 import { EmptyMessage, Panel } from "@/components/ui";
 import { palette } from "@/components/ui/tokens.stylex";
+import { Announcer } from "./Announcer";
 import { GuessButtons } from "./GuessButtons";
 import { GuessStrip } from "./GuessStrip";
 import { HistoryPanel } from "./HistoryPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
 import { PriceCard } from "./PriceCard";
 import { TopBar } from "./TopBar";
-import { useGameState, useServerNow } from "./useGameState";
+import { useGame, useServerNow } from "./useGameState";
 
 /**
- * The one screen (product spec §5), first-visit state. Every value on it
- * comes from `GET /api/state`; nothing is rendered on the server but the
- * shell (engineering spec §2.1). The chart goes into the price card next,
- * and the buttons are wired up with the waiting states.
+ * The one screen (product spec §5). Every value on it comes from the server
+ * (`GET /api/state`, `POST /api/guess`); nothing is rendered on the server
+ * but the shell (engineering spec §2.1). What the strip and the buttons show
+ * is one pure function of that state and the server's clock (`guessPhase`).
  */
 export function GameScreen() {
-  const { status, refresh } = useGameState();
+  const { status, refresh, placeGuess, isPlacing, guessError, watchedGuessId } = useGame();
   const ready = status.kind === "ready" ? status : null;
   const now = useServerNow(ready?.clockOffset ?? 0);
   const state = ready?.state ?? null;
+  const phase = state ? guessPhase(state, now, watchedGuessId) : null;
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -50,14 +53,20 @@ export function GameScreen() {
               priceStale={state?.priceStale ?? false}
               now={ready ? now : null}
             />
-            <GuessButtons isDisabled={state === null || state.pendingGuess !== null} />
-            <GuessStrip name={state?.publicName ?? null} />
+            <GuessButtons phase={phase} onGuess={placeGuess} isBusy={isPlacing} />
+            <GuessStrip phase={phase} name={state?.publicName ?? null} guessError={guessError} now={now} />
             <div {...stylex.props(styles.panels)}>
               <LeaderboardPanel />
-              <HistoryPanel resolvedCount={state ? state.stats.wins + state.stats.losses : 0} />
+              <HistoryPanel
+                history={state?.history ?? []}
+                pending={state?.pendingGuess ?? null}
+                resolvedCount={state ? state.stats.wins + state.stats.losses : 0}
+                highlightId={phase?.kind === "result" ? phase.result.id : null}
+              />
             </div>
           </>
         )}
+        <Announcer phase={phase} />
       </main>
     </div>
   );

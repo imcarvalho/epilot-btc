@@ -5,8 +5,9 @@
  */
 export { BrandMark } from "./BrandMark";
 export { ChangeBadge } from "./ChangeBadge";
-export { DirectionButton } from "./DirectionButton";
+export { DirectionButton, type DirectionButtonMode } from "./DirectionButton";
 export { EmptyMessage } from "./EmptyMessage";
+export { IconTile } from "./IconTile";
 export { Eyebrow } from "./Eyebrow";
 export { Numeric } from "./Numeric";
 export { Panel } from "./Panel";

@@ -69,6 +69,11 @@ export const draculaTheme = defineTheme({
     "--font-family-heading": "var(--font-sans), ui-sans-serif, system-ui, sans-serif",
     "--font-family-code": "var(--font-mono), ui-monospace, Menlo, monospace",
   },
+  // Neutral colours some accent fills (the progress bar, the step
+  // indicator) through its own token rather than --color-accent.
+  localTokens: {
+    "--astryx-theme-neutral-color-status-fill-accent": "#BD93F9",
+  },
   components: {
     // Generated players have no photo, so the initials disc is what shows:
     // pastel, from the "lower" end of the hero palette, with dark ink.

@@ -193,7 +193,7 @@ export const draculaTheme = {
     "--size-element-lg": "40px"
   },
   localTokens: {
-    "--astryx-theme-neutral-color-status-fill-accent": "light-dark(#0074e2, #6d9cfe)",
+    "--astryx-theme-neutral-color-status-fill-accent": "#BD93F9",
     "--astryx-theme-neutral-color-status-fill-success": "light-dark(#198100, #64af4c)",
     "--astryx-theme-neutral-color-status-fill-warning": "#ffce2f",
     "--astryx-theme-neutral-color-status-fill-error": "light-dark(#c9303a, #ff705d)",

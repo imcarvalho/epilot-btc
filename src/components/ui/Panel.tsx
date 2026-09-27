@@ -9,19 +9,22 @@ import type { ReactNode } from "react";
 export function Panel({
   children,
   variant = "solid",
+  tone = "neutral",
   as: Element = "section",
   xstyle,
   ...aria
 }: {
   children: ReactNode;
   variant?: "solid" | "dashed";
+  /** Colours the border and ground: a waiting state, or an outcome. */
+  tone?: "neutral" | "warning" | "win" | "loss";
   as?: "section" | "div" | "aside";
   xstyle?: stylex.StyleXStyles;
   "aria-label"?: string;
   "aria-labelledby"?: string;
 }) {
   return (
-    <Element {...aria} {...stylex.props(styles.base, variant === "dashed" && styles.dashed, xstyle)}>
+    <Element {...aria} {...stylex.props(styles.base, variant === "dashed" && styles.dashed, tone !== "neutral" && styles[tone], xstyle)}>
       {children}
     </Element>
   );
@@ -44,5 +47,17 @@ const styles = stylex.create({
     borderColor: "var(--color-border-emphasized)",
     borderStyle: "dashed",
     paddingBlock: "var(--spacing-6)",
+  },
+  warning: {
+    backgroundColor: "rgba(241, 250, 140, 0.04)",
+    borderColor: "rgba(241, 250, 140, 0.35)",
+  },
+  win: {
+    backgroundColor: "rgba(125, 251, 170, 0.06)",
+    borderColor: "rgba(125, 251, 170, 0.4)",
+  },
+  loss: {
+    backgroundColor: "rgba(255, 138, 138, 0.06)",
+    borderColor: "rgba(255, 138, 138, 0.4)",
   },
 });

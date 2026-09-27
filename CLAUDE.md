@@ -111,7 +111,10 @@ The screen (build order item 1, client half, first-visit state):
 - `src/components/game/` - the screen's sections and `useGameState` (state from `GET /api/state` only)
 - `src/lib/candles.ts` - the last-hour chart as pure functions (parse Coinbase's candles, the hour's change, SVG geometry); `HourChart` draws it and `useCandles` fetches it from Coinbase in the browser, once a minute while the tab is visible
 
-Not wired yet, by design: the guess buttons (with the waiting states), sign-in.
+- `src/lib/guess-phase.ts` - which state the guess strip is in (first visit, idle, locked, time up, stale, result) and the result sentence, as pure functions; the buttons, the strip and the `aria-live` announcer all render from it
+- `useGame` places guesses (`POST /api/guess`) and runs the §3.1 cadence through `shouldAsk`; with no browser ticker yet it polls only once the minute is up and nothing has moved
+
+Not built yet: the chart's locked-in line and shaded minute, success rate and streaks in the score chip, confetti, the live minute and its "so far" figure (needs the ticker), sign-in and the leaderboard.
 
 ## Scaffolding note
 
