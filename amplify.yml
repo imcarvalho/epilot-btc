@@ -17,6 +17,9 @@ frontend:
     files:
       - '**/*'
   cache:
+    # Not .next/cache: Turbopack's cache holds absolute paths, and each
+    # Amplify build checks out to a different directory, so a restored cache
+    # points at files from the previous build ("Cannot find module
+    # .../babel.config.js").
     paths:
-      - .next/cache/**/*
       - .npm/**/*
