@@ -15,4 +15,3 @@ src/themes/dracula.d.ts
 src/themes/dracula.variants.d.ts
 # prose: the specs are not reflowed
 *.md
-next-env.d.ts
