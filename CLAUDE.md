@@ -120,7 +120,9 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/lib/stats.ts` - the success rate and the streak wording ("2 wins in a row", "streak ended at 2"), from the counters; the streak a loss broke is stored as `previousStreak` in the same settle write, never derived from the trimmed history
 
-Not built yet: confetti, sign-in and the leaderboard.
+- `src/lib/confetti.ts` + `Confetti` - confetti on a win only, laid out by a pure function over an injected random source; aria-hidden, and never generated under `prefers-reduced-motion`
+
+Not built yet: sign-in and the leaderboard.
 
 ## Scaffolding note
 

@@ -6,6 +6,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { guessPhase } from '@/lib/guess-phase';
 import { EmptyMessage, Panel } from '@/components/ui';
 import { Announcer } from './Announcer';
+import { Confetti } from './Confetti';
 import { GuessButtons } from './GuessButtons';
 import { GuessStrip } from './GuessStrip';
 import { HistoryPanel } from './HistoryPanel';
@@ -121,6 +122,9 @@ export function GameScreen() {
 					</>
 				)}
 				<Announcer phase={phase} />
+				{phase?.kind === 'result' && phase.result.delta === 1 && (
+					<Confetti key={phase.result.id} />
+				)}
 			</main>
 		</div>
 	);
