@@ -102,7 +102,7 @@ The backend cycle (build order item 1, server half) is built on top of them:
 - `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client
 - `src/app/api/{player,state,guess,cron/resolve}/route.ts` - thin adapters over `game.ts`
 
-Not yet done on the server: the EventBridge schedule that calls `/api/cron/resolve`, and wiring `PLAYERS_TABLE_NAME` / `CRON_SECRET` into Amplify.
+The sweep is scheduled from `infra/`: EventBridge Scheduler invokes `infra/lambda/sweep-trigger`, which POSTs to `/api/cron/resolve` with the secret from SSM (`/btc-guess/cron-secret`). The Amplify app's env vars are set and copied into `.env.production` by `amplify.yml`.
 
 ## Scaffolding note
 

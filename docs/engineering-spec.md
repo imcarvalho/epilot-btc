@@ -32,8 +32,8 @@ Next.js (App Router, Node runtime)
   |-- lib/               resolveGuess, price adapter, DynamoDB access, name generator
         |-- DynamoDB: Players (PK playerId) + PRICE#BTCUSD cache item
         |-- Coinbase API (called only from here)
-EventBridge Scheduler (1 min) -> POST /api/cron/resolve (shared-secret header)
-                                 -> resolves guesses left by closed browsers
+EventBridge Scheduler (1 min) -> Lambda -> POST /api/cron/resolve (shared-secret header)
+                                           -> resolves guesses left by closed browsers
 Hosting: AWS Amplify Hosting (Next SSR). Data and schedule: AWS CDK. Region: eu-central-1.
 ```
 
@@ -176,6 +176,8 @@ The sweep needs the one access pattern the main table cannot serve: not "this pl
 The sparseness is the whole mechanism, and it is the same trick as the leaderboard's: the index holds the working set rather than the table. A sweep is one query for items with `pendingAt` at least 60 seconds before the current price was observed, then the ordinary conditional resolution write for each - at most 100 per run, with the next run taking the rest. In the steady state it returns nothing and costs one read.
 
 It also bounds the failure mode. If the scheduler stops, work accumulates visibly in a place that can be queried and counted, rather than sitting invisible across the table.
+
+**How the schedule reaches the route.** EventBridge Scheduler cannot call an HTTPS endpoint, so it invokes a small Lambda that makes the one `POST` with the secret header, and decides nothing itself. The alternative, an EventBridge rule targeting an API destination, needs no code but is billed per call; Scheduler and Lambda both stay inside the free tier at one call a minute. The secret lives in SSM Parameter Store as a SecureString (section 8), read by the function at cold start, so it never appears in a template or in the function's configuration. No retries: a missed run is covered by the next one, and the sweep is idempotent regardless.
 
 ---
 

@@ -62,7 +62,8 @@ Three parameters in SSM Parameter Store, never in the repository:
 - [ ] `AUTH_SECRET` (`openssl rand -base64 32`)
 - [ ] Google client ID
 - [ ] Google client secret
-- [ ] Cron shared secret for `POST /api/cron/resolve`
+- [x] Cron shared secret for `POST /api/cron/resolve` - SecureString `/btc-guess/cron-secret` in `eu-central-1`, same value as `CRON_SECRET` on the Amplify app. Change one, change both
+- [x] `cd infra && npx cdk deploy` for the sweep schedule and its Lambda - verified: runs every minute, settled an abandoned guess with no browser involved
 
 ## Nothing needed
 

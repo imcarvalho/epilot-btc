@@ -16,7 +16,7 @@ A take-home exercise for epilot. The backend guess-and-resolve cycle is built an
 | `src/lib/` | The game, framework-free: the resolution rule, scoring, the price cache, the guess cycle (`game.ts`), the DynamoDB store, the name generator, the request cadence - each with tests |
 | `src/app/api/` | Thin route handlers over `src/lib/game.ts`: `player`, `state`, `guess`, `cron/resolve` |
 | `src/app/` | The Next.js App Router shell: layout, providers (Astryx theme + Link), and the day-one checkpoint page |
-| `infra/` | CDK stack: table, indexes, IAM policy for the Amplify SSR role. Scheduler comes later, once `/api/cron/resolve` exists |
+| `infra/` | CDK stack: table, indexes, IAM policy for the Amplify SSR role, and the once-a-minute sweep (EventBridge Scheduler invoking a small Lambda that calls `/api/cron/resolve`) |
 
 ## The one-paragraph version
 
@@ -64,4 +64,12 @@ npm run synth # renders CloudFormation, no AWS credentials needed
 npm run deploy # needs AWS credentials
 ```
 
-`npm run deploy` has not been run yet against a real account. Once it is, the remaining half of the day-one infra check is to attach `PlayersTableAccessPolicyArn` (a stack output) to the Amplify SSR compute role after connecting the repo in Amplify Hosting, then confirm a route handler can actually read/write the table.
+One-off setup around the stack, because neither piece can live in a template:
+
+- Attach the `PlayersTableAccessPolicyArn` output to the Amplify SSR compute role.
+- Put the sweep's shared secret in SSM as a SecureString, with the same value as `CRON_SECRET` on the Amplify app. CloudFormation cannot create a SecureString, and this keeps the value out of every template:
+
+  ```
+  aws ssm put-parameter --region eu-central-1 --type SecureString \
+    --name /btc-guess/cron-secret --value "$CRON_SECRET"
+  ```

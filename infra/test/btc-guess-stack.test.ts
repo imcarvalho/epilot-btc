@@ -1,117 +1,175 @@
-import { App } from 'aws-cdk-lib'
-import { Match, Template } from 'aws-cdk-lib/assertions'
-import { describe, expect, it } from 'vitest'
-import { BtcGuessStack } from '../lib/btc-guess-stack'
+import { App } from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { describe, expect, it } from 'vitest';
+import { BtcGuessStack, CRON_SECRET_PARAMETER } from '../lib/btc-guess-stack';
+
+const SWEEP_URL = 'https://example.test/api/cron/resolve';
 
 function synth(): Template {
-  const app = new App()
-  const stack = new BtcGuessStack(app, 'TestStack', { env: { region: 'eu-central-1' } })
-  return Template.fromStack(stack)
+	const app = new App();
+	const stack = new BtcGuessStack(app, 'TestStack', {
+		env: { region: 'eu-central-1' },
+		sweepUrl: SWEEP_URL,
+	});
+	return Template.fromStack(stack);
 }
 
 describe('BtcGuessStack', () => {
-  it('creates exactly one table, on-demand, keyed by playerId, with TTL', () => {
-    const template = synth()
+	it('creates exactly one table, on-demand, keyed by playerId, with TTL', () => {
+		const template = synth();
 
-    template.resourceCountIs('AWS::DynamoDB::Table', 1)
-    template.hasResourceProperties('AWS::DynamoDB::Table', {
-      BillingMode: 'PAY_PER_REQUEST',
-      KeySchema: [{ AttributeName: 'playerId', KeyType: 'HASH' }],
-      TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
-    })
-  })
+		template.resourceCountIs('AWS::DynamoDB::Table', 1);
+		template.hasResourceProperties('AWS::DynamoDB::Table', {
+			BillingMode: 'PAY_PER_REQUEST',
+			KeySchema: [{ AttributeName: 'playerId', KeyType: 'HASH' }],
+			TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
+		});
+	});
 
-  it('has no sort key on the base table — one item per player', () => {
-    const template = synth()
+	it('has no sort key on the base table - one item per player', () => {
+		const template = synth();
 
-    const [table] = Object.values(template.findResources('AWS::DynamoDB::Table'))
-    const baseKeySchema = table.Properties.KeySchema as Array<{ KeyType: string }>
-    expect(baseKeySchema).toHaveLength(1)
-  })
+		const [table] = Object.values(
+			template.findResources('AWS::DynamoDB::Table'),
+		);
+		const baseKeySchema = table.Properties.KeySchema as Array<{
+			KeyType: string;
+		}>;
+		expect(baseKeySchema).toHaveLength(1);
+	});
 
-  it('indexes the leaderboard sparsely on board/score, projecting only what a row needs', () => {
-    const template = synth()
+	it('indexes the leaderboard sparsely on board/score, projecting only what a row needs', () => {
+		const template = synth();
 
-    template.hasResourceProperties('AWS::DynamoDB::Table', {
-      GlobalSecondaryIndexes: Match.arrayWith([
-        Match.objectLike({
-          IndexName: 'byScore',
-          KeySchema: [
-            { AttributeName: 'board', KeyType: 'HASH' },
-            { AttributeName: 'score', KeyType: 'RANGE' },
-          ],
-          Projection: {
-            ProjectionType: 'INCLUDE',
-            NonKeyAttributes: Match.arrayWith(['publicName', 'wins', 'losses']),
-          },
-        }),
-      ]),
-    })
-  })
+		template.hasResourceProperties('AWS::DynamoDB::Table', {
+			GlobalSecondaryIndexes: Match.arrayWith([
+				Match.objectLike({
+					IndexName: 'byScore',
+					KeySchema: [
+						{ AttributeName: 'board', KeyType: 'HASH' },
+						{ AttributeName: 'score', KeyType: 'RANGE' },
+					],
+					Projection: {
+						ProjectionType: 'INCLUDE',
+						NonKeyAttributes: Match.arrayWith(['publicName', 'wins', 'losses']),
+					},
+				}),
+			]),
+		});
+	});
 
-  it('indexes the sweep sparsely on pendingBucket/pendingAt', () => {
-    const template = synth()
+	it('indexes the sweep sparsely on pendingBucket/pendingAt', () => {
+		const template = synth();
 
-    template.hasResourceProperties('AWS::DynamoDB::Table', {
-      GlobalSecondaryIndexes: Match.arrayWith([
-        Match.objectLike({
-          IndexName: 'byPending',
-          KeySchema: [
-            { AttributeName: 'pendingBucket', KeyType: 'HASH' },
-            { AttributeName: 'pendingAt', KeyType: 'RANGE' },
-          ],
-          Projection: { ProjectionType: 'ALL' },
-        }),
-      ]),
-    })
-  })
+		template.hasResourceProperties('AWS::DynamoDB::Table', {
+			GlobalSecondaryIndexes: Match.arrayWith([
+				Match.objectLike({
+					IndexName: 'byPending',
+					KeySchema: [
+						{ AttributeName: 'pendingBucket', KeyType: 'HASH' },
+						{ AttributeName: 'pendingAt', KeyType: 'RANGE' },
+					],
+					Projection: { ProjectionType: 'ALL' },
+				}),
+			]),
+		});
+	});
 
-  it('defines exactly two indexes — no accidental extra access pattern', () => {
-    const template = synth()
+	it('defines exactly two indexes - no accidental extra access pattern', () => {
+		const template = synth();
 
-    const [table] = Object.values(template.findResources('AWS::DynamoDB::Table'))
-    const indexes = table.Properties.GlobalSecondaryIndexes as unknown[]
-    expect(indexes).toHaveLength(2)
-  })
+		const [table] = Object.values(
+			template.findResources('AWS::DynamoDB::Table'),
+		);
+		const indexes = table.Properties.GlobalSecondaryIndexes as unknown[];
+		expect(indexes).toHaveLength(2);
+	});
 
-  it('grants the SSR compute role read/write on the table and its indexes, nothing else', () => {
-    const template = synth()
+	it('grants the SSR compute role read/write on the table and its indexes, nothing else', () => {
+		const template = synth();
 
-    template.resourceCountIs('AWS::IAM::ManagedPolicy', 1)
-    template.hasResourceProperties('AWS::IAM::ManagedPolicy', {
-      PolicyDocument: {
-        Statement: [
-          Match.objectLike({
-            Effect: 'Allow',
-            Action: Match.arrayWith([
-              'dynamodb:GetItem',
-              'dynamodb:PutItem',
-              'dynamodb:UpdateItem',
-              'dynamodb:Query',
-            ]),
-          }),
-        ],
-      },
-    })
-  })
+		template.resourceCountIs('AWS::IAM::ManagedPolicy', 1);
+		template.hasResourceProperties('AWS::IAM::ManagedPolicy', {
+			PolicyDocument: {
+				Statement: [
+					Match.objectLike({
+						Effect: 'Allow',
+						Action: Match.arrayWith([
+							'dynamodb:GetItem',
+							'dynamodb:PutItem',
+							'dynamodb:UpdateItem',
+							'dynamodb:Query',
+						]),
+					}),
+				],
+			},
+		});
+	});
 
-  it('scopes the policy to this table and its indexes, not a wildcard resource', () => {
-    const template = synth()
+	it('scopes the policy to this table and its indexes, not a wildcard resource', () => {
+		const template = synth();
 
-    const [policy] = Object.values(template.findResources('AWS::IAM::ManagedPolicy'))
-    const statement = policy.Properties.PolicyDocument.Statement[0]
-    const resources = statement.Resource as unknown[]
+		const [policy] = Object.values(
+			template.findResources('AWS::IAM::ManagedPolicy'),
+		);
+		const statement = policy.Properties.PolicyDocument.Statement[0];
+		const resources = statement.Resource as unknown[];
 
-    expect(resources).toHaveLength(2)
-    expect(resources).not.toContain('*')
-  })
+		expect(resources).toHaveLength(2);
+		expect(resources).not.toContain('*');
+	});
 
-  it('destroys the table on stack teardown — this is a take-home exercise, not production', () => {
-    const template = synth()
+	it('destroys the table on stack teardown - this is a take-home exercise, not production', () => {
+		const template = synth();
 
-    template.hasResource('AWS::DynamoDB::Table', {
-      DeletionPolicy: 'Delete',
-      UpdateReplacePolicy: 'Delete',
-    })
-  })
-})
+		template.hasResource('AWS::DynamoDB::Table', {
+			DeletionPolicy: 'Delete',
+			UpdateReplacePolicy: 'Delete',
+		});
+	});
+
+	it('runs the sweep every minute, without retries', () => {
+		const template = synth();
+
+		template.resourceCountIs('AWS::Scheduler::Schedule', 1);
+		template.hasResourceProperties('AWS::Scheduler::Schedule', {
+			ScheduleExpression: 'rate(1 minute)',
+			State: 'ENABLED',
+			Target: Match.objectLike({
+				RetryPolicy: { MaximumRetryAttempts: 0, MaximumEventAgeInSeconds: 60 },
+			}),
+		});
+	});
+
+	it('points the trigger at the sweep route and names the secret parameter, never its value', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::Lambda::Function', {
+			Handler: 'index.handler',
+			Environment: {
+				Variables: { SWEEP_URL, CRON_SECRET_PARAMETER },
+			},
+		});
+		expect(JSON.stringify(template.toJSON())).not.toMatch(/x-cron-secret/i);
+	});
+
+	it('lets the trigger read the one secret parameter and nothing else in SSM', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::IAM::Policy', {
+			PolicyDocument: {
+				Statement: Match.arrayWith([
+					Match.objectLike({
+						Effect: 'Allow',
+						Action: Match.arrayWith(['ssm:GetParameter']),
+						Resource: Match.objectLike({
+							'Fn::Join': Match.arrayWith([
+								Match.arrayWith([`:parameter${CRON_SECRET_PARAMETER}`]),
+							]),
+						}),
+					}),
+				]),
+			},
+		});
+	});
+});
