@@ -24,6 +24,10 @@ export const palette = stylex.defineVars({
   downFrom: "#FFA3D7",
   downTo: "#C7A5FF",
 
+  // Faint fills behind an up or down figure (the hour-change badge)
+  upWash: "rgba(125, 251, 170, 0.12)",
+  downWash: "rgba(255, 163, 215, 0.12)",
+
   // Text on a pastel gradient: dark, never white
   ink: "#1A1726",
   inkSoft: "#3B3452",

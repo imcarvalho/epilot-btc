@@ -4,6 +4,7 @@
  * fit, and on the app's own tokens (tokens.stylex.ts) where they do not.
  */
 export { BrandMark } from "./BrandMark";
+export { ChangeBadge } from "./ChangeBadge";
 export { DirectionButton } from "./DirectionButton";
 export { EmptyMessage } from "./EmptyMessage";
 export { Eyebrow } from "./Eyebrow";

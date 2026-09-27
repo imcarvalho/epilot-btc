@@ -109,8 +109,9 @@ The screen (build order item 1, client half, first-visit state):
 - `src/themes/dracula.theme.ts` - the Dracula token set; `dracula.{css,js,d.ts}` beside it are **generated** by `npx astryx theme build src/themes/dracula.theme.ts -o src/themes/dracula.css` (needs Node >= 22.13) - rebuild after editing it or upgrading Astryx
 - `src/components/ui/` - the design language as atoms (`Panel`, `Pill`, `DirectionButton`, `Numeric`, ...), built on Astryx primitives and tokens; `tokens.stylex.ts` holds what the theme has no slot for
 - `src/components/game/` - the screen's sections and `useGameState` (state from `GET /api/state` only)
+- `src/lib/candles.ts` - the last-hour chart as pure functions (parse Coinbase's candles, the hour's change, SVG geometry); `HourChart` draws it and `useCandles` fetches it from Coinbase in the browser, once a minute while the tab is visible
 
-Not wired yet, by design: the guess buttons (with the waiting states), sign-in, the chart.
+Not wired yet, by design: the guess buttons (with the waiting states), sign-in.
 
 ## Scaffolding note
 
