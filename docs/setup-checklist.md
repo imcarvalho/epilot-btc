@@ -37,8 +37,9 @@ Blocks Amplify, which deploys from the repository.
 - [x] App connected to the GitHub repository
 - [x] Next.js auto-detected, `npm run build` / `.next`, new service role created (that role is for CloudWatch SSR logs - it is **not** what grants the app access to DynamoDB)
 - [x] First deploy green - https://main.d2wmdgm5qnm2sa.amplifyapp.com/
-- [ ] The Amplify compute role has an IAM policy for the DynamoDB table
-- [ ] Environment variables wired to the CDK stack's outputs (table name, index names)
+- [ ] The Amplify compute role (`epilot-btc-amplify-compute`) has `PlayersTableAccessPolicyArn` attached - the role exists but has no policies yet
+- [x] Environment variables set on the app: `PLAYERS_TABLE_NAME`, `PLAYERS_TABLE_REGION`, `CRON_SECRET` (index names are constants in code). `amplify.yml` copies them into `.env.production` so the SSR runtime sees them
+- [ ] **Region mismatch:** the Amplify app is in `eu-north-1`, the table in `eu-central-1`. It works - the table region is explicit - but every request crosses regions. Decide whether to recreate the app in `eu-central-1`
 
 Do this as soon as there is something buildable - Amplify needs a `package.json` and a build command, so it comes after the Next scaffold, not before. Everything after that point should deploy on a push, because the deployed link is the deliverable most likely to fail and the only one that cannot be recovered afterwards.
 

@@ -2,7 +2,7 @@
 
 Guess whether BTC/USD will be higher or lower one minute from now. Right +1, wrong −1, one guess at a time.
 
-A take-home exercise for epilot. No game logic yet - this repository holds the design, the pieces of logic that could be written before any framework existed, and the day-one scaffold: StyleX compiling with a real Astryx component on screen.
+A take-home exercise for epilot. The backend guess-and-resolve cycle is built and tested; the game screen is next. Until then the page is the day-one scaffold: StyleX compiling with a real Astryx component on screen.
 
 ## Where things are
 
@@ -13,7 +13,8 @@ A take-home exercise for epilot. No game logic yet - this repository holds the d
 | `docs/engineering-spec.md` | How it is built - architecture, data model, API, resolution, identity, operations, tests |
 | `docs/screens/` | The six screen designs, as rendered |
 | `docs/flows/` | The user-flow diagram, with its Mermaid source |
-| `src/lib/` | The pure logic: the resolution rule, the name generator, the request cadence - each with tests |
+| `src/lib/` | The game, framework-free: the resolution rule, scoring, the price cache, the guess cycle (`game.ts`), the DynamoDB store, the name generator, the request cadence - each with tests |
+| `src/app/api/` | Thin route handlers over `src/lib/game.ts`: `player`, `state`, `guess`, `cron/resolve` |
 | `src/app/` | The Next.js App Router shell: layout, providers (Astryx theme + Link), and the day-one checkpoint page |
 | `infra/` | CDK stack: table, indexes, IAM policy for the Amplify SSR role. Scheduler comes later, once `/api/cron/resolve` exists |
 
@@ -23,13 +24,34 @@ The server is the only source of truth about game state. The browser sends who i
 
 ## Running it
 
-The app - day-one scaffold only, no game logic yet:
+The app:
 
 ```
 npm install
-npm run dev    # http://localhost:3000 - the checkpoint page: an Astryx card, two buttons, a badge
-npm test       # vitest against src/lib - the pure logic modules
+npm test       # vitest: the game logic, the DynamoDB store (mocked SDK) and the route handlers
 npm run build  # next build; also proves StyleX/Astryx atomic CSS compiles for production
+npm run dev    # http://localhost:3000
+```
+
+The API needs a table. Its environment:
+
+| Variable | What |
+|---|---|
+| `PLAYERS_TABLE_NAME` | The stack's `PlayersTableName` output |
+| `PLAYERS_TABLE_REGION` | The table's region. Defaults to `eu-central-1`; set explicitly rather than taken from the runtime, which may run elsewhere |
+| `CRON_SECRET` | Shared secret the scheduler sends as `x-cron-secret`. Unset, the sweep route rejects everything |
+| `DYNAMODB_ENDPOINT` | Local development only: point at [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) instead of AWS |
+
+On Amplify these are app environment variables, which reach the build but not the SSR runtime. `amplify.yml` copies exactly these names into `.env.production` during the build, which Next loads at runtime.
+
+The cycle by hand, with a cookie jar standing in for the browser:
+
+```
+curl -c jar -X POST localhost:3000/api/player                  # first visit: sets the httpOnly cookie
+curl -b jar localhost:3000/api/state                           # score, price, pending guess
+curl -b jar -H 'content-type: application/json' \
+     -d '{"direction":"up"}' localhost:3000/api/guess          # 201; again and it is a 409
+curl -X POST -H "x-cron-secret: $CRON_SECRET" localhost:3000/api/cron/resolve   # the sweep
 ```
 
 The infra stack, on its own:

@@ -1,0 +1,22 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+    build:
+      commands:
+        # Amplify's environment variables reach the build, not the SSR
+        # runtime. Next loads .env.production at runtime, so the server-side
+        # ones are copied there. Only these names: nothing else from the
+        # build environment should end up in the artifact.
+        - env | grep -E '^(PLAYERS_TABLE_NAME|PLAYERS_TABLE_REGION|CRON_SECRET)=' >> .env.production || true
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .next/cache/**/*
+      - .npm/**/*

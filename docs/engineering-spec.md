@@ -76,11 +76,12 @@ Players
      score               number      (may be negative)
      pendingGuess        { id, direction, priceAtGuess, createdAt } | absent
      pendingAt           createdAt of the pending guess, else absent
+     pendingBucket       "PENDING" while a guess is pending, else absent (3.2)
      wins, losses        numbers, incremented at resolution
      currentStreak       signed number (+3 = three wins, -2 = two losses)
      bestStreak          number
      history             last 10 resolved guesses
-                         { direction, priceAtGuess, priceAtResolve,
+                         { id, direction, priceAtGuess, priceAtResolve,
                            createdAt, resolvedAt, delta }
      createdAt, updatedAt, ttl
 ```
@@ -95,12 +96,14 @@ Route handlers, all under `app/api`:
 |---|---|---|---|
 | POST | `/api/player` | - | sets the anonymous identity cookie (first visit) |
 | GET/POST | `/api/auth/[...nextauth]` | - | Auth.js: Google sign-in, session, sign-out |
-| GET | `/api/state` | session or anonymous cookie | `{ score, stats, price, priceUpdatedAt, serverNow, pendingGuess?, lastResult?, history }` |
-| POST | `/api/guess` | `{ direction }` | `{ pendingGuess }`, or 409 if one already exists |
+| GET | `/api/state` | session or anonymous cookie | `{ publicName, score, stats, price, priceUpdatedAt, priceStale, serverNow, pendingGuess, lastResult, history }`, or 401 with no player |
+| POST | `/api/guess` | `{ direction }`, strictly: any other field is a 400 | `{ pendingGuess, serverNow }`; 409 if one already exists; 503 if the price is stale |
 | GET | `/api/leaderboard` | - | top 3 rows, the caller's own row with its rank, and the eligible-player total |
 | POST | `/api/cron/resolve` | shared-secret header | sweeps pending guesses; called by EventBridge Scheduler, not by browsers |
 
 `GET /api/state` resolves the pending guess when the conditions are met, before responding. It is the normal resolution path and costs nothing extra.
+
+`POST /api/guess` refuses a guess outright while the price is stale: locking in at an old number would be as unfair as resolving against one. The body schema is strict, so a request that carries a price or a timestamp is rejected rather than having the field silently ignored - the fairness rule shows up in the contract as well as in the handler.
 
 Every handler runs on the Node runtime, not the edge: they use the AWS SDK and need the hosting role's credentials. Request bodies are validated at the boundary with Zod, and the inferred types are what the client imports - the contract cannot drift between the two halves, because there is only one definition of it.
 
@@ -125,6 +128,8 @@ export function resolveGuess(
 ```
 
 No network, no clock, no database. Trivial to test, and the first place a reviewer will look.
+
+**The `now` it is given is when the price was observed, not when the request arrived.** The price comes from a cache that can be a few seconds old (section 5), and a price fetched at t+58 s must not settle a guess just because the request that read it came in at t+61 s. Passing the price's own timestamp means a guess is only ever compared against a price seen at least a minute after it was locked. The cost is at most one cache window of extra waiting.
 
 ### Two triggers, one guard
 
@@ -166,9 +171,9 @@ This is the third trigger, then, and the only one that involves a decision: the 
 
 The sweep needs the one access pattern the main table cannot serve: not "this player", but "every player with a guess outstanding". A scan would answer it and is ruled out for the same reason it is ruled out for the leaderboard (6.4) - it reads the whole table every minute, and gets slower as the game grows.
 
-**A third sparse index, `byPending`:** partition key `board`-style constant, sort key `pendingAt`. The `pendingAt` attribute is written in the same conditional write that creates a guess and removed in the one that resolves it, so an item is in this index for exactly as long as it has something outstanding - typically seconds.
+**A third sparse index, `byPending`:** partition key `pendingBucket`, a `board`-style constant (`"PENDING"`), sort key `pendingAt`. Both attributes are written in the same conditional write that creates a guess and removed in the one that resolves it, so an item is in this index for exactly as long as it has something outstanding - typically seconds.
 
-The sparseness is the whole mechanism, and it is the same trick as the leaderboard's: the index holds the working set rather than the table. A sweep is one query for items with `pendingAt` older than 60 seconds, then the ordinary conditional resolution write for each. In the steady state it returns nothing and costs one read.
+The sparseness is the whole mechanism, and it is the same trick as the leaderboard's: the index holds the working set rather than the table. A sweep is one query for items with `pendingAt` at least 60 seconds before the current price was observed, then the ordinary conditional resolution write for each - at most 100 per run, with the next run taking the rest. In the steady state it returns nothing and costs one read.
 
 It also bounds the failure mode. If the scheduler stops, work accumulates visibly in a place that can be queried and counted, rather than sitting invisible across the table.
 

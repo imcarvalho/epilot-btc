@@ -92,6 +92,18 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 
 These three modules are the parts the specs single out as testable without any infrastructure. They are deliberately framework-free: scaffolding must **merge around them**, not overwrite them.
 
+The backend cycle (build order item 1, server half) is built on top of them:
+
+- `src/lib/game.ts` - `getState` (lazy resolution), `placeGuess`, `sweep`, and the one resolution path they share
+- `src/lib/scoring.ts` - what a resolution does to score, counters, streaks and history; pure
+- `src/lib/price.ts` - the Coinbase spot fetch, the shared price cache, the 15 s stale guard
+- `src/lib/store.ts`, `dynamo-store.ts` - the storage interface and its DynamoDB implementation, every once-only write conditional
+- `src/lib/testing/memory-store.ts` - the same conditional semantics in memory, so races are testable
+- `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client
+- `src/app/api/{player,state,guess,cron/resolve}/route.ts` - thin adapters over `game.ts`
+
+Not yet done on the server: the EventBridge schedule that calls `/api/cron/resolve`, and wiring `PLAYERS_TABLE_NAME` / `CRON_SECRET` into Amplify.
+
 ## Scaffolding note
 
 There is no `package.json` yet, deliberately - the versions should be current at the time of the build, and day one starts from the Astryx Next example. When scaffolding:
