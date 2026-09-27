@@ -199,16 +199,14 @@ describe('DynamoStore', () => {
 	});
 
 	it('finds due guesses by querying the sparse index, never scanning', async () => {
-		ddb
-			.on(QueryCommand)
-			.resolves({
-				Items: [
-					{
-						...newPlayerRecord('anon:a', 'BriskOtter', T),
-						pendingGuess: guess,
-					},
-				],
-			});
+		ddb.on(QueryCommand).resolves({
+			Items: [
+				{
+					...newPlayerRecord('anon:a', 'BriskOtter', T),
+					pendingGuess: guess,
+				},
+			],
+		});
 		const due = await store.listDueGuesses(T + 1, 100);
 		expect(due[0].pendingGuess).toEqual(guess);
 
