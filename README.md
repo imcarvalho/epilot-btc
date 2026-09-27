@@ -28,19 +28,23 @@ The app:
 
 ```
 npm install
-npm test       # vitest: the game logic, the DynamoDB store (mocked SDK) and the route handlers
-npm run build  # next build; also proves StyleX/Astryx atomic CSS compiles for production
-npm run dev    # http://localhost:3000
+npm run dev:local  # http://localhost:3000 - the whole app, no AWS account needed
+npm test           # vitest: game logic, DynamoDB store (mocked SDK), route handlers, chart geometry
+npm run build      # next build; also proves StyleX/Astryx atomic CSS compiles for production
 ```
 
-The API needs a table. Its environment:
+`npm run dev:local` needs Java 17+. The first run downloads [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) into `.dynamodb/` (git-ignored); every run starts it, creates the table if missing, and starts `next dev` against it. Local players persist in `.dynamodb/data`; delete that folder to start over. Ctrl-C stops both. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
+
+`npm run dev` on its own runs against a real table instead: put `PLAYERS_TABLE_NAME` (the stack's `PlayersTableName` output) in `.env.local`, and the AWS SDK uses your local AWS credentials. Anything played that way lands in the deployed game's table.
+
+The API's environment:
 
 | Variable | What |
 |---|---|
 | `PLAYERS_TABLE_NAME` | The stack's `PlayersTableName` output |
 | `PLAYERS_TABLE_REGION` | The table's region. Defaults to `eu-central-1`; set explicitly rather than taken from the runtime, which may run elsewhere |
 | `CRON_SECRET` | Shared secret the scheduler sends as `x-cron-secret`. Unset, the sweep route rejects everything |
-| `DYNAMODB_ENDPOINT` | Local development only: point at [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) instead of AWS |
+| `DYNAMODB_ENDPOINT` | Local development only: point at DynamoDB Local instead of AWS. `dev:local` sets it, with the other three |
 
 On Amplify these are app environment variables, which reach the build but not the SSR runtime. `amplify.yml` copies exactly these names into `.env.production` during the build, which Next loads at runtime.
 

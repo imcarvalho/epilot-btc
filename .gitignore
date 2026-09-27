@@ -9,6 +9,9 @@ out/
 build/
 dist/
 
+# DynamoDB Local, downloaded and run by `npm run dev:local`
+.dynamodb/
+
 # CDK
 infra/cdk.out/
 infra/cdk.context.json
