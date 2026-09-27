@@ -1,6 +1,6 @@
 # Setup checklist
 
-**Live:** https://main.d2wmdgm5qnm2sa.amplifyapp.com/ · **Repo:** `imcarvalho/epilot-btc` (private until delivery)
+**Live:** https://main.dalnijp0oanzq.amplifyapp.com/ · **Repo:** `imcarvalho/epilot-btc` (private until delivery)
 
 Accounts and one-off admin, in dependency order. Everything here is a human task - accounts, cards, credentials and consent screens are not the agent's to create. The agent runs `cdk bootstrap` and deploys once credentials exist.
 
@@ -36,10 +36,11 @@ Blocks Amplify, which deploys from the repository.
 
 - [x] App connected to the GitHub repository
 - [x] Next.js auto-detected, `npm run build` / `.next`, new service role created (that role is for CloudWatch SSR logs - it is **not** what grants the app access to DynamoDB)
-- [x] First deploy green - https://main.d2wmdgm5qnm2sa.amplifyapp.com/
-- [ ] The Amplify compute role (`epilot-btc-amplify-compute`) has `PlayersTableAccessPolicyArn` attached - the role exists but has no policies yet
+- [x] First deploy green - https://main.dalnijp0oanzq.amplifyapp.com/ (app `dalnijp0oanzq`, `eu-central-1`)
+- [x] The Amplify compute role (`epilot-btc-amplify-compute`) has `PlayersTableAccessPolicyArn` attached, and is set on the app
 - [x] Environment variables set on the app: `PLAYERS_TABLE_NAME`, `PLAYERS_TABLE_REGION`, `CRON_SECRET` (index names are constants in code). `amplify.yml` copies them into `.env.production` so the SSR runtime sees them
-- [ ] **Region mismatch:** the Amplify app is in `eu-north-1`, the table in `eu-central-1`. It works - the table region is explicit - but every request crosses regions. Decide whether to recreate the app in `eu-central-1`
+- [x] App recreated in `eu-central-1`, next to the table. The first one had landed in `eu-north-1` by accident (the console's region selector)
+- [x] Old `eu-north-1` app `d2wmdgm5qnm2sa` deleted, with its logging role and policy (`AmplifySSRLoggingRole-8dba662f-...`)
 
 Do this as soon as there is something buildable - Amplify needs a `package.json` and a build command, so it comes after the Next scaffold, not before. Everything after that point should deploy on a push, because the deployed link is the deliverable most likely to fail and the only one that cannot be recovered afterwards.
 
@@ -52,7 +53,7 @@ Needed before section 6 of the engineering spec, not before that.
 - [ ] **App published, not left in Testing.** In Testing mode only listed test users can sign in, so a reviewer would be locked out with no explanation. Both scopes are non-sensitive, so publishing needs no verification review.
 - [ ] OAuth client created; client ID and secret stored
 - [ ] Redirect URI `http://localhost:3000/api/auth/callback/google`
-- [ ] Redirect URI `https://main.d2wmdgm5qnm2sa.amplifyapp.com/api/auth/callback/google`
+- [ ] Redirect URI `https://main.dalnijp0oanzq.amplifyapp.com/api/auth/callback/google`
 
 ## Secrets
 
@@ -81,6 +82,6 @@ From engineering spec §2.1. Each one can invalidate work done after it:
 ## Delivery
 
 - [ ] Public repository link
-- [ ] Deployed link, reachable - https://main.d2wmdgm5qnm2sa.amplifyapp.com/
+- [ ] Deployed link, reachable - https://main.dalnijp0oanzq.amplifyapp.com/
 - [ ] README covering the design, how to run it, how to deploy it
 - [ ] Aiko's colleague in copy - confirm the address now rather than at send time
