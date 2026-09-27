@@ -10,11 +10,9 @@ import { hourChange } from '@/lib/candles';
 import type { GuessPhase } from '@/lib/guess-phase';
 import { standing } from '@/lib/live-minute';
 import { ChangeBadge, Eyebrow, Numeric, Panel } from '@/components/ui';
-import { formatAge, formatCountdown, formatUsd } from './format';
-import { HourChart } from './HourChart';
-import { MinuteChart } from './MinuteChart';
-import { useCandles } from './useCandles';
-import type { LiveMinute } from './useLiveMinute';
+import { formatAge, formatCountdown, formatUsd } from '../utils';
+import { HourChart, MinuteChart } from '../charts';
+import { useCandles, type LiveMinute } from '../hooks';
 import { styles } from './PriceCard.styles';
 
 export type ChartView = 'hour' | 'minute';

@@ -14,8 +14,8 @@ import {
 	useWidth,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
-import { formatUsd } from './format';
-import type { LiveMinute } from './useLiveMinute';
+import { formatUsd } from '../utils';
+import type { LiveMinute } from '../hooks';
 import { styles } from './MinuteChart.styles';
 
 const plain = new Intl.NumberFormat('en-US', {

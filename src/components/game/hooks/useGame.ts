@@ -9,8 +9,7 @@ import {
 } from 'react';
 import { shouldAsk } from '@/lib/ask-scheduler';
 import type { GuessResponse, StateResponse } from '@/lib/contracts';
-import type { Direction } from '@/lib/resolve-guess';
-import { GUESS_WINDOW_MS } from '@/lib/resolve-guess';
+import { type Direction, GUESS_WINDOW_MS } from '@/lib/resolve-guess';
 
 export type GameStatus =
 	| { kind: 'loading' }

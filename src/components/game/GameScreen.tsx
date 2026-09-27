@@ -5,16 +5,22 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { guessPhase } from '@/lib/guess-phase';
 import { EmptyMessage, Panel } from '@/components/ui';
-import { Announcer } from './Announcer';
-import { Confetti } from './Confetti';
-import { GuessButtons } from './GuessButtons';
-import { GuessStrip } from './GuessStrip';
-import { HistoryPanel } from './HistoryPanel';
-import { LeaderboardPanel } from './LeaderboardPanel';
-import { PriceCard, type ChartView } from './PriceCard';
-import { TopBar } from './TopBar';
-import { useGame, useServerNow, type TickerSnapshot } from './useGameState';
-import { useLiveMinute } from './useLiveMinute';
+import { Announcer, Confetti } from './feedback';
+import {
+	GuessButtons,
+	GuessStrip,
+	HistoryPanel,
+	LeaderboardPanel,
+	PriceCard,
+	type ChartView,
+	TopBar,
+} from './widgets';
+import {
+	useGame,
+	useServerNow,
+	type TickerSnapshot,
+	useLiveMinute,
+} from './hooks';
 import { styles } from './GameScreen.styles';
 
 /**

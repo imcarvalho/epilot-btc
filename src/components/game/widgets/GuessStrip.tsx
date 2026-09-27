@@ -2,13 +2,11 @@ import * as stylex from '@stylexjs/stylex';
 import { ArrowDown, ArrowUp, Check, Clock, Loader, Minus } from 'lucide-react';
 import { Icon } from '@astryxdesign/core/Icon';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
-import type { GuessPhase } from '@/lib/guess-phase';
-import { resultHeadline } from '@/lib/guess-phase';
+import { type GuessPhase, resultHeadline } from '@/lib/guess-phase';
 import { GUESS_WINDOW_MS } from '@/lib/resolve-guess';
 import { IconTile, Numeric, Panel } from '@/components/ui';
-import { formatAge, formatCountdown, formatElapsed, formatUsd } from './format';
-import type { GuessError } from './useGameState';
-import type { LiveMinute } from './useLiveMinute';
+import { formatAge, formatCountdown, formatElapsed, formatUsd } from '../utils';
+import type { GuessError, LiveMinute } from '../hooks';
 import { styles } from './GuessStrip.styles';
 
 const usdSigned = (n: number) =>

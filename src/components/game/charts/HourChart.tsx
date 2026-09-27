@@ -12,8 +12,8 @@ import {
 	useWidth,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
-import { formatUsd } from './format';
-import type { CandlesState } from './useCandles';
+import { formatUsd } from '../utils';
+import type { CandlesState } from '../hooks';
 import { styles } from './HourChart.styles';
 
 /** Below this width the first label is shortened, or it runs into "45". */

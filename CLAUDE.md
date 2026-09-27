@@ -109,14 +109,20 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/themes/dracula.theme.ts` - the Dracula token set; `dracula.{css,js,d.ts}` beside it are **generated** by `npx astryx theme build src/themes/dracula.theme.ts -o src/themes/dracula.css` (needs Node >= 22.13) - rebuild after editing it or upgrading Astryx
 - `src/components/ui/` - the design language as atoms (`Panel`, `Pill`, `DirectionButton`, `Numeric`, ...), built on Astryx primitives and tokens; `tokens.stylex.ts` holds what the theme has no slot for
-- `src/components/game/` - the screen's sections and `useGameState` (state from `GET /api/state` only)
+- `src/components/game/` - the screen. `GameScreen` composes it; the rest is foldered, each folder with an `index.ts` of named exports that other folders import through:
+  - `widgets/` - the screen's self-contained blocks: `TopBar`, `PriceCard`, `GuessButtons`, `GuessStrip`, `LeaderboardPanel`, `HistoryPanel`
+  - `charts/` - `HourChart`, `MinuteChart` and the `chart-parts` they share (inside `PriceCard`)
+  - `feedback/` - `Announcer` (the one `aria-live` region) and `Confetti`
+  - `hooks/` - `useGame` (state from `GET /api/state` only, placing guesses, the cadence), `useCandles`, `useLiveMinute`
+  - `utils/` - formatting
+  - Every component keeps its StyleX in a sibling `Name.styles.ts`
 - `src/lib/candles.ts` - the last-hour chart as pure functions (parse Coinbase's candles, the hour's change, SVG geometry); `HourChart` draws it and `useCandles` fetches it from Coinbase in the browser, once a minute while the tab is visible
 
 - `src/lib/guess-phase.ts` - which state the guess strip is in (first visit, idle, locked, time up, stale, result) and the result sentence, as pure functions; the buttons, the strip and the `aria-live` announcer all render from it
 - `useGame` places guesses (`POST /api/guess`) and runs the §3.1 cadence through `shouldAsk`; with no browser ticker yet it polls only once the minute is up and nothing has moved
 
 - `src/lib/live-minute.ts` - the live minute (eng §5.1) as pure functions: parsing ticker messages, one sample per second, ahead/behind, the minute chart's geometry; `useLiveMinute` owns the browser's Coinbase WebSocket, open only while a guess is pending, and feeds the cadence so the client asks when the ticker shows a move
-- `MinuteChart` and `HourChart` share `chart-parts.tsx`; during a guess the hour view carries the locked-in line and the shaded minute, and the price card has a "Last hour / This guess" toggle that follows the guess
+- During a guess the hour view carries the locked-in line and the shaded minute, and the price card has a "Last hour / This guess" toggle that follows the guess
 
 - `src/lib/stats.ts` - the success rate and the streak wording ("2 wins in a row", "streak ended at 2"), from the counters; the streak a loss broke is stored as `previousStreak` in the same settle write, never derived from the trimmed history
 

@@ -2,9 +2,8 @@
 
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
-import type { GuessPhase } from '@/lib/guess-phase';
-import { resultSentence } from '@/lib/guess-phase';
-import { formatAge, formatUsd } from './format';
+import { type GuessPhase, resultSentence } from '@/lib/guess-phase';
+import { formatAge, formatUsd } from '../utils';
 import { styles } from './Announcer.styles';
 
 /** The sentence for a phase change, or null for one that needs no announcement. */
