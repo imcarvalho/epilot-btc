@@ -69,7 +69,11 @@ The Mermaid source is in `flows/00-user-flow.mmd`.
 
 Designed against the flow above. The visual language is the Dracula palette on a near-black ground, with pastel gradients reserved for the two hero actions, built on the Astryx component library.
 
-**Ready to guess.** Chart and the two buttons are the hero; the guess area is an empty state; leaderboard and history sit quietly at the bottom.
+**Day zero.** The first thing anyone sees: no guesses, no history, nobody on the board. The chart is the exception, and deliberately so - the market has an hour behind it whether or not anyone has played, so the one thing alive on an otherwise empty screen is the thing the game is about. Both empty cards say what will fill them rather than apologising for being empty, and the score shows a plain `0` with no success rate and no streak beside it (6.5).
+
+![Day zero: a full hour of candles, the two buttons ready, a welcome strip, and two empty cards explaining what will fill them](screens/small/00-day-zero.png)
+
+**Ready to guess.** The same screen once there is a history behind it: chart and the two buttons are the hero, the guess area is an empty state, leaderboard and history sit quietly at the bottom.
 
 ![Ready to guess: the hour of candles, the two gradient buttons, an empty guess strip, and the leaderboard and history below](screens/small/01-ready.png)
 
@@ -221,7 +225,9 @@ Decisions worth stating:
 
 ## 7. Copy
 
-- Empty state: *"Will BTC be higher or lower in a minute? Make your first guess."*
+- First visit: *"Will BTC be higher or lower in a minute? Make your first guess."*
+- First visit, under it: *"You are AudaciousRaccoon. Your score is kept on this browser until you sign in."*
+- Between guesses, once there is a history: *"No guess in play. Pick a direction and the next minute decides it."*
 - Waiting: *"Locked at $X. 47s to go."* with the live gap beside it, for example *"+$12 so far"*.
 - Countdown at zero: *"Time is up - waiting for the price to change."*
 - Stale feed: *"Price feed delayed. Last updated 25s ago. Nothing is settled until it catches up."*
@@ -229,10 +235,11 @@ Decisions worth stating:
 - Loss: *"Not this time. The price went down. Score 1."*
 - Returning to a settled guess: *"While you were away: your up guess was correct. +1."*
 - Sign-in prompt: *"Keep your score across devices."*
-- Name on arrival: *"You are AudaciousRaccoon."*
+- Leaderboard, empty: *"No one on the board yet."* with *"Sign in and the first correct guess puts you at the top of it."*
 - Leaderboard, not signed in: *"Sign in to take your place on the board."*
 - Leaderboard, outside the podium: *"138th of 1,204."*
 - Leaderboard, on the podium: *"Second place. Nice."*
+- History, empty: *"No guesses yet."* with *"Each one lands here with both prices, so you can check the result rather than take our word for it."*
 
 These are also what a screen reader announces, which is why they are written as sentences.
 
@@ -248,6 +255,7 @@ These are also what a screen reader announces, which is why they are written as 
 - [ ] Closing the browser and coming back preserves score, history and any pending guess, which settles while away.
 - [ ] Playing anonymously and then signing in carries the score over; signing in on a second device shows the same state.
 - [ ] The scoreboard's success rate and streaks match the history, with an empty state before the first result.
+- [ ] A first visit shows a full chart, both buttons active, a plain `0` score with no rate or streak beside it, and two empty cards that say what will fill them.
 - [ ] Every player has a generated name from the first visit.
 - [ ] The leaderboard shows the top three, and for a signed-in player their own ranked row, whose numbers match their scoreboard.
 - [ ] A player inside the top three sees their row highlighted there, with no duplicate row below.

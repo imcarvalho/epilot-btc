@@ -16,6 +16,8 @@ A short log of the choices that would otherwise be invisible in the code, with t
 
 **DynamoDB with conditional writes, not read-then-write.** One guess at a time is enforced by `attribute_not_exists(pendingGuess)`, not by a disabled button. Resolution is conditioned on the pending guess id, so the loser of a race changes nothing.
 
+**Chart data straight from the browser.** Coinbase's CORS policy was checked on day one rather than assumed: both hosts return `access-control-allow-origin: *`, verified in the browser from the deployed origin, because `curl` ignores CORS and proves nothing on its own. So there is no proxy route, and the server is spared an invocation per chart load. The fallback - a cached `GET /api/history` - is documented in the README rather than built.
+
 **Sparse indexes for both access patterns the main table cannot serve.** The leaderboard queries players eligible for the board; the sweep queries players with a guess outstanding. In both cases the attribute is written only when it applies, so the index holds the working set and the rule is enforced by the data rather than by a filter.
 
 **Anonymous first, sign-in as an upgrade.** A first-time visitor guesses immediately. Signing in carries the anonymous score over, once, under a conditional write. Identity is never a gate on playing.
@@ -35,8 +37,6 @@ A short log of the choices that would otherwise be invisible in the code, with t
 **A rate limiter on `POST /api/guess`.** The conditional write already bounds a player to one guess per minute, which is tighter than any limiter would have been, and a counter would need shared state to mean anything.
 
 ## Open
-
-**Coinbase CORS.** Decides whether chart data is fetched in the browser or served from `GET /api/history`. A `curl` on day one settles it; it changes a piece of the frontend, so it is settled before that piece is written.
 
 **Remix / React Router 7.** Considered against Next and parked rather than rejected. Not to be reopened mid-build.
 

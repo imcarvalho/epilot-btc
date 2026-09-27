@@ -24,11 +24,11 @@ That is the whole answer to the brief's one explicit requirement: guesses "resol
 Browser (React 19, Astryx design system)
   |  GET /api/state, on the cadence in 3.1 (score, stats, price, pending guess, serverNow)
   |  POST /api/guess { direction }  (the direction, and nothing else)
-  |  chart data: Coinbase directly, or /api/history if CORS forbids it
+  |  chart data: Coinbase directly (CORS confirmed open, section 5)
   v
 Next.js (App Router, Node runtime)
   |-- app/               UI shell (server) + the game itself (client components)
-  |-- app/api/*/route.ts state, guess, auth, leaderboard, history
+  |-- app/api/*/route.ts state, guess, auth, leaderboard
   |-- lib/               resolveGuess, price adapter, DynamoDB access, name generator
         |-- DynamoDB: Players (PK playerId) + PRICE#BTCUSD cache item
         |-- Coinbase API (called only from here)
@@ -64,7 +64,7 @@ Two lesser reasons, real but not decisive: one type system across UI and API, so
 
 - **StyleX compiling**, with a real Astryx component on screen and the atomic CSS emitted - starting from Astryx's own Next.js StyleX example rather than from a blank project. Next needs two plugins, `@stylexjs/babel-plugin` and `@stylexjs/postcss-plugin` with the `next/babel` preset, which is more setup than Vite's single unplugin, but it is documented and supported on the App Router with both Webpack and Turbopack. Half an hour here saves a Sunday.
 - **The Amplify compute role reaching DynamoDB.** A connection point to resolve first, not to discover halfway.
-- **Coinbase CORS from the browser** (section 5), which decides a piece of the frontend.
+- ~~Coinbase CORS from the browser~~ - **settled**: both hosts return `access-control-allow-origin: *` (section 5), so the chart fetches client-side and no proxy route is needed.
 
 ### Data model
 
@@ -97,7 +97,6 @@ Route handlers, all under `app/api`:
 | GET/POST | `/api/auth/[...nextauth]` | - | Auth.js: Google sign-in, session, sign-out |
 | GET | `/api/state` | session or anonymous cookie | `{ score, stats, price, priceUpdatedAt, serverNow, pendingGuess?, lastResult?, history }` |
 | POST | `/api/guess` | `{ direction }` | `{ pendingGuess }`, or 409 if one already exists |
-| GET | `/api/history` | - | last hour of candles (only if CORS forces it) |
 | GET | `/api/leaderboard` | - | top 3 rows, the caller's own row with its rank, and the eligible-player total |
 | POST | `/api/cron/resolve` | shared-secret header | sweeps pending guesses; called by EventBridge Scheduler, not by browsers |
 
@@ -188,15 +187,19 @@ It also bounds the failure mode. If the scheduler stops, work accumulates visibl
 | Use | Source | Why |
 |---|---|---|
 | **Game price** (guess and resolution) | Server, shared cache | Fairness; from the client it would be forgeable |
-| **Chart** (history and ticker) | May come from the client | Cosmetic; saves server invocations and cuts latency |
+| **Chart** (history and ticker) | Comes from the client | Cosmetic; saves server invocations and cuts latency |
 
-Endpoints to confirm before building (two public Coinbase API families; check both with `curl` for response shape and CORS):
+Two public Coinbase API families, both unauthenticated, neither needing an account or a key:
 
 - Spot price: `https://api.coinbase.com/v2/prices/BTC-USD/spot`
 - One-minute candles: `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60`
 - Live ticker: WebSocket `wss://ws-feed.exchange.coinbase.com`, `ticker` channel
 
-If CORS blocks browser calls, the chart moves behind a cached `GET /history`. **Decide this on day one**, because it changes a piece of the frontend.
+**CORS is open, checked on day one.** Both hosts answer a cross-origin `GET` with `access-control-allow-origin: *`, confirmed at the header level with `curl` and then in the browser from the deployed origin - the only test that counts, since `curl` ignores CORS entirely and would have succeeded either way. The endpoints are public and unauthenticated, so the wildcard costs nothing: no credentials are sent with these requests.
+
+So the chart fetches Coinbase directly and there is no proxy route. **The fallback stays in the README rather than in the code**: if the policy ever changes, the chart moves behind a cached `GET /api/history` using the same cache-item pattern as the price. Worth one paragraph there, because a third party's CORS policy is not ours to rely on forever - and because the change would put candles through our Lambda, where a cold start stops being invisible.
+
+None of this touches the game price, which is read server-side whether or not the browser could read it too.
 
 **Caching:** the latest price lives in its own DynamoDB item with a timestamp and a few seconds of TTL, so one Coinbase call per window serves every player. Per-request calls would hit rate limits with two players and an open tab.
 
@@ -383,7 +386,7 @@ What it pulls in, and must be set up first:
 
 | Risk | Mitigation |
 |---|---|
-| Coinbase CORS blocks browser calls | `/history` endpoint on the backend, decided on day one |
+| ~~Coinbase CORS blocks browser calls~~ | Checked on day one: open on both hosts. The proxy-route fallback is documented in the README in case the policy changes |
 | AWS and CDK are the unfamiliar part | Deploy an infrastructure "hello world" first, before any game code |
 | Next.js on AWS is more deployment than a static bundle | Amplify Hosting first, because it runs Next natively; the fallback is OpenNext with CDK, decided on day one rather than the evening before delivery |
 | The scheduled sweep depends on an HTTP route being reachable | The shared secret is the only guard, so the route is written and tested before the scheduler exists; if it proves awkward, the sweep moves to a standalone Lambda in the same CDK stack |

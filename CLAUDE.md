@@ -43,11 +43,11 @@ These are settled. The reasoning is in the specs; this is the index.
 | Leaderboard | Global only, top 3 plus your own row, signed-in players only, served from a sparse GSI | eng §6.4, product §6.7 |
 | UI | Astryx (`@astryxdesign/core`, React 19 + StyleX) with a Dracula token set | eng §7.1 |
 | Charts | Hand-built SVG, no charting library | eng §7.1 |
+| Chart data | Fetched client-side straight from Coinbase - CORS checked and open on both hosts | eng §5 |
 
 ## Still open
 
 - **Remix / React Router 7 instead of Next** was considered and parked. Next is the working decision; do not reopen without being asked.
-- **Coinbase CORS from the browser** decides whether the chart data is fetched client-side or behind `GET /api/history`. This is a day-one check, not a guess.
 - **The flip condition:** if Google sign-in leaves scope, the leaderboard goes with it and the framework choice is worth revisiting (a Vite SPA plus one Lambda). See eng §2.1.
 
 ## Day one, before any feature code
@@ -56,7 +56,7 @@ In this order, because each one can invalidate work done after it:
 
 1. **StyleX compiling**, with a real Astryx component on screen and atomic CSS emitted. Start from Astryx's own Next.js StyleX example rather than a blank project. Next needs `@stylexjs/babel-plugin` and `@stylexjs/postcss-plugin` with the `next/babel` preset.
 2. **An infrastructure hello-world deployed** - Amplify Hosting serving the app, and the Amplify compute role reaching a DynamoDB table. Not at the end; AWS is the least familiar part of this stack.
-3. **Coinbase endpoints checked with `curl`** for response shape and CORS (eng §5).
+3. ~~Coinbase endpoints checked for CORS~~ - **done**: open on both hosts, so chart data is fetched client-side and there is no proxy route to build (eng §5).
 
 ## Build order
 
@@ -109,13 +109,3 @@ There is no `package.json` yet, deliberately - the versions should be current at
 ## Definition of done
 
 Engineering spec §10. The short version: no client-supplied price or timestamp can affect an outcome and this is visible in the network tab; guess creation and resolution are each idempotent under concurrent calls; a guess abandoned by a closed browser still resolves; a stale feed blocks resolution and says so; sign-in rejects malformed, expired and wrongly-audienced tokens; the leaderboard and the sweep are both served from indexes rather than scans.
-
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
