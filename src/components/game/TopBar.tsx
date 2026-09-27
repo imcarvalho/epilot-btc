@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 import { Button } from "@astryxdesign/core/Button";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Skeleton } from "@astryxdesign/core/Skeleton";
+import { successRate } from "@/lib/stats";
 import { BrandMark, PlayerChip, ScoreChip, SourceBadge } from "@/components/ui";
 
 export function TopBar({
@@ -11,7 +12,7 @@ export function TopBar({
   source,
 }: {
   /** Null while the first state read is in flight. */
-  player: { name: string; score: number } | null;
+  player: { name: string; score: number; wins: number; losses: number } | null;
   isLive: boolean;
   source: "candles" | "ticker";
 }) {
@@ -25,7 +26,12 @@ export function TopBar({
       <div {...stylex.props(styles.group, styles.end)}>
         {player ? (
           <>
-            <ScoreChip score={player.score} />
+            <ScoreChip
+              score={player.score}
+              wins={player.wins}
+              losses={player.losses}
+              rate={successRate(player)}
+            />
             <PlayerChip name={player.name} />
           </>
         ) : (

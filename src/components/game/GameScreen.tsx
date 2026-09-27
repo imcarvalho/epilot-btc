@@ -53,7 +53,14 @@ export function GameScreen() {
     <div {...stylex.props(styles.page)}>
       <main {...stylex.props(styles.column)}>
         <TopBar
-          player={state && { name: state.publicName, score: state.score }}
+          player={
+            state && {
+              name: state.publicName,
+              score: state.score,
+              wins: state.stats.wins,
+              losses: state.stats.losses,
+            }
+          }
           isLive={isMinuteView ? live.isAlive : state ? !state.priceStale : true}
           source={isMinuteView ? "ticker" : "candles"}
         />
