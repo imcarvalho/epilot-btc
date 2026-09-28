@@ -8,6 +8,10 @@
  * 3. Creates the Players table if it is missing, shaped like the CDK stack's.
  * 4. Runs `next dev` pointed at it, and stops DynamoDB Local on exit.
  *
+ * `--prod` runs `next start` on an existing build instead (the a11y tests
+ * use it), and `DEV_LOCAL_TABLE` names a different table, so tests never
+ * touch the players you play with.
+ *
  * The sweep is not scheduled locally: a guess you watch resolves on its own
  * (GET /api/state), and the route can be called by hand with the local
  * secret printed below.
@@ -30,7 +34,7 @@ const DATA = join(DIR, 'data');
 const DOWNLOAD =
 	'https://d1ni2b6xgvw0s0.cloudfront.net/v2.x/dynamodb_local_latest.tar.gz';
 const PORT = Number(process.env.DYNAMODB_LOCAL_PORT ?? 8765);
-const TABLE = 'Players';
+const TABLE = process.env.DEV_LOCAL_TABLE ?? 'Players';
 
 const env = {
 	...process.env,
@@ -249,7 +253,8 @@ async function main() {
 	}
 
 	await ensureTable();
-	const args = process.argv.slice(2);
+	const prod = process.argv.includes('--prod');
+	const args = process.argv.slice(2).filter((a) => a !== '--prod');
 	const portFlag = args.findIndex((a) => a === '-p' || a === '--port');
 	const appPort =
 		portFlag >= 0 ? args[portFlag + 1] : (process.env.PORT ?? '3000');
@@ -258,15 +263,20 @@ async function main() {
 	);
 
 	// The theme is generated, not committed: build it before Next reads it.
-	const theme = spawnSync('npm', ['run', 'theme'], {
-		stdio: 'inherit',
-	});
-	if (theme.status !== 0) {
-		console.error('[dev:local] npm run theme failed (it needs Node >= 22.13)');
-		process.exit(theme.status ?? 1);
+	// A production build already made it.
+	if (!prod) {
+		const theme = spawnSync('npm', ['run', 'theme'], {
+			stdio: 'inherit',
+		});
+		if (theme.status !== 0) {
+			console.error(
+				'[dev:local] npm run theme failed (it needs Node >= 22.13)',
+			);
+			process.exit(theme.status ?? 1);
+		}
 	}
 
-	const next = spawn('npx', ['next', 'dev', ...args], {
+	const next = spawn('npx', ['next', prod ? 'start' : 'dev', ...args], {
 		cwd: ROOT,
 		env,
 		stdio: 'inherit',

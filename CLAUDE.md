@@ -84,7 +84,7 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 - **Route handlers on the Node runtime**, not the edge - they need the AWS SDK and the hosting role's credentials.
 - **Every write that must happen once is a DynamoDB conditional write.** Guess creation is conditioned on `attribute_not_exists(pendingGuess)`; resolution is conditioned on the pending guess id. Never a read-then-write.
 - **Counters move in the same write as the score.** Never recomputed from `history`, which is trimmed to 10 entries.
-- **Accessibility is not a later pass.** Results announced through one `aria-live="polite"` region, no meaning carried by colour alone, confetti skipped under `prefers-reduced-motion`.
+- **Accessibility is not a later pass**, and it is tested: `src/components/ui/contrast.test.ts` checks every text colour against each background it is drawn on (add a pair when you add one), and `npm run test:a11y` runs axe-core over the screen's states in a real browser. Results announced through one `aria-live="polite"` region, no meaning carried by colour alone, confetti skipped under `prefers-reduced-motion`.
 - **Copy comes from product spec §7.** It is written as full sentences because it is also what a screen reader announces. Do not paraphrase it.
 
 ## What is already here

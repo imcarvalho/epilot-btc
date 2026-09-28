@@ -24,6 +24,8 @@ infra/cdk.context.json
 
 # test and coverage
 coverage/
+test-results/
+playwright-report/
 .nyc_output/
 
 # editors and OS

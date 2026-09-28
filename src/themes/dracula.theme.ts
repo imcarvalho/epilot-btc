@@ -35,6 +35,10 @@ export const draculaTheme = defineTheme({
 		'--color-border-emphasized': '#44475A',
 		'--color-overlay-hover': '#FFFFFF0F',
 		'--color-overlay-pressed': '#FFFFFF1A',
+		// Neutral fills (the chart-view toggle's track, the skeleton): Neutral's
+		// 20% light grey reads too light on this ground, and put the toggle's
+		// secondary text at 3.9:1. At 12% it is 4.9:1 (src/components/ui/contrast.test.ts).
+		'--color-neutral': '#E5E1EA1F',
 
 		// Text and icons
 		'--color-text-primary': '#F8F8F2',

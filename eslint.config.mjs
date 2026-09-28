@@ -20,6 +20,8 @@ export default tseslint.config(
 			'.dynamodb/',
 			'.playwright-mcp/',
 			'coverage/',
+			'test-results/',
+			'playwright-report/',
 			'infra/node_modules/',
 			'infra/cdk.out/',
 			'next-env.d.ts',

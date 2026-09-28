@@ -80,6 +80,7 @@ npm test           # vitest: the rules, the store's conditions, the routes, ever
 npm run build      # next build; also proves the StyleX/Astryx atomic CSS compiles for production
 npm run format     # Prettier: tabs and single quotes
 npm run lint       # ESLint, two layout rules: braces on every if/else/loop, objects over lines
+npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java and the network)
 ```
 
 `npm run dev:local` needs Java 17+. The first run downloads [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) into `.dynamodb/` (git-ignored); every run starts it, creates the table if missing, and starts `next dev` against it. Local players persist in `.dynamodb/data`; delete that folder to start over. Ctrl-C stops both. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
@@ -121,6 +122,7 @@ Fairness is the thing being demonstrated, so the tests carry the argument. `npm 
 - **Races:** two simultaneous guesses let exactly one through; reads racing each other, and the sweep racing a player's own read, settle a guess exactly once; two sign-ins racing merge once; a guess settling mid-merge is carried over rather than lost. They run over an in-memory store with DynamoDB's conditional semantics, and separate tests check that the real store's expressions encode those same conditions.
 - **The edge:** a request body carrying a price or a timestamp is a 400; cookies are `httpOnly` and `SameSite=Lax`; no leaderboard response carries a player id.
 - **The screen:** every waiting and result state, the copy it announces, and the chart geometry, as pure functions.
+- **Accessibility:** colour contrast checked at the source, every text colour against each background it sits on, to WCAG 2.2 AA; and `npm run test:a11y`, which runs axe-core in a real browser over the screen's states: first visit (desktop and phone), the chart inspector by keyboard, a guess on the live minute, a win and a loss. It builds the app and runs it against DynamoDB Local in a separate `PlayersE2E` table, so your local players are untouched; the first run needs `npx playwright install chromium`.
 
 The infra stack has its own: CDK assertions against the synthesized template, and the sweep Lambda (`cd infra && npm test`).
 
