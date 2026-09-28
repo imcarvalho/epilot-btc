@@ -145,6 +145,78 @@ for (const [direction, headline] of [
 }
 
 test.describe('structure a screen reader navigates by', () => {
+	// A focused slider is read aloud whenever its value changes, so the
+	// inspector must change only when the player moves it - not when the
+	// hour refreshes under it (WCAG 4.1.3, 2.2.2).
+	test('the focused chart inspector holds its minute while the hour refreshes', async ({
+		page,
+	}) => {
+		// A made-up hour: each refresh drops the oldest minute and moves the
+		// one still forming, as the real feed does, so every candle shifts.
+		let served = 0;
+		await page.route(/\/products\/BTC-USD\/candles/, (route) => {
+			const minute = Math.floor(Date.now() / 60_000) * 60;
+			const rows = Array.from(
+				{
+					length: 60 - served,
+				},
+				(_, k) => {
+					const open = 60_000 + (59 - k) * 10;
+					const close = open + 5 + (k === 0 ? served : 0);
+					return [minute - k * 60, open - 20, close + 20, open, close, 1];
+				},
+			);
+			served += 1;
+			return route.fulfill({
+				status: 200,
+				headers: {
+					'access-control-allow-origin': '*',
+					'content-type': 'application/json',
+				},
+				body: JSON.stringify(rows),
+			});
+		});
+		await openGame(page);
+		const hour = page.getByRole('img', {
+			name: /over the last hour/,
+		});
+		const inspector = page.getByRole('slider', {
+			name: 'Last hour, minute by minute',
+		});
+		// The chart reloads its candles when the tab comes back into view.
+		const refresh = async () => {
+			const before = await hour.getAttribute('aria-label');
+			await page.evaluate(() =>
+				document.dispatchEvent(new Event('visibilitychange')),
+			);
+			await expect(hour).not.toHaveAttribute('aria-label', before!);
+		};
+
+		// Focused on the minute still forming: its close moves on refresh.
+		await inspector.focus();
+		const forming = await inspector.getAttribute('aria-valuetext');
+		await refresh();
+		await expect(inspector).toHaveAttribute('aria-valuetext', forming!);
+
+		await page.keyboard.press('ArrowLeft');
+		const held = await inspector.getAttribute('aria-valuetext');
+		const heldNow = await inspector.getAttribute('aria-valuenow');
+		expect(held).not.toBe(forming);
+		await refresh();
+		await expect(inspector).toHaveAttribute('aria-valuetext', held!);
+		await expect(inspector).toHaveAttribute('aria-valuenow', heldNow!);
+
+		// Escape hides the tooltip and keeps the minute.
+		await page.keyboard.press('Escape');
+		await refresh();
+		await expect(inspector).toHaveAttribute('aria-valuetext', held!);
+
+		// The next steps move from the minute held, wherever it now sits.
+		await page.keyboard.press('ArrowLeft');
+		await page.keyboard.press('ArrowRight');
+		await expect(inspector).toHaveAttribute('aria-valuetext', held!);
+	});
+
 	test('a banner with the page title, then the main content', async ({
 		page,
 	}) => {

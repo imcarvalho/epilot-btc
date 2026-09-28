@@ -3,7 +3,13 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { YTick } from '@/lib/axis';
-import { nearestIndex, stepIndex } from '@/lib/chart-inspect';
+import {
+	focusInspection,
+	indexAtTime,
+	inspectKey,
+	pointInspection,
+	type Inspection,
+} from '@/lib/chart-inspect';
 import { formatAxisPrice, type Readout } from '../utils';
 import { styles } from './chart-parts.styles';
 
@@ -186,32 +192,58 @@ export function Axis({
  * Reads a chart tick by tick, for the pointer and the keyboard alike. It is
  * a transparent slider laid over the plot (WAI-ARIA APG slider): hovering
  * or dragging picks the nearest tick; focused, the arrows step through them,
- * Home and End jump, Escape puts it away. A screen reader hears each tick's
- * `aria-valuetext` as it moves, so the tooltip is never the only way in.
+ * Home and End jump, Escape hides the tooltip. A screen reader hears each
+ * tick's `aria-valuetext` as it moves, so the tooltip is never the only way
+ * in.
+ *
+ * While focused, what it says changes only when the player moves it (WCAG
+ * 4.1.3, 2.2.2): the tick is held by its time, so a refresh or a new second
+ * does not move it, and the reading is taken at the player's own action, so
+ * a minute still forming does not re-read itself every ten seconds either.
+ * The next key press reads it afresh.
  *
  * The picture underneath keeps its own summary as its accessible name.
  */
 export function Inspector({
 	xs,
-	index,
-	onIndex,
+	times,
+	inspection,
+	onInspect,
 	label,
 	valueText,
 }: {
 	/** Each tick's x, ascending. */
 	xs: number[];
-	index: number | null;
-	onIndex: (index: number | null) => void;
+	/** Each tick's time, in the same order: what an inspection holds. */
+	times: number[];
+	inspection: Inspection | null;
+	onInspect: (inspection: Inspection | null) => void;
 	label: string;
 	valueText: (index: number) => string;
 }) {
+	// The reading as it was at the player's last action, held while focused.
+	const [said, setSaid] = useState<{
+		now: number;
+		text: string;
+	} | null>(null);
 	const last = xs.length - 1;
-	const shown = index ?? last;
+	const held = indexAtTime(times, inspection?.time ?? null);
+	const shown = held ?? last;
+	const move = (next: Inspection | null, focused: boolean) => {
+		onInspect(next);
+		const index = indexAtTime(times, next?.time ?? null);
+		if (focused && index !== null) {
+			setSaid({
+				now: index + 1,
+				text: valueText(index),
+			});
+		}
+	};
 	const pick = (e: PointerEvent<HTMLDivElement>) => {
 		const rect = e.currentTarget.getBoundingClientRect();
-		const next = nearestIndex(xs, e.clientX - rect.left);
-		if (next !== index) {
-			onIndex(next);
+		const next = pointInspection(xs, times, e.clientX - rect.left);
+		if (next?.time !== inspection?.time || !inspection?.shown) {
+			move(next, document.activeElement === e.currentTarget);
 		}
 	};
 	return (
@@ -221,30 +253,29 @@ export function Inspector({
 			aria-label={label}
 			aria-valuemin={1}
 			aria-valuemax={Math.max(1, xs.length)}
-			aria-valuenow={Math.max(1, shown + 1)}
-			aria-valuetext={shown >= 0 ? valueText(shown) : undefined}
+			aria-valuenow={said?.now ?? Math.max(1, shown + 1)}
+			aria-valuetext={said?.text ?? (shown >= 0 ? valueText(shown) : undefined)}
 			onPointerMove={pick}
 			onPointerDown={pick}
 			// Kept while focused: a tap focuses it, and the reading stays until
 			// the player looks away.
 			onPointerLeave={(e) => {
 				if (document.activeElement !== e.currentTarget) {
-					onIndex(null);
+					onInspect(null);
 				}
 			}}
-			onFocus={() => {
-				if (index === null && last >= 0) {
-					onIndex(last);
-				}
+			onFocus={() => move(focusInspection(inspection, times), true)}
+			onBlur={() => {
+				setSaid(null);
+				onInspect(null);
 			}}
-			onBlur={() => onIndex(null)}
 			onKeyDown={(e) => {
-				const next = stepIndex(index, e.key, xs.length);
+				const next = inspectKey(inspection, e.key, times);
 				if (next === undefined) {
 					return;
 				}
 				e.preventDefault();
-				onIndex(next);
+				move(next, true);
 			}}
 			{...stylex.props(styles.inspector)}
 		/>

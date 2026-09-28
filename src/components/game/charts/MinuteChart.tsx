@@ -3,6 +3,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
+import { shownIndex, type Inspection } from '@/lib/chart-inspect';
 import type { PendingGuess } from '@/lib/contracts';
 import { buildMinuteChart, standing } from '@/lib/live-minute';
 import {
@@ -48,7 +49,7 @@ export function MinuteChart({
 	now: number;
 }) {
 	const [ref, width] = useWidth<HTMLDivElement>();
-	const [inspected, setInspected] = useState<number | null>(null);
+	const [inspected, setInspected] = useState<Inspection | null>(null);
 	// The line fills the plot; the price labels take the gutter beside it.
 	const plotWidth = plotWidthOf(width);
 	const chart =
@@ -74,10 +75,9 @@ export function MinuteChart({
 				? 'ahead'
 				: 'behind';
 	const last = chart?.points[chart.points.length - 1];
-	const at =
-		chart && inspected !== null
-			? Math.min(inspected, chart.points.length - 1)
-			: null;
+	// A point a second: the inspector holds its second by time as they come.
+	const times = chart ? chart.points.map((p) => p.t) : [];
+	const at = chart ? shownIndex(times, inspected) : null;
 	const point = at !== null ? chart!.points[at] : null;
 	const totalSeconds = chart
 		? Math.round((chart.windowEnd - guess.createdAt) / 1000)
@@ -168,8 +168,9 @@ export function MinuteChart({
 				{chart && (
 					<Inspector
 						xs={chart.points.map((p) => p.x)}
-						index={at}
-						onIndex={setInspected}
+						times={times}
+						inspection={inspected}
+						onInspect={setInspected}
 						label="This guess, second by second"
 						valueText={(i) => sampleReadout(chart.points[i], guess).text}
 					/>

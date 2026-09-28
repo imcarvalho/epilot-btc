@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { buildCandleChart, type Candle } from '@/lib/candles';
+import { shownIndex, type Inspection } from '@/lib/chart-inspect';
 import {
 	Axis,
 	CHART_HEIGHT,
@@ -56,7 +57,7 @@ export function HourChart({
 	lock: { price: number; at: number } | null;
 }) {
 	const [ref, width] = useWidth<HTMLDivElement>();
-	const [inspected, setInspected] = useState<number | null>(null);
+	const [inspected, setInspected] = useState<Inspection | null>(null);
 	// The candles fill the plot; the price labels take the gutter beside it.
 	const plotWidth = plotWidthOf(width);
 
@@ -75,11 +76,9 @@ export function HourChart({
 			? Math.max(0, Math.min(plotWidth, chart.xFor(lock.at)))
 			: null;
 	const candles = state.kind === 'ready' ? state.candles : [];
-	// The hour refreshes under the inspector; hold it to the candles there are.
-	const at =
-		chart && inspected !== null
-			? Math.min(inspected, chart.candles.length - 1)
-			: null;
+	// The hour refreshes under the inspector; it holds its candle by time.
+	const times = candles.map((c) => c.time);
+	const at = chart ? shownIndex(times, inspected) : null;
 	const point = at !== null && at >= 0 ? chart!.candles[at] : null;
 
 	return (
@@ -156,8 +155,9 @@ export function HourChart({
 				{chart && (
 					<Inspector
 						xs={chart.candles.map((c) => c.x)}
-						index={at}
-						onIndex={setInspected}
+						times={times}
+						inspection={inspected}
+						onInspect={setInspected}
 						label="Last hour, minute by minute"
 						valueText={(i) => candleReadout(candles[i]).text}
 					/>
