@@ -25,6 +25,7 @@ function setup() {
 		now: () => clock,
 		newId: () => 'id',
 		fetchPrice: async () => 100_000,
+		fetchTape: async () => [],
 	};
 	const add = (
 		id: string,

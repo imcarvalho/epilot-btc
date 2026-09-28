@@ -36,6 +36,17 @@ vi.mock('@/lib/deps', () => ({
 			}
 			return 100_000;
 		},
+		fetchTape: async () => {
+			if (!feedUp) {
+				throw new Error('feed down');
+			}
+			return [
+				{
+					time: T0,
+					price: 100_000,
+				},
+			];
+		},
 	}),
 }));
 
@@ -387,6 +398,7 @@ describe('signed in', () => {
 		now: () => clock,
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
 		fetchPrice: async () => 100_000,
+		fetchTape: async () => [],
 	});
 
 	it('reads the session before the anonymous cookie', async () => {

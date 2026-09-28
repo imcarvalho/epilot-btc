@@ -36,7 +36,7 @@ These are settled. The reasoning is in the specs; this is the index.
 | Hosting | Amplify Hosting for the web tier; CDK for table, indexes, scheduler, IAM | eng §8 |
 | Region | eu-central-1 | eng §2 |
 | Store | DynamoDB, one item per player, price cached in its own item | eng §2 |
-| Resolution | Pure `resolveGuess()`, three triggers (lazy read, client cadence, scheduled sweep), stale-price guard at 15 s | eng §3, §3.1, §3.2 |
+| Resolution | Pure `resolveGuess()` against the price at the deadline (last Coinbase trade at or before `createdAt + 60 s`), three triggers (lazy read, client cadence, scheduled sweep), stale-price guard at 15 s | eng §3, §3.1, §3.2 |
 | Sockets | None from our backend. One browser-side socket to Coinbase for the live minute, cosmetic only | eng §3.1, §5.1 |
 | Identity | Anonymous `httpOnly` cookie first; Google sign-in via Auth.js as an upgrade, merging the anonymous record once | eng §6.1, §6.2, §6.5 |
 | Public identity | Server-generated `AdjectiveAnimal` name. No country, no flags | eng §6.3, product §6.6 |
@@ -102,6 +102,7 @@ The backend cycle (build order item 1, server half) is built on top of them:
 - `src/lib/game.ts` - `getState` (lazy resolution), `placeGuess`, `sweep`, and the one resolution path they share
 - `src/lib/scoring.ts` - what a resolution does to score, counters, streaks and history; pure
 - `src/lib/price.ts` - the Coinbase Exchange ticker fetch (the same market as the chart), the shared price cache, the 15 s stale guard
+- `src/lib/settlement.ts` - the price that settles a guess: the market at its deadline, read from Coinbase's trade history (`settleAgainstTape` pure, `fetchTape` paging trades with a candle fallback), so the timing of a request cannot choose an outcome
 - `src/lib/store.ts`, `dynamo-store.ts` - the storage interface and its DynamoDB implementation, every once-only write conditional
 - `src/lib/testing/memory-store.ts` - the same conditional semantics in memory, so races are testable
 - `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client

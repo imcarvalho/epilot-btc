@@ -1,7 +1,7 @@
 /**
  * The real dependencies, built once per runtime instance: the DynamoDB store,
- * the Coinbase fetch, the server clock. Route handlers take them from here;
- * tests replace this module.
+ * the Coinbase ticker and trade tape, the server clock. Route handlers take
+ * them from here; tests replace this module.
  *
  * `PLAYERS_TABLE_NAME` is the CDK stack's `PlayersTableName` output. The
  * table's region is set explicitly rather than taken from the runtime's
@@ -18,6 +18,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { DynamoStore } from './dynamo-store';
 import type { GameDeps } from './game';
 import { fetchTickerPrice } from './price';
+import { fetchTape } from './settlement';
 
 let deps: GameDeps | undefined;
 
@@ -46,6 +47,11 @@ export function getDeps(): GameDeps {
 					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');
 				}
 			: () => fetchTickerPrice(),
+		fetchTape: process.env.E2E_PRICE_FEED_DOWN
+			? async () => {
+					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');
+				}
+			: (from) => fetchTape(from),
 		now: () => Date.now(),
 		newId: () => crypto.randomUUID(),
 	};

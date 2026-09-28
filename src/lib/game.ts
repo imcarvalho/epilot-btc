@@ -3,23 +3,27 @@
  *
  * Engineering spec §3 and §4. Three operations - read state, place a guess,
  * sweep - and one resolution path they share. Nothing here takes a price or a
- * time from the caller: the price is the server's cached one (§5) and the
- * clock is the server's own, both injected so tests can drive them.
+ * time from the caller: a guess locks in at the server's cached price (§5),
+ * settles against the market at its deadline (§3), and the clock is the
+ * server's own - all injected so tests can drive them.
  *
  * Framework-free on purpose. The route handlers are thin adapters over this.
  */
 
 import type { Direction } from './resolve-guess';
-import { GUESS_WINDOW_MS, resolveGuess } from './resolve-guess';
+import { GUESS_WINDOW_MS } from './resolve-guess';
 import type { PendingGuess, SignInOutcome, StateResponse } from './contracts';
 import { generateName } from './names';
 import { getGamePrice, isStale } from './price';
 import { applyResolution } from './scoring';
+import { deadlineOf, settleAgainstTape, type PricePoint } from './settlement';
 import type { CachedPrice, GameStore, PlayerRecord } from './store';
 
 export interface GameDeps {
 	store: GameStore;
 	fetchPrice: () => Promise<number>;
+	/** The market from a moment to now, in time order (settlement.ts). */
+	fetchTape: (from: number) => Promise<PricePoint[]>;
 	now: () => number;
 	newId: () => string;
 	random?: () => number;
@@ -123,29 +127,49 @@ export async function signIn(
 }
 
 /**
- * Resolves the player's pending guess if - and only if - the server's own
- * price says it can be. Returns the player as it now stands.
+ * The market from `from` to now, or null if Coinbase cannot be read - in
+ * which case nothing settles and the next ask tries again.
+ */
+async function readTape(
+	deps: GameDeps,
+	from: number,
+): Promise<PricePoint[] | null> {
+	try {
+		return await deps.fetchTape(from);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				event: 'tape-fetch-failed',
+				error: String(error),
+			}),
+		);
+		return null;
+	}
+}
+
+/**
+ * Resolves the player's pending guess if - and only if - the market at its
+ * deadline says it can be. Returns the player as it now stands.
  *
- * The time passed to `resolveGuess` is when the price was observed, not when
- * this request arrived: a cached price fetched before the minute was up must
- * not settle a guess just because the request came after it. The cost is at
- * most one cache window of extra waiting.
+ * The price is the one standing at the deadline, read from the trade tape
+ * (settlement.ts), so every trigger - this player's read, another tab, the
+ * sweep - reaches the same outcome however late it arrives.
  */
 async function settleIfDue(
 	deps: GameDeps,
 	player: PlayerRecord,
-	price: CachedPrice | null,
+	tape: PricePoint[] | null,
 ): Promise<{ player: PlayerRecord; settled: boolean }> {
 	const pending = player.pendingGuess;
-	if (!pending || !price || isStale(price, deps.now())) {
+	if (!pending || !tape) {
 		return {
 			player,
 			settled: false,
 		};
 	}
 
-	const outcome = resolveGuess(pending, price.price, price.updatedAt);
-	if (!outcome.resolved) {
+	const settlement = settleAgainstTape(pending, tape);
+	if (!settlement.resolved) {
 		return {
 			player,
 			settled: false,
@@ -155,9 +179,9 @@ async function settleIfDue(
 	const board = applyResolution(
 		player,
 		pending,
-		price.price,
-		price.updatedAt,
-		outcome.delta,
+		settlement.price,
+		settlement.at,
+		settlement.delta,
 	);
 	const now = deps.now();
 
@@ -166,7 +190,7 @@ async function settleIfDue(
 			JSON.stringify({
 				event: 'guess-resolved',
 				playerId: player.playerId,
-				delta: outcome.delta,
+				delta: settlement.delta,
 			}),
 		);
 		return {
@@ -225,8 +249,16 @@ export async function getState(
 		return null;
 	}
 
-	const price = await getGamePrice(deps);
-	const { player } = await settleIfDue(deps, found, price);
+	// The tape is read only once the minute is up: before then there is
+	// nothing it could settle.
+	const deadline = found.pendingGuess ? deadlineOf(found.pendingGuess) : null;
+	const [price, tape] = await Promise.all([
+		getGamePrice(deps),
+		deadline !== null && deps.now() >= deadline
+			? readTape(deps, deadline)
+			: null,
+	]);
+	const { player } = await settleIfDue(deps, found, tape);
 	return toStateResponse(player, price, deps.now());
 }
 
@@ -284,29 +316,38 @@ export interface SweepResult {
 
 /**
  * `POST /api/cron/resolve` (§3.2): resolves guesses left behind by closed
- * browsers. One price read, one index query, then the same conditional
- * resolution each guess would get from `GET /api/state` - so a sweep racing
- * a player's own request still settles the guess exactly once.
+ * browsers. One index query, one read of the market back to the oldest
+ * deadline, then the same conditional resolution each guess would get from
+ * `GET /api/state` - so a sweep racing a player's own request still settles
+ * the guess exactly once, and against the same price.
  */
 export async function sweep(deps: GameDeps): Promise<SweepResult> {
-	const price = await getGamePrice(deps);
-	if (!price || isStale(price, deps.now())) {
+	const due = await deps.store.listDueGuesses(
+		deps.now() - GUESS_WINDOW_MS,
+		SWEEP_BATCH,
+	);
+	if (due.length === 0) {
 		return {
 			due: 0,
+			resolved: 0,
+			priceStale: false,
+		};
+	}
+
+	const oldest = Math.min(
+		...due.flatMap((p) => (p.pendingGuess ? [deadlineOf(p.pendingGuess)] : [])),
+	);
+	const tape = await readTape(deps, oldest);
+	if (!tape) {
+		return {
+			due: due.length,
 			resolved: 0,
 			priceStale: true,
 		};
 	}
 
-	// Only guesses the current price can actually settle: created at least a
-	// minute before that price was observed.
-	const due = await deps.store.listDueGuesses(
-		price.updatedAt - GUESS_WINDOW_MS,
-		SWEEP_BATCH,
-	);
-
 	const outcomes = await Promise.all(
-		due.map((player) => settleIfDue(deps, player, price)),
+		due.map((player) => settleIfDue(deps, player, tape)),
 	);
 	const resolved = outcomes.filter((o) => o.settled).length;
 

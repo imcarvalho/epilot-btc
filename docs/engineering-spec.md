@@ -171,7 +171,16 @@ export function resolveGuess(
 
 No network, no clock, no database. Trivial to test, and the first place a reviewer will look.
 
-**The `now` it is given is when the price was observed, not when the request arrived.** The price comes from a cache that can be a few seconds old (section 5), and a price fetched at t+58 s must not settle a guess just because the request that read it came in at t+61 s. Passing the price's own timestamp means a guess is only ever compared against a price seen at least a minute after it was locked. The cost is at most one cache window of extra waiting.
+### The price at the deadline
+
+**A guess settles against the market as it stood when its minute ran out, not against the price when someone asks.** Settling against "the latest price" would let the timing of a request choose the outcome: once the minute is up, a player who holds off asking could watch the market and ask at a moment that suits them, and the sweep only bounds that wait to a minute. So the price is fixed by the clock, not by whoever triggers:
+
+- The **last trade at or before `createdAt + 60 s`** on Coinbase Exchange's BTC-USD book is the price at the deadline, and settles the guess if it differs from the locked price.
+- If it equals the locked price, the guess stays in play (R4), and the **first later trade at a different price** settles it.
+
+The trades are read after the deadline from Coinbase's public trade history (`/products/BTC-USD/trades`, newest first, paged back with `after`), the same book as the ticker, the chart and the live minute (section 5). `settleAgainstTape` in `src/lib/settlement.ts` is the rule over that tape, pure; `resolveGuess` is still the comparison it applies. Every trigger - the player's read, another tab, the sweep - reads the same history and so reaches the same outcome, however late it arrives, and a player can check the settling trade against Coinbase themselves.
+
+Normal play needs one page of trades: the browser asks at t+60 s, and a page covers a few minutes. A late sweep pages further back; past five pages, one-minute candles stand in (each minute read as its open and its close), which only happens when recovering from an outage. The deadline is on the server's clock and the trades on Coinbase's; both are NTP-synchronised, and the skew is far below the gaps between price changes that matter.
 
 ### Two triggers, one guard
 
@@ -182,7 +191,7 @@ Both take the same conditional write, so a guess resolves exactly once even when
 
 ### A stale price resolves nothing
 
-If the cached price is older than the freshness threshold (15 s), no resolution happens: the API reports the feed as delayed and the guess stays pending. Resolving against a stale price would be unfair, and it is an obvious thing for a reviewer to probe.
+If the trade history cannot be read, no resolution happens and the guess stays pending; the next ask tries again. On screen this is the delayed-feed state: the cached ticker price older than the freshness threshold (15 s) is what the API reports as delayed, and it also refuses new guesses (section 5). Resolving against a guessed-at price would be unfair, and it is an obvious thing for a reviewer to probe.
 
 ### 3.1 How the browser learns the outcome
 
@@ -204,7 +213,7 @@ A normal guess therefore costs **two requests**: one when the app opens and one 
 
 Three properties worth stating, because they are what makes this safe rather than merely cheap:
 
-- **The client triggers, the server decides.** The browser only says *look now*; the server re-reads its own cached price and applies `resolveGuess`. A client that is wrong about the timing - ticker lag, a price that moved and moved back - costs one extra request that answers "not yet". No trust is placed in the browser, and no outcome depends on its socket.
+- **The client triggers, the server decides - and the trigger's timing decides nothing.** The browser only says *look now*; the server reads the market at the guess's deadline and applies `resolveGuess`. Asking early costs one request that answers "not yet"; asking late gets the same answer asking on time would have. No trust is placed in the browser, and no outcome depends on its socket or its timing.
 - **Hidden tabs do not poll.** Polling pauses on `document.visibilityState === "hidden"` and resumes with an immediate call rather than waiting out the interval. Without this, a forgotten tab hits the endpoint for hours.
 - **The sweep is still required.** Client-side cadence serves the player who is watching; the scheduled sweep serves the one who closed the tab and comes back tomorrow. They are not alternatives.
 
@@ -216,7 +225,7 @@ The sweep needs the one access pattern the main table cannot serve: not "this pl
 
 **A third sparse index, `byPending`:** partition key `pendingBucket`, a `board`-style constant (`"PENDING"`), sort key `pendingAt`. Both attributes are written in the same conditional write that creates a guess and removed in the one that resolves it, so an item is in this index for exactly as long as it has something outstanding - typically seconds.
 
-The sparseness is the whole mechanism, and it is the same trick as the leaderboard's: the index holds the working set rather than the table. A sweep is one query for items with `pendingAt` at least 60 seconds before the current price was observed, then the ordinary conditional resolution write for each - at most 100 per run, with the next run taking the rest. In the steady state it returns nothing and costs one read.
+The sparseness is the whole mechanism, and it is the same trick as the leaderboard's: the index holds the working set rather than the table. A sweep is one query for items with `pendingAt` at least 60 seconds ago, one read of the trade history back to the oldest of their deadlines, then the ordinary conditional resolution write for each - at most 100 per run, with the next run taking the rest. In the steady state it returns nothing and costs one read, and calls Coinbase not at all.
 
 It also bounds the failure mode. If the scheduler stops, work accumulates visibly in a place that can be queried and counted, rather than sitting invisible across the table.
 
@@ -236,12 +245,14 @@ It also bounds the failure mode. If the scheduler stops, work accumulates visibl
 
 | Use | Source | Why |
 |---|---|---|
-| **Game price** (guess and resolution) | Server, shared cache | Fairness; from the client it would be forgeable |
+| **Game price** (locking a guess in, and on screen) | Server, shared cache | Fairness; from the client it would be forgeable |
+| **Settlement price** (resolution) | Server, trade history at the deadline (3) | Fixed by the clock, so the timing of a request cannot choose it |
 | **Chart** (history and ticker) | Comes from the client | Cosmetic; saves server invocations and cuts latency |
 
 Public Coinbase Exchange endpoints, unauthenticated, needing neither an account nor a key:
 
 - Ticker (the game price, server-side): `https://api.exchange.coinbase.com/products/BTC-USD/ticker`
+- Trades (the settlement price, server-side): `https://api.exchange.coinbase.com/products/BTC-USD/trades`
 - One-minute candles: `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60`
 - Live ticker: WebSocket `wss://ws-feed.exchange.coinbase.com`, `ticker` channel
 
@@ -263,7 +274,7 @@ While a guess is in play the chart can switch from the hour of candles to the mi
 
 - **Sampled at one point per second.** BTC ticks several times a second; the socket's messages land in a buffer and a one-second timer takes the latest, giving sixty points across the minute. Cheaper, and a jagged one-second line reads better here than a smooth one.
 - **Drawing:** append to the path's `d` rather than re-rendering the series, or draw to a canvas. With sixty points either is trivial, and the append keeps the SVG approach consistent with the candle view.
-- **It cannot affect the outcome, by construction.** The socket's prices are never sent anywhere: resolution reads the server's own cached price, as everything else does. The UI labels the live delta *provisional*, because the settled price can differ by a few cents.
+- **It cannot affect the outcome, by construction.** The socket's prices are never sent anywhere: resolution reads the trade history at the deadline, server-side. The UI labels the live delta *provisional*, because the settled price can differ by a few cents.
 - **Connection handling:** reconnect with exponential backoff and jitter; while disconnected, fall back to the price arriving in the `GET /api/state` polls described in 3.1, grey the line and show a reconnecting note. The socket is opened when a guess starts and closed when it resolves - no socket sitting open on an idle screen.
 - **`prefers-reduced-motion`:** no drawing animation and no transitions; the line and the number update in place.
 - **Testing:** the sampling and path-building are pure functions over a list of `{t, price}` - a fake feed drives them, and no test needs a socket.
@@ -458,6 +469,7 @@ What it pulls in, and must be set up first:
 | Next.js on AWS is more deployment than a static bundle | Amplify Hosting first, because it runs Next natively; the fallback is OpenNext with CDK, decided on day one rather than the evening before delivery |
 | The scheduled sweep depends on an HTTP route being reachable | The shared secret is the only guard, so the route is written and tested before the scheduler exists; if it proves awkward, the sweep moves to a standalone Lambda in the same CDK stack |
 | Google OAuth setup drags | Consent screen and client id done before any code; anonymous play alone satisfies the brief, so sign-in can be dropped - but the leaderboard goes with it, since eligibility is being signed in, and 2.1's flip condition on the framework applies too |
+| Settlement reads Coinbase's trade history per resolution, from shared Amplify IPs, against a public rate limit | Normal play is one request per guess; only the unchanged-price case repeats, at most every 2 s. If limits bite, the tape is cached per deadline second in the price item's pattern |
 | Scope creep (bot, extra providers, time-windowed boards) | They stay in the README's future-work list |
 | Astryx and StyleX change the build | Start from the official Next example, pin the version, and get a component rendering through the pipeline on day one (2.1); falling back to plain CSS modules later would cost a morning |
 | Limited time | Build order in the product spec, section 9; everything below the line drops cleanly |

@@ -16,6 +16,7 @@ import {
 } from './game';
 import { getLeaderboard } from './leaderboard';
 import { PRICE_STALE_MS } from './price';
+import type { PricePoint } from './settlement';
 import { MemoryStore } from './testing/memory-store';
 
 const T0 = 1_700_000_000_000;
@@ -24,6 +25,14 @@ function setup(initialPrice = 100_000) {
 	const store = new MemoryStore();
 	let clock = T0;
 	let market = initialPrice;
+	// Every price the market has traded at, in time order: what the trade
+	// history would show. The ticker is its last entry.
+	const tape: PricePoint[] = [
+		{
+			time: T0 - 1_000,
+			price: initialPrice,
+		},
+	];
 	let feedUp = true;
 	let ids = 0;
 
@@ -38,13 +47,27 @@ function setup(initialPrice = 100_000) {
 			}
 			return market;
 		},
+		fetchTape: vi.fn(async (from: number) => {
+			if (!feedUp) {
+				throw new Error('feed down');
+			}
+			// Like Coinbase: from the last trade at or before `from` to now.
+			const start = tape.findLastIndex((t) => t.time <= from);
+			return tape.slice(Math.max(start, 0)).filter((t) => t.time <= clock);
+		}),
 	};
 
 	return {
 		store,
 		deps,
 		advance: (ms: number) => (clock += ms),
-		setMarket: (p: number) => (market = p),
+		setMarket: (p: number) => {
+			market = p;
+			tape.push({
+				time: clock,
+				price: p,
+			});
+		},
 		setFeed: (up: boolean) => (feedUp = up),
 	};
 }
@@ -217,18 +240,75 @@ describe('resolving on read', () => {
 		expect(state!.score).toBe(0);
 	});
 
-	it('does not settle against a cached price observed before the minute was up', async () => {
+	it('settles against the price at the deadline, however late the ask', async () => {
 		const { deps, advance, setMarket } = setup(100_000);
 		const { playerId } = await createAnonymousPlayer(deps);
 		await placeGuess(deps, playerId, 'up');
 
-		advance(58_000);
-		setMarket(100_010);
-		await getState(deps, playerId); // caches 100_010, observed at t+58s
-		advance(3_000); // t+61s, but the cached price is still inside its window
+		advance(59_000);
+		setMarket(100_010); // the price standing at t+60s
+		advance(20_000);
+		setMarket(99_000); // a player who waits has nothing better to find
+		advance(10_000);
 
 		const state = await getState(deps, playerId);
-		expect(state!.pendingGuess).not.toBeNull();
+		expect(state).toMatchObject({
+			score: 1,
+			lastResult: {
+				priceAtResolve: 100_010,
+				resolvedAt: T0 + 60_000,
+				delta: 1,
+			},
+		});
+	});
+
+	it('cannot be talked out of a loss by asking later', async () => {
+		const { deps, advance, setMarket } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		await placeGuess(deps, playerId, 'up');
+
+		advance(59_000);
+		setMarket(99_990); // behind at the deadline
+		advance(30_000);
+		setMarket(100_500); // ahead by the time the player asks
+
+		const state = await getState(deps, playerId);
+		expect(state).toMatchObject({
+			score: -1,
+			lastResult: {
+				priceAtResolve: 99_990,
+				delta: -1,
+			},
+		});
+	});
+
+	it('settles an unchanged price on the first trade that moves it (R4)', async () => {
+		const { deps, advance, setMarket } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		await placeGuess(deps, playerId, 'down');
+
+		advance(75_000);
+		setMarket(99_950); // the first move after the deadline
+		advance(5_000);
+		setMarket(100_400);
+
+		const state = await getState(deps, playerId);
+		expect(state).toMatchObject({
+			score: 1,
+			lastResult: {
+				priceAtResolve: 99_950,
+				resolvedAt: T0 + 75_000,
+			},
+		});
+	});
+
+	it('does not read the trade history during the minute', async () => {
+		const { deps, advance } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		await placeGuess(deps, playerId, 'up');
+		advance(59_999);
+		await getState(deps, playerId);
+		expect(deps.fetchTape).not.toHaveBeenCalled();
 	});
 
 	it('blocks resolution on a stale feed and says so', async () => {
@@ -303,6 +383,7 @@ describe('the sweep', () => {
 			resolved: 0,
 			priceStale: false,
 		});
+		expect(deps.fetchTape).not.toHaveBeenCalled();
 	});
 
 	it('resolves a guess left behind by a closed browser', async () => {
@@ -352,7 +433,7 @@ describe('the sweep', () => {
 		setFeed(false);
 		advance(61_000);
 		await expect(sweep(deps)).resolves.toEqual({
-			due: 0,
+			due: 1,
 			resolved: 0,
 			priceStale: true,
 		});
@@ -499,12 +580,19 @@ describe('signing in (§6.2)', () => {
 		t.advance(60_000);
 		t.setMarket(99_000);
 
-		// The sweep settles the pending guess while sign-in is reading.
-		const [outcome] = await Promise.all([
-			signIn(t.deps, 'sub-1', anon.playerId),
-			sweep(t.deps),
-		]);
+		// The sweep settles the pending guess between sign-in's read and its
+		// write, so the first merge is refused and sign-in has to read again.
+		const create = t.store.createSignedInPlayer.bind(t.store);
+		const merge = vi
+			.spyOn(t.store, 'createSignedInPlayer')
+			.mockImplementationOnce(async (player, replacing) => {
+				await sweep(t.deps);
+				return create(player, replacing);
+			});
+
+		const outcome = await signIn(t.deps, 'sub-1', anon.playerId);
 		expect(outcome).toBe('promoted');
+		expect(merge).toHaveBeenCalledTimes(2);
 		const account = t.store.players.get('google:sub-1')!;
 		expect(account.wins + account.losses).toBe(2);
 		expect(account.pendingGuess).toBeNull();
