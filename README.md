@@ -80,3 +80,7 @@ One-off setup around the stack, because neither piece can live in a template:
   aws ssm put-parameter --region eu-central-1 --type SecureString \
     --name /btc-guess/cron-secret --value "$CRON_SECRET"
   ```
+
+- Create a Google OAuth client (Web application) with the redirect URIs `http://localhost:3000/api/auth/callback/google` and `<deployed origin>/api/auth/callback/google`, and set `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` and `AUTH_URL` on the Amplify app. The consent screen must be published, not left in Testing, or only listed test users can sign in.
+
+**Google brand verification was skipped, on purpose.** The OAuth app asks for `openid` only, a non-sensitive scope, so it can be published and used by anyone without verification, and Google shows no unverified-app warning. What verification would add is the app's name and logo on the consent screen, which is why Google shows the `amplifyapp.com` domain there instead. It needs a domain registered to us and a privacy policy page, which is out of scope for this exercise.

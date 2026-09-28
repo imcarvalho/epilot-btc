@@ -48,20 +48,22 @@ Do this as soon as there is something buildable - Amplify needs a `package.json`
 
 Needed before section 6 of the engineering spec, not before that.
 
-- [ ] Google Cloud project created
-- [ ] OAuth consent screen configured, scope `openid` only (the UI never shows the Google name, so `profile` is not asked for - eng §6.2)
-- [ ] **App published, not left in Testing.** In Testing mode only listed test users can sign in, so a reviewer would be locked out with no explanation. The scope is non-sensitive, so publishing needs no verification review.
-- [ ] OAuth client created; client ID and secret stored
-- [ ] Redirect URI `http://localhost:3000/api/auth/callback/google`
-- [ ] Redirect URI `https://main.dalnijp0oanzq.amplifyapp.com/api/auth/callback/google`
+- [x] Google Cloud project created
+- [x] OAuth consent screen configured, scope `openid` only (the UI never shows the Google name, so `profile` is not asked for - eng §6.2)
+- [x] **App published, not left in Testing.** In Testing mode only listed test users can sign in, so a reviewer would be locked out with no explanation. The scope is non-sensitive, so publishing needs no verification review.
+- [x] Brand verification skipped: it needs a domain registered to us and a privacy policy, and only adds the app's name and logo to the consent screen (README)
+- [x] OAuth client created; client ID and secret stored
+- [x] Redirect URI `http://localhost:3000/api/auth/callback/google`
+- [x] Redirect URI `https://main.dalnijp0oanzq.amplifyapp.com/api/auth/callback/google`
 
 ## Secrets
 
-Three parameters in SSM Parameter Store, never in the repository:
+Never in the repository. The auth values are Amplify app environment variables, copied into the runtime by `amplify.yml`; locally they live in `.env.local`, with a different `AUTH_SECRET`:
 
-- [ ] `AUTH_SECRET` (`openssl rand -base64 32`)
-- [ ] Google client ID
-- [ ] Google client secret
+- [x] `AUTH_SECRET` (`openssl rand -base64 32`)
+- [x] `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
+- [x] `AUTH_URL` = `https://main.dalnijp0oanzq.amplifyapp.com` - behind Amplify's proxy the app sees itself as `localhost:3000`, and Auth.js would build its Google callback from that
+- [x] Compute role allowed `dynamodb:DeleteItem`: the sign-in merge deletes the anonymous item it promotes. Verified: signed in on the deployed app, on the board, counter at 1
 - [x] Cron shared secret for `POST /api/cron/resolve` - SecureString `/btc-guess/cron-secret` in `eu-central-1`, same value as `CRON_SECRET` on the Amplify app. Change one, change both
 - [x] `cd infra && npx cdk deploy` for the sweep schedule and its Lambda - verified: runs every minute, settled an abandoned guess with no browser involved
 

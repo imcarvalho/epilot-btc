@@ -251,7 +251,7 @@ This section sets out **what has to be true** for sign-in to be safe. Section 6.
 
 **Google's assertion has to be verified, and that is the entire security boundary.** Whatever the flow, what arrives from Google is an ID token, and an unverified ID token is JSON anyone can forge. It has to be checked against Google's published keys (JWKS, cached): signature, `iss` (`accounts.google.com` or `https://accounts.google.com`), `aud` - our client id, which is what stops a token minted for some other application being replayed at ours - and `exp`. The flow must also bind the response to the request that started it, so a token cannot be replayed from elsewhere; how that binding is spelled - `nonce`, or `state` with PKCE - depends on the flow.
 
-**Our session is ours, not Google's.** Google's token is verified once and then discarded; from that moment the player carries a cookie our backend issued - `httpOnly`, `Secure`, `SameSite=Lax` - which is the only credential the game reads. Every later request carries it exactly as the anonymous flow carries its id, and the rest of the game cannot tell the two apart. The secret that protects it lives in SSM Parameter Store, and sliding expiry keeps a returning player signed in.
+**Our session is ours, not Google's.** Google's token is verified once and then discarded; from that moment the player carries a cookie our backend issued - `httpOnly`, `Secure`, `SameSite=Lax` - which is the only credential the game reads. Every later request carries it exactly as the anonymous flow carries its id, and the rest of the game cannot tell the two apart. The secret that protects it is never committed, and sliding expiry keeps a returning player signed in.
 
 **Nothing else about the Google account enters the game.** Identity reduces to `google:<sub>` at the boundary; the display name and avatar are stored only if the signed-in UI shows them back to the player, and never leave in a leaderboard response.
 
@@ -312,7 +312,7 @@ What still has to be written, because no library knows about this game:
 
 - **The `jwt` and `session` callbacks** map Google's `sub` onto our `playerId` (`google:<sub>`) and put it in the session, so every handler reads identity the same way regardless of how the player arrived.
 - **The `signIn` callback runs the anonymous merge** described above, reading the anonymous cookie and promoting that record once, under the same conditional write.
-- **Cookie settings** stay explicit: `httpOnly`, `Secure`, `SameSite=Lax`, with `AUTH_SECRET` held in SSM and injected at build or run time, never committed.
+- **Cookie settings** stay explicit: `httpOnly`, `Secure`, `SameSite=Lax`, with `AUTH_SECRET` never committed: it is an Amplify app environment variable that `amplify.yml` copies into the runtime, alongside `AUTH_URL`, the public origin Auth.js builds its callback from (behind Amplify's proxy the app sees itself as `localhost:3000`).
 
 As built (`src/auth.ts`, `signIn` in `src/lib/game.ts`):
 
@@ -367,7 +367,7 @@ What it pulls in, and must be set up first:
 
 - **Deployment:** AWS Amplify Hosting builds and runs the Next app, wired to the repository so a push to `main` deploys. The table, its two indexes, the scheduler and the IAM role live in a small CDK stack, and Amplify consumes their names as environment variables. OpenNext with CDK is the alternative if more control is needed - and is what the country flag and CloudFront-level caching would have required (6.3, 6.4) - named in the README as such.
 - **Runtime identity:** the app runs under an execution role with least-privilege access to the one table and its indexes. No AWS keys reach the client, and none exist in the repository.
-- **Secrets:** `AUTH_SECRET`, the Google client id and secret, and the cron shared secret live in SSM Parameter Store, injected as environment variables.
+- **Secrets:** `AUTH_SECRET` and the Google client id and secret are Amplify app environment variables, copied into the runtime by `amplify.yml`. The cron shared secret is also in SSM Parameter Store as a SecureString, where the sweep Lambda reads it. None is ever committed.
 - **Security:** same-origin by construction, since the API is part of the app - no CORS configuration to get wrong. The cron route rejects anything without the shared secret.
 - **Abuse, and what actually bounds it:** the conditional write on `POST /api/guess` already limits a player to one guess until it resolves, which is at most one per minute - a tighter bound than any rate limiter would have set, enforced by the data rather than by a counter. A counter would also need shared state to mean anything, since each runtime instance has its own memory. What that leaves exposed is minting fresh anonymous players and read volume on `GET /api/state`; the first is the limitation already stated in 6.1, and the second is what the cadence in 3.1 keeps small. Named rather than solved.
 - **Observability:** structured JSON logs with a request id and `playerId`, metrics for price-fetch failures and resolved guesses, one CloudWatch alarm on the failure metric.
