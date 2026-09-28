@@ -10,7 +10,11 @@ import { hourChange } from '@/lib/candles';
 import { standing } from '@/lib/live-minute';
 import { ChangeBadge, Eyebrow, Numeric, Panel } from '@/components/ui';
 import { formatAge, formatCountdown, formatUsd } from '../utils';
-import { type GuessPhase, PRICE_UNAVAILABLE } from '@/lib/guess-phase';
+import {
+	type GuessPhase,
+	PRICE_UNAVAILABLE,
+	staleSentence,
+} from '@/lib/guess-phase';
 import { HourChart, MinuteChart } from '../charts';
 import { useCandles, type LiveMinute } from '../hooks';
 import { styles } from './PriceCard.styles';
@@ -163,9 +167,7 @@ export function PriceCard({
 									priceStale && styles.stale,
 								)}
 							>
-								{priceStale
-									? `Price feed delayed. Last updated ${age}. Nothing is settled until it catches up.`
-									: `Updated ${age}`}
+								{priceStale ? staleSentence(age) : `Updated ${age}`}
 							</p>
 						)
 					)}

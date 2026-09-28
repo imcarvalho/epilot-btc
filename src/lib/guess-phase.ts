@@ -88,6 +88,28 @@ export function resultSentence(result: ResolvedGuess, score: number): string {
 	return `${resultHeadline(result)} Score ${score}.`;
 }
 
+/**
+ * The waiting minute (product spec §7): "Locked at $X. 47s to go." The price
+ * arrives formatted, so the copy lives here and the currency formatting stays
+ * with the screen.
+ */
+export function lockedSentence(price: string, secondsLeft: number): string {
+	return `Locked at ${price}. ${secondsLeft}s to go.`;
+}
+
+/** The countdown at zero with the price unchanged (product spec §6.2, §7). */
+export const TIME_UP = 'Time is up - waiting for the price to change.';
+
+/**
+ * The feed is behind with a guess in play, or behind at all on the price
+ * card (product spec §6.2, §7).
+ *
+ * @param age how long ago the price was updated, formatted: "25s ago"
+ */
+export function staleSentence(age: string): string {
+	return `Price feed delayed. Last updated ${age}. Nothing is settled until it catches up.`;
+}
+
 /** Why a guess did not go through: the server's feed was stale, or the request failed. */
 export type GuessFailure = 'price-unavailable' | 'failed';
 

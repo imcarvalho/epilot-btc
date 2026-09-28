@@ -7,6 +7,8 @@ import {
 	guessFailureSentence,
 	PRICE_BLOCKED,
 	resultHeadline,
+	staleSentence,
+	TIME_UP,
 } from '@/lib/guess-phase';
 import { GUESS_WINDOW_MS } from '@/lib/resolve-guess';
 import { IconTile, Numeric, Panel } from '@/components/ui';
@@ -147,8 +149,8 @@ function LockedStrip({
 				? 'Resolves when the minute is up and the price has moved.'
 				: 'The line is indicative. The result is settled on the server with its own price, which may differ by a few cents.'
 			: phase.kind === 'time-up'
-				? 'Time is up - waiting for the price to change.'
-				: `Price feed delayed. Last updated ${formatAge(phase.ageMs)}. Nothing is settled until it catches up.`;
+				? TIME_UP
+				: staleSentence(formatAge(phase.ageMs));
 
 	return (
 		<Panel

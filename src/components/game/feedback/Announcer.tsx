@@ -4,8 +4,11 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
 import {
 	type GuessPhase,
+	lockedSentence,
 	priceBlockAnnouncement,
 	resultSentence,
+	staleSentence,
+	TIME_UP,
 } from '@/lib/guess-phase';
 import { formatAge, formatUsd } from '../utils';
 import { styles } from './Announcer.styles';
@@ -14,11 +17,14 @@ import { styles } from './Announcer.styles';
 function announcementFor(phase: GuessPhase): string | null {
 	switch (phase.kind) {
 		case 'locked':
-			return `Locked at ${formatUsd(phase.guess.priceAtGuess)}. ${phase.secondsLeft}s to go.`;
+			return lockedSentence(
+				formatUsd(phase.guess.priceAtGuess),
+				phase.secondsLeft,
+			);
 		case 'time-up':
-			return 'Time is up - waiting for the price to change.';
+			return TIME_UP;
 		case 'stale':
-			return `Price feed delayed. Last updated ${formatAge(phase.ageMs)}. Nothing is settled until it catches up.`;
+			return staleSentence(formatAge(phase.ageMs));
 		case 'result':
 			return resultSentence(phase.result, phase.score);
 		default:

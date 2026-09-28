@@ -6,7 +6,10 @@ import {
 	priceBlockAnnouncement,
 	priceBlocksGuess,
 	guessPhase,
+	lockedSentence,
 	resultSentence,
+	staleSentence,
+	TIME_UP,
 } from './guess-phase';
 
 const T0 = 1_700_000_000_000;
@@ -212,6 +215,24 @@ describe('resultSentence', () => {
 				2,
 			),
 		).toBe('Correct. The price went down. Score 2.');
+	});
+});
+
+describe('waiting sentences', () => {
+	it('says what was locked in and how long is left', () => {
+		expect(lockedSentence('$100,000.00', 47)).toBe(
+			'Locked at $100,000.00. 47s to go.',
+		);
+	});
+
+	it('says the minute is up but the price has not moved', () => {
+		expect(TIME_UP).toBe('Time is up - waiting for the price to change.');
+	});
+
+	it('says the feed is behind and nothing settles on it', () => {
+		expect(staleSentence('25s ago')).toBe(
+			'Price feed delayed. Last updated 25s ago. Nothing is settled until it catches up.',
+		);
 	});
 });
 
