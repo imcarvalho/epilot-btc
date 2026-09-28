@@ -17,17 +17,25 @@ export type GuessPhase =
 	| { kind: 'locked'; guess: PendingGuess; secondsLeft: number }
 	| { kind: 'time-up'; guess: PendingGuess }
 	| { kind: 'stale'; guess: PendingGuess; ageMs: number }
-	| { kind: 'result'; result: ResolvedGuess; score: number };
+	| { kind: 'result'; result: ResolvedGuess; score: number }
+	| { kind: 'away-result'; result: ResolvedGuess; score: number };
 
 /**
  * @param now server clock, epoch ms
- * @param watchedGuessId the guess this session placed or saw pending. Only
- *   its result is shown as a result moment; an older one is just history.
+ * @param watchedGuessId the guess this session placed or saw pending. Its
+ *   result is shown as a result moment.
+ * @param seenResultId the last result this browser has already shown, as it
+ *   stood when the page loaded: a different, unwatched result settled while
+ *   the player was away, and is shown once as such (product spec §7). Null
+ *   when this browser has shown none; left out when that cannot be known
+ *   (no storage), and then an unwatched result is just history - better
+ *   silent than announced again on every load.
  */
 export function guessPhase(
 	state: StateResponse,
 	now: number,
 	watchedGuessId: string | null,
+	seenResultId?: string | null,
 ): GuessPhase {
 	const guess = state.pendingGuess;
 
@@ -62,6 +70,18 @@ export function guessPhase(
 	if (state.lastResult && state.lastResult.id === watchedGuessId) {
 		return {
 			kind: 'result',
+			result: state.lastResult,
+			score: state.score,
+		};
+	}
+
+	if (
+		state.lastResult &&
+		seenResultId !== undefined &&
+		state.lastResult.id !== seenResultId
+	) {
+		return {
+			kind: 'away-result',
 			result: state.lastResult,
 			score: state.score,
 		};
@@ -108,6 +128,23 @@ export const TIME_UP = 'Time is up - waiting for the price to change.';
  */
 export function staleSentence(age: string): string {
 	return `Price feed delayed. Last updated ${age}. Nothing is settled until it catches up.`;
+}
+
+/**
+ * A guess that settled while the player was away (product spec §7), without
+ * the score change: "While you were away: your up guess was correct."
+ */
+export function awayHeadline(result: ResolvedGuess): string {
+	const outcome = result.delta === 1 ? 'correct' : 'wrong';
+	return `While you were away: your ${result.direction} guess was ${outcome}.`;
+}
+
+/**
+ * The same, with the score change: what a screen reader announces.
+ * "While you were away: your up guess was correct. +1."
+ */
+export function awaySentence(result: ResolvedGuess): string {
+	return `${awayHeadline(result)} ${result.delta === 1 ? '+1' : '-1'}.`;
 }
 
 /** Why a guess did not go through: the server's feed was stale, or the request failed. */

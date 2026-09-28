@@ -144,6 +144,31 @@ for (const [direction, headline] of [
 	});
 }
 
+test('a guess settled while away: said once, then idle', async ({ page }) => {
+	await openGame(page);
+	// Past its minute before the page opens again, so this visit never sees
+	// it pending: the first state read settles it.
+	await lockGuessAgo(await playerIdOf(page), 'up', 120_000);
+	await page.reload();
+	const sentence = 'While you were away: your up guess was correct.';
+	// Exact: the live region holds the same words with the score change.
+	const banner = page.getByText(sentence, {
+		exact: true,
+	});
+	await expect(banner).toBeVisible({
+		timeout: 30_000,
+	});
+	await expect(page.locator('main > [role="status"]')).toHaveText(
+		`${sentence} +1.`,
+	);
+	await expectNoViolations(page);
+
+	// Seen now: the next visit does not say it again.
+	await openGame(page);
+	await expect(page.getByText('No guess in play.')).toBeVisible();
+	await expect(banner).toHaveCount(0);
+});
+
 test.describe('structure a screen reader navigates by', () => {
 	// A focused slider is read aloud whenever its value changes, so the
 	// inspector must change only when the player moves it - not when the

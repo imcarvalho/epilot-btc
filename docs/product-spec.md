@@ -237,7 +237,7 @@ Decisions worth stating:
 - Chart unavailable: *"The chart is unavailable right now. The price above is the game's own and is unaffected."* - or just the first sentence when there is no price above it.
 - Win: *"Correct. The price went up. Score 3."*
 - Loss: *"Not this time. The price went down. Score 1."*
-- Returning to a settled guess: *"While you were away: your up guess was correct. +1."*
+- Returning to a settled guess: *"While you were away: your up guess was correct. +1."*, or *"While you were away: your down guess was wrong. -1."* - in the result banner, said once, and not again on the next visit.
 - Sign-in prompt: *"Keep your score across devices."*
 - Signed in, score carried over (or a fresh account): *"Signed in. Your score now follows you to any device."*
 - Signed in to an account that already had a score: *"Signed in. This is the score saved to your account. The one played on this browser is kept apart, and comes back if you sign out."*

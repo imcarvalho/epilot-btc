@@ -1,5 +1,7 @@
 import type { PendingGuess, ResolvedGuess, StateResponse } from './contracts';
 import {
+	awayHeadline,
+	awaySentence,
 	guessFailureSentence,
 	PRICE_BLOCKED,
 	PRICE_RETURNED,
@@ -182,6 +184,135 @@ describe('guessPhase', () => {
 				'some-other-guess',
 			).kind,
 		).toBe('idle');
+	});
+
+	it('shows a result settled while away, once, if this browser has not shown it', () => {
+		const r = resolved();
+		expect(
+			guessPhase(
+				state({
+					score: 1,
+					lastResult: r,
+					history: [r],
+				}),
+				T0 + 600_000,
+				null,
+				'an-older-result',
+			),
+		).toEqual({
+			kind: 'away-result',
+			result: r,
+			score: 1,
+		});
+		expect(
+			guessPhase(
+				state({
+					lastResult: r,
+					history: [r],
+				}),
+				T0 + 600_000,
+				null,
+				null,
+			).kind,
+		).toBe('away-result');
+	});
+
+	it('is idle once the result settled while away has been shown', () => {
+		const r = resolved();
+		expect(
+			guessPhase(
+				state({
+					lastResult: r,
+					history: [r],
+				}),
+				T0 + 600_000,
+				null,
+				'g1',
+			).kind,
+		).toBe('idle');
+	});
+
+	it('stays quiet about a result it cannot tell was seen', () => {
+		const r = resolved();
+		expect(
+			guessPhase(
+				state({
+					lastResult: r,
+					history: [r],
+				}),
+				T0 + 600_000,
+				null,
+				undefined,
+			).kind,
+		).toBe('idle');
+	});
+
+	it('shows a watched result as the result moment, not as settled while away', () => {
+		const r = resolved();
+		expect(
+			guessPhase(
+				state({
+					lastResult: r,
+					history: [r],
+				}),
+				T0 + 70_000,
+				'g1',
+				'an-older-result',
+			).kind,
+		).toBe('result');
+	});
+
+	it('puts a guess in play ahead of a result settled while away', () => {
+		const r = resolved();
+		expect(
+			guessPhase(
+				state({
+					pendingGuess: {
+						...pending,
+						id: 'g2',
+						createdAt: T0 + 600_000,
+					},
+					lastResult: r,
+					history: [r],
+				}),
+				T0 + 610_000,
+				'g2',
+				'an-older-result',
+			).kind,
+		).toBe('locked');
+	});
+});
+
+describe('awaySentence', () => {
+	it('says a guess settled while away was correct, and what it scored', () => {
+		expect(awaySentence(resolved())).toBe(
+			'While you were away: your up guess was correct. +1.',
+		);
+		expect(awayHeadline(resolved())).toBe(
+			'While you were away: your up guess was correct.',
+		);
+	});
+
+	it('says a guess settled while away was wrong the same way', () => {
+		expect(
+			awaySentence(
+				resolved({
+					priceAtResolve: 99_900,
+					delta: -1,
+				}),
+			),
+		).toBe('While you were away: your up guess was wrong. -1.');
+	});
+
+	it('names the direction that was guessed, not the one the price took', () => {
+		expect(
+			awaySentence(
+				resolved({
+					direction: 'down',
+					priceAtResolve: 99_900,
+				}),
+			),
+		).toBe('While you were away: your down guess was correct. +1.');
 	});
 });
 

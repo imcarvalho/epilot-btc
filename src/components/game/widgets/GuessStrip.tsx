@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Check, Clock, Loader, Minus } from 'lucide-react';
 import { Icon } from '@astryxdesign/core/Icon';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import {
+	awayHeadline,
 	type GuessPhase,
 	guessFailureSentence,
 	PRICE_BLOCKED,
@@ -64,7 +65,7 @@ export function GuessStrip({
 			/>
 		);
 	}
-	if (phase?.kind === 'result') {
+	if (phase?.kind === 'result' || phase?.kind === 'away-result') {
 		return <ResultBanner phase={phase} />;
 	}
 	return (
@@ -240,10 +241,15 @@ function LockedStrip({
 function ResultBanner({
 	phase,
 }: {
-	phase: Extract<GuessPhase, { kind: 'result' }>;
+	phase: Extract<GuessPhase, { kind: 'result' | 'away-result' }>;
 }) {
 	const { result, score } = phase;
 	const won = result.delta === 1;
+	// Settled while away: said as that, in the same banner (product spec §7).
+	const headline =
+		phase.kind === 'away-result'
+			? awayHeadline(result)
+			: resultHeadline(result);
 
 	return (
 		<Panel as="div" tone={won ? 'win' : 'loss'} xstyle={styles.compact}>
@@ -260,7 +266,7 @@ function ResultBanner({
 						tone={won ? 'win' : 'loss'}
 					/>
 					<div {...stylex.props(styles.stack)}>
-						<p {...stylex.props(styles.headline)}>{resultHeadline(result)}</p>
+						<p {...stylex.props(styles.headline)}>{headline}</p>
 						<p {...stylex.props(styles.muted, styles.flush)}>
 							Locked at <Numeric>{formatUsd(result.priceAtGuess)}</Numeric>,
 							resolved at <Numeric>{formatUsd(result.priceAtResolve)}</Numeric>{' '}

@@ -3,6 +3,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
 import {
+	awaySentence,
 	type GuessPhase,
 	lockedSentence,
 	priceBlockAnnouncement,
@@ -27,6 +28,8 @@ function announcementFor(phase: GuessPhase): string | null {
 			return staleSentence(formatAge(phase.ageMs));
 		case 'result':
 			return resultSentence(phase.result, phase.score);
+		case 'away-result':
+			return awaySentence(phase.result);
 		default:
 			return null;
 	}
@@ -58,7 +61,7 @@ export function Announcer({
 	const key =
 		phase === null
 			? ''
-			: `${phase.kind}:${'guess' in phase ? phase.guess.id : phase.kind === 'result' ? phase.result.id : ''}`;
+			: `${phase.kind}:${'guess' in phase ? phase.guess.id : 'result' in phase ? phase.result.id : ''}`;
 
 	useEffect(() => {
 		if (phase === null) {

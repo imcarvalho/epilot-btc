@@ -47,12 +47,21 @@ export function GameScreen() {
 		price: null,
 		isAlive: false,
 	});
-	const { status, refresh, placeGuess, isPlacing, guessError, watchedGuessId } =
-		useGame(ticker);
+	const {
+		status,
+		refresh,
+		placeGuess,
+		isPlacing,
+		guessError,
+		watchedGuessId,
+		seenResultId,
+	} = useGame(ticker);
 	const ready = status.kind === 'ready' ? status : null;
 	const now = useServerNow(ready?.clockOffset ?? 0);
 	const state = ready?.state ?? null;
-	const phase = state ? guessPhase(state, now, watchedGuessId) : null;
+	const phase = state
+		? guessPhase(state, now, watchedGuessId, seenResultId)
+		: null;
 
 	const pending = state?.pendingGuess ?? null;
 	// Nothing in play and no fresh price: nothing can be locked in.
@@ -181,7 +190,9 @@ export function GameScreen() {
 										state ? state.stats.wins + state.stats.losses : 0
 									}
 									highlightId={
-										phase?.kind === 'result' ? phase.result.id : null
+										phase?.kind === 'result' || phase?.kind === 'away-result'
+											? phase.result.id
+											: null
 									}
 								/>
 							</div>
@@ -192,6 +203,7 @@ export function GameScreen() {
 						priceBlocked={state === null ? null : priceBlocked}
 						notice={failure ?? notice}
 					/>
+					{/* A win seen as it happens, not one that settled while away. */}
 					{phase?.kind === 'result' && phase.result.delta === 1 && (
 						<Confetti key={phase.result.id} />
 					)}

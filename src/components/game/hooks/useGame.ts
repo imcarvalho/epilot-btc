@@ -26,6 +26,33 @@ export interface TickerSnapshot {
 /** Why the last guess did not go through, if it did not. */
 export type GuessError = GuessFailure | null;
 
+/** Where this browser keeps the id of the last result it has shown. */
+const SEEN_RESULT_KEY = 'btc-guess:seen-result';
+
+/**
+ * The last result this browser has shown: null when it has shown none, and
+ * undefined when that cannot be known (no storage, or on the server), which
+ * `guessPhase` reads as "say nothing" rather than "say it every load".
+ */
+function readSeenResult(): string | null | undefined {
+	if (typeof window === 'undefined') {
+		return undefined;
+	}
+	try {
+		return window.localStorage.getItem(SEEN_RESULT_KEY);
+	} catch {
+		return undefined;
+	}
+}
+
+function writeSeenResult(id: string) {
+	try {
+		window.localStorage.setItem(SEEN_RESULT_KEY, id);
+	} catch {
+		// No storage: readSeenResult says so too, and nothing is shown as new.
+	}
+}
+
 /**
  * First contact is "ask for state; if there is no player yet, create one and
  * ask again". Shared across callers so a double mount (React strict mode, a
@@ -68,6 +95,10 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 		kind: 'loading',
 	});
 	const [watchedGuessId, setWatchedGuessId] = useState<string | null>(null);
+	// As it stood when the page loaded, and not updated after: a result that
+	// settled while the player was away stays on screen for this visit, as a
+	// watched one does, and is not new on the next.
+	const [seenResultId] = useState(readSeenResult);
 	const [isPlacing, setIsPlacing] = useState(false);
 	const [guessError, setGuessError] = useState<GuessError>(null);
 	const inFlight = useRef(false);
@@ -95,6 +126,11 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 		// moment on screen, even if the page was reloaded mid-minute.
 		if (state.pendingGuess) {
 			setWatchedGuessId(state.pendingGuess.id);
+		}
+		// Any result that reaches the screen has now been shown, as a result
+		// moment or as settled while away, so the next visit does not repeat it.
+		if (state.lastResult) {
+			writeSeenResult(state.lastResult.id);
 		}
 	}, []);
 
@@ -255,6 +291,7 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 		isPlacing,
 		guessError,
 		watchedGuessId,
+		seenResultId,
 	};
 }
 
