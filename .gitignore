@@ -28,6 +28,8 @@ test-results/
 playwright-report/
 # Playwright's Chromium, when installed into the project (the Amplify build)
 .playwright-browsers/
+# Java for DynamoDB Local, unpacked into the project by the Amplify build
+.jdk/
 .nyc_output/
 
 # editors and OS

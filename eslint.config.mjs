@@ -23,6 +23,7 @@ export default tseslint.config(
 			'test-results/',
 			'playwright-report/',
 			'.playwright-browsers/',
+			'.jdk/',
 			'infra/node_modules/',
 			'infra/cdk.out/',
 			'next-env.d.ts',

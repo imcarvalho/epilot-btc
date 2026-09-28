@@ -11,12 +11,15 @@ frontend:
         - npm ci --cache .npm --prefer-offline
         # npm test runs the infra stack's tests too.
         - npm ci --prefix infra --cache .npm --prefer-offline
-        # The accessibility tests: a headless Chromium, kept inside the project
-        # so the build cache below can carry it between builds, and Java for
-        # DynamoDB Local, installed only if the image lacks it.
+        # The accessibility tests need a headless Chromium, and Java for
+        # DynamoDB Local. The image has no Java and the build is not root, so
+        # Amazon Corretto 17 is unpacked into the project instead. Both live
+        # inside the project so the build cache below carries them over.
         - export PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers"
         - npx playwright install chromium
-        - java -version || dnf install -y java-17-amazon-corretto-headless
+        - '[ -x .jdk/bin/java ] || (mkdir -p .jdk && curl -fsSL https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz | tar -xz -C .jdk --strip-components=1)'
+        - export PATH="$PWD/.jdk/bin:$PATH"
+        - java -version
     build:
       commands:
         # Amplify's environment variables reach the build, not the SSR
@@ -43,5 +46,6 @@ frontend:
     paths:
       - .npm/**/*
       - .playwright-browsers/**/*
+      - .jdk/**/*
       - .dynamodb/*.jar
       - .dynamodb/DynamoDBLocal_lib/**/*
