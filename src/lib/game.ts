@@ -21,6 +21,7 @@ import {
 	isStale,
 	type PriceQuote,
 } from './price';
+import type { Candle } from './candles';
 import { applyResolution } from './scoring';
 import { deadlineOf, settleAgainstTape, type PricePoint } from './settlement';
 import type { CachedPrice, GameStore, PlayerRecord } from './store';
@@ -31,6 +32,8 @@ export interface GameDeps {
 	fetchPrice: () => Promise<PriceQuote>;
 	/** The market from a moment to now, in time order (settlement.ts). */
 	fetchTape: (from: number) => Promise<PricePoint[]>;
+	/** The last hour of one-minute candles ending at `now` (hour-candles.ts). */
+	fetchCandles: (now: number) => Promise<Candle[]>;
 	now: () => number;
 	newId: () => string;
 	random?: () => number;

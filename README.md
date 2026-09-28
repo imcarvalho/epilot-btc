@@ -41,6 +41,7 @@ Named here rather than found later:
 - **The leaderboard is eventually consistent.** The index lags the table by a moment, so your own card can show a new score before the board moves.
 - **Your rank costs O(players above you).** A `COUNT` query still reads what it counts. Fine at a few thousand players; the scale answer is a histogram of score buckets maintained at resolution time.
 - **One hot partition.** Every board row shares one partition key. At scale that becomes `GLOBAL#<shard>` with a scatter-gather read.
+- **About nine players at once.** Each open tab holds one streaming Lambda for up to 15 minutes, and this AWS account's Lambda concurrency limit is 10, shared with the sweep. The tenth simultaneous tab is throttled until another closes; its stream fails to open and the browser retries. A quota increase to the standard 1,000 lifts it; it was left as is on purpose for a demo.
 - **Cold starts** can show in the first request after a quiet period, and the request cadence is deliberately sparse, so quiet periods are normal.
 - **The chart fetches Coinbase straight from the browser**, since both endpoints send `access-control-allow-origin: *` (checked from the deployed origin). If that ever changes, the chart moves behind a cached `GET /api/history` using the same cache-item pattern as the price.
 - **Google brand verification was skipped, on purpose.** The OAuth app asks for `openid` only, a non-sensitive scope, so it can be published and used by anyone without verification, and Google shows no unverified-app warning. What verification adds is the app's name and logo on the consent screen, which is why Google shows the `amplifyapp.com` domain there instead. It needs a domain registered to us and a privacy policy page, out of scope for this exercise.
@@ -148,6 +149,13 @@ One-off setup around the stack, because none of it can live in a template:
   ```
   aws ssm put-parameter --region eu-central-1 --type SecureString \
     --name /btc-guess/cron-secret --value "$CRON_SECRET"
+  ```
+
+- Put the stream's signing secret in SSM the same way, as `/btc-guess/stream-secret`, and set the same value as `STREAM_SECRET` on the Amplify app, with the stack's `StreamUrl` output as `STREAM_URL`:
+
+  ```
+  aws ssm put-parameter --region eu-central-1 --type SecureString \
+    --name /btc-guess/stream-secret --value "$STREAM_SECRET"
   ```
 
 - Create a Google OAuth client (Web application) with the redirect URIs `http://localhost:3000/api/auth/callback/google` and `<deployed origin>/api/auth/callback/google`. Publish the consent screen rather than leaving it in Testing, or only listed test users can sign in.

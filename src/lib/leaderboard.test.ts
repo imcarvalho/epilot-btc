@@ -22,6 +22,7 @@ function setup() {
 	let clock = T0;
 	const deps: GameDeps = {
 		store,
+		fetchCandles: async () => [],
 		now: () => clock,
 		newId: () => 'id',
 		fetchPrice: async () => ({

@@ -13,6 +13,7 @@ import type { PendingGuess } from '../contracts';
 import type { Scoreboard } from '../scoring';
 import type {
 	BoardEntry,
+	CachedCandles,
 	CachedPodium,
 	CachedPrice,
 	GameStore,
@@ -26,6 +27,7 @@ export class MemoryStore implements GameStore {
 	players = new Map<string, PlayerRecord>();
 	price: CachedPrice | null = null;
 	podium: CachedPodium | null = null;
+	candles: CachedCandles | null = null;
 	settleWrites = 0;
 	boardQueries = 0;
 
@@ -172,5 +174,15 @@ export class MemoryStore implements GameStore {
 	async putCachedPodium(podium: CachedPodium) {
 		await tick();
 		this.podium = structuredClone(podium);
+	}
+
+	async getCachedCandles() {
+		await tick();
+		return this.candles ? structuredClone(this.candles) : null;
+	}
+
+	async putCachedCandles(candles: CachedCandles) {
+		await tick();
+		this.candles = structuredClone(candles);
 	}
 }

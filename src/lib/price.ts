@@ -22,8 +22,12 @@ import type { CachedPrice, GameStore } from './store';
 export const PRICE_URL =
 	'https://api.exchange.coinbase.com/products/BTC-USD/ticker';
 
-/** How long one fetched price serves every request. */
-export const PRICE_CACHE_MS = 5_000;
+/**
+ * How long one fetched price serves every request and every stream: a
+ * second, so the live minute moves each second, while Coinbase still sees at
+ * most one ticker call a second however many players are watching.
+ */
+export const PRICE_CACHE_MS = 1_000;
 
 /** Older than this, a price resolves nothing and the feed is reported as delayed. */
 export const PRICE_STALE_MS = 15_000;

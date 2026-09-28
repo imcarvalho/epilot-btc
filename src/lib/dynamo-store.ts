@@ -34,6 +34,7 @@ import type { PendingGuess } from './contracts';
 import type { Scoreboard } from './scoring';
 import type {
 	BoardEntry,
+	CachedCandles,
 	CachedPodium,
 	CachedPrice,
 	GameStore,
@@ -49,6 +50,8 @@ export const BOARD = 'GLOBAL';
 export const BOARD_TOTAL_KEY = 'BOARD#GLOBAL';
 /** Cache item: the podium, identical for everyone, kept for ten seconds. */
 export const PODIUM_KEY = 'BOARD#PODIUM';
+/** Cache item: the last hour of candles, identical for everyone, kept for ten seconds. */
+export const CANDLES_KEY = 'CANDLES#BTCUSD';
 export const PENDING_INDEX = 'byPending';
 export const PENDING_BUCKET = 'PENDING';
 
@@ -549,6 +552,36 @@ export class DynamoStore implements GameStore {
 					updatedAt: Item.updatedAt as number,
 				}
 			: null;
+	}
+
+	async getCachedCandles(): Promise<CachedCandles | null> {
+		const { Item } = await this.client.send(
+			new GetCommand({
+				TableName: this.tableName,
+				Key: {
+					playerId: CANDLES_KEY,
+				},
+			}),
+		);
+		return Item
+			? {
+					candles: Item.candles as CachedCandles['candles'],
+					updatedAt: Item.updatedAt as number,
+				}
+			: null;
+	}
+
+	async putCachedCandles({ candles, updatedAt }: CachedCandles) {
+		await this.client.send(
+			new PutCommand({
+				TableName: this.tableName,
+				Item: {
+					playerId: CANDLES_KEY,
+					candles,
+					updatedAt,
+				},
+			}),
+		);
 	}
 
 	async putCachedPodium({ entries, updatedAt }: CachedPodium) {

@@ -34,6 +34,7 @@
 	},
 	"devDependencies": {
 		"@astryxdesign/cli": "0.6.3",
+		"@aws-sdk/client-ssm": "^3.1141.0",
 		"@axe-core/playwright": "^4.13.0",
 		"@babel/preset-react": "^8.0.1",
 		"@babel/preset-typescript": "^8.0.1",
@@ -46,6 +47,7 @@
 		"@types/react-dom": "^19.3.0",
 		"autoprefixer": "^10.6.1",
 		"aws-sdk-client-mock": "^4.1.0",
+		"esbuild": "^0.28.2",
 		"eslint": "^9.39.5",
 		"lucide-react": "^1.48.0",
 		"prettier": "^3.9.9",

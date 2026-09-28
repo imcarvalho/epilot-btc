@@ -40,6 +40,7 @@ function setup(initialPrice = 100_000) {
 
 	const deps: GameDeps = {
 		store,
+		fetchCandles: async () => [],
 		now: () => clock,
 		newId: () => `id-${++ids}`,
 		random: () => 0,

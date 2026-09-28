@@ -13,6 +13,8 @@ import { GET as getState } from './state/route';
 import { POST as guess } from './guess/route';
 import { POST as resolve } from './cron/resolve/route';
 import { GET as leaderboard } from './leaderboard/route';
+import { GET as streamTicket } from './stream-token/route';
+import { verifyStreamToken } from '@/lib/stream-token';
 
 const T0 = 1_700_000_000_000;
 let clock = T0;
@@ -28,6 +30,7 @@ vi.mock('@/auth', () => ({
 vi.mock('@/lib/deps', () => ({
 	getDeps: (): GameDeps => ({
 		store,
+		fetchCandles: async () => [],
 		now: () => clock,
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
 		fetchPrice: async () => {
@@ -368,6 +371,49 @@ describe('POST /api/cron/resolve', () => {
 	});
 });
 
+describe('GET /api/stream-token', () => {
+	beforeEach(() => {
+		vi.stubEnv('STREAM_URL', 'https://stream.example/');
+		vi.stubEnv('STREAM_SECRET', 'stream-secret');
+	});
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it('issues a ticket naming the caller, and never cacheable', async () => {
+		const cookie = await newPlayerCookie();
+		const res = await streamTicket(
+			request('/api/stream-token', {
+				cookie,
+			}),
+		);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+		const { url, token } = await res.json();
+		expect(url).toBe('https://stream.example/');
+		expect(verifyStreamToken(token, 'stream-secret', clock)).toMatch(/^anon:/);
+	});
+
+	it('is 401 without a player', async () => {
+		const res = await streamTicket(request('/api/stream-token'));
+		expect(res.status).toBe(401);
+	});
+
+	it('is 503 when the stream is not configured', async () => {
+		vi.stubEnv('STREAM_SECRET', '');
+		const cookie = await newPlayerCookie();
+		const res = await streamTicket(
+			request('/api/stream-token', {
+				cookie,
+			}),
+		);
+		expect(res.status).toBe(503);
+		expect(await res.json()).toEqual({
+			error: 'stream-unavailable',
+		});
+	});
+});
+
 describe('GET /api/leaderboard', () => {
 	it('answers without a player, with no row of theirs', async () => {
 		const res = await leaderboard(request('/api/leaderboard'));
@@ -398,6 +444,7 @@ describe('GET /api/leaderboard', () => {
 describe('signed in', () => {
 	const deps = (): GameDeps => ({
 		store,
+		fetchCandles: async () => [],
 		now: () => clock,
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
 		fetchPrice: async () => ({

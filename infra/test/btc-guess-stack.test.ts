@@ -1,17 +1,27 @@
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { describe, expect, it } from 'vitest';
-import { BtcGuessStack, CRON_SECRET_PARAMETER } from '../lib/btc-guess-stack';
+import {
+	BtcGuessStack,
+	CRON_SECRET_PARAMETER,
+	STREAM_SECRET_PARAMETER,
+} from '../lib/btc-guess-stack';
 
 const SWEEP_URL = 'https://example.test/api/cron/resolve';
 
 function synth(): Template {
-	const app = new App();
+	// No bundling: these tests read the template, not the stream's code.
+	const app = new App({
+		context: {
+			'aws:cdk:bundling-stacks': [],
+		},
+	});
 	const stack = new BtcGuessStack(app, 'TestStack', {
 		env: {
 			region: 'eu-central-1',
 		},
 		sweepUrl: SWEEP_URL,
+		streamOrigins: ['https://site.test'],
 	});
 	return Template.fromStack(stack);
 }
@@ -199,6 +209,33 @@ describe('BtcGuessStack', () => {
 						}),
 					}),
 				]),
+			},
+		});
+	});
+
+	it('serves the game stream from a streaming Function URL, open only to the site', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::Lambda::Url', {
+			AuthType: 'NONE',
+			InvokeMode: 'RESPONSE_STREAM',
+			Cors: {
+				AllowOrigins: ['https://site.test'],
+				AllowMethods: ['GET'],
+			},
+		});
+		template.hasOutput('StreamUrl', {});
+	});
+
+	it('lets a stream run to the 15-minute limit and names its secret, never its value', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::Lambda::Function', {
+			Timeout: 900,
+			Environment: {
+				Variables: Match.objectLike({
+					STREAM_SECRET_PARAMETER,
+				}),
 			},
 		});
 	});

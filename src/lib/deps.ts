@@ -18,6 +18,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { DynamoStore } from './dynamo-store';
 import type { GameDeps } from './game';
 import { fetchTickerPrice } from './price';
+import { fetchHourCandles } from './hour-candles';
 import { fetchTape } from './settlement';
 
 let deps: GameDeps | undefined;
@@ -52,6 +53,9 @@ export function getDeps(): GameDeps {
 					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');
 				}
 			: (from) => fetchTape(from),
+		// The chart is not part of the outage switch: the screen showed the
+		// hour during an outage when the browser fetched it, and still does.
+		fetchCandles: (now) => fetchHourCandles(now),
 		now: () => Date.now(),
 		newId: () => crypto.randomUUID(),
 	};

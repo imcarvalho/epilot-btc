@@ -26,7 +26,7 @@ frontend:
         # runtime. Next loads .env.production at runtime, so the server-side
         # ones are copied there. Only these names: nothing else from the
         # build environment should end up in the artifact.
-        - env | grep -E '^(PLAYERS_TABLE_NAME|PLAYERS_TABLE_REGION|CRON_SECRET|AUTH_SECRET|AUTH_GOOGLE_ID|AUTH_GOOGLE_SECRET|AUTH_URL)=' >> .env.production || true
+        - env | grep -E '^(PLAYERS_TABLE_NAME|PLAYERS_TABLE_REGION|CRON_SECRET|AUTH_SECRET|AUTH_GOOGLE_ID|AUTH_GOOGLE_SECRET|AUTH_URL|STREAM_URL|STREAM_SECRET)=' >> .env.production || true
         # Every test must pass for the build to conclude, and so to deploy:
         # the unit and infra tests first, then the accessibility tests against
         # the very build that is about to be deployed. They run it against

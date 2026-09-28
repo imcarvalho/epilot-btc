@@ -7,6 +7,7 @@
  */
 
 import type { PendingGuess } from './contracts';
+import type { Candle } from './candles';
 import type { Scoreboard } from './scoring';
 
 export interface PlayerRecord extends Scoreboard {
@@ -34,6 +35,13 @@ export interface BoardEntry {
 export interface CachedPodium {
 	entries: BoardEntry[];
 	/** Epoch ms, server clock. */
+	updatedAt: number;
+}
+
+/** The last hour of one-minute candles, shared by every stream (§5). */
+export interface CachedCandles {
+	candles: Candle[];
+	/** Epoch ms, server clock: when they were fetched from Coinbase. */
 	updatedAt: number;
 }
 
@@ -102,4 +110,8 @@ export interface GameStore {
 
 	getCachedPodium(): Promise<CachedPodium | null>;
 	putCachedPodium(podium: CachedPodium): Promise<void>;
+
+	getCachedCandles(): Promise<CachedCandles | null>;
+	/** Last write wins: every writer fetched the same hour within seconds. */
+	putCachedCandles(candles: CachedCandles): Promise<void>;
 }

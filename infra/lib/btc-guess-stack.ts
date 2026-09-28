@@ -13,7 +13,15 @@ import {
 	Table,
 } from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, ManagedPolicy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import {
+	Code,
+	Function,
+	FunctionUrlAuthType,
+	HttpMethod,
+	InvokeMode,
+	Runtime,
+} from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Schedule, ScheduleExpression } from 'aws-cdk-lib/aws-scheduler';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-scheduler-targets';
@@ -27,9 +35,17 @@ import { Construct } from 'constructs';
  */
 export const CRON_SECRET_PARAMETER = '/btc-guess/cron-secret';
 
+/** The key stream tokens are signed with, shared with the web tier. Put in place by hand, like the cron secret. */
+export const STREAM_SECRET_PARAMETER = '/btc-guess/stream-secret';
+
+/** The repository root: the stream function is bundled from the app's own source. */
+const APP_ROOT = path.join(__dirname, '..', '..');
+
 export interface BtcGuessStackProps extends StackProps {
 	/** Full URL of the deployed `POST /api/cron/resolve` route. */
 	sweepUrl: string;
+	/** Origins allowed to open the game stream: the site, and local development. */
+	streamOrigins: string[];
 }
 
 /**
@@ -170,6 +186,74 @@ export class BtcGuessStack extends Stack {
 			}),
 		});
 
+		// §3.1: the game stream. Amplify Hosting buffers a response and cuts
+		// it at 30 s, so Server-Sent Events are served from a Lambda Function
+		// URL in RESPONSE_STREAM mode instead, which streams for up to 15
+		// minutes. Bundled from the app's own source, so the stream and the
+		// routes share one implementation of the game.
+		const streamSecret = StringParameter.fromSecureStringParameterAttributes(
+			this,
+			'StreamSecret',
+			{
+				parameterName: STREAM_SECRET_PARAMETER,
+			},
+		);
+
+		const gameStream = new NodejsFunction(this, 'GameStream', {
+			description:
+				'Streams the game to one browser as Server-Sent Events (engineering spec §3.1)',
+			runtime: Runtime.NODEJS_24_X,
+			entry: path.join(APP_ROOT, 'src', 'stream', 'lambda.ts'),
+			handler: 'handler',
+			projectRoot: APP_ROOT,
+			depsLockFilePath: path.join(APP_ROOT, 'package-lock.json'),
+			bundling: {
+				tsconfig: path.join(APP_ROOT, 'tsconfig.json'),
+				// The Node runtime ships the AWS SDK v3.
+				externalModules: ['@aws-sdk/*'],
+			},
+			memorySize: 256,
+			// A stream lives up to the Function URL's 15-minute limit, then the
+			// browser reconnects.
+			timeout: Duration.minutes(15),
+			environment: {
+				STREAM_SECRET_PARAMETER,
+				PLAYERS_TABLE_NAME: table.tableName,
+			},
+			logGroup: new LogGroup(this, 'GameStreamLogs', {
+				retention: RetentionDays.ONE_WEEK,
+				removalPolicy: RemovalPolicy.DESTROY,
+			}),
+		});
+		streamSecret.grantRead(gameStream);
+		gameStream.addToRolePolicy(
+			new PolicyStatement({
+				effect: Effect.ALLOW,
+				actions: [
+					'dynamodb:GetItem',
+					'dynamodb:PutItem',
+					'dynamodb:UpdateItem',
+					'dynamodb:DeleteItem',
+					'dynamodb:Query',
+				],
+				resources: [table.tableArn, `${table.tableArn}/index/*`],
+			}),
+		);
+
+		// Public, like the site: the stream checks its own signed token.
+		const streamUrl = gameStream.addFunctionUrl({
+			authType: FunctionUrlAuthType.NONE,
+			invokeMode: InvokeMode.RESPONSE_STREAM,
+			cors: {
+				allowedOrigins: props.streamOrigins,
+				allowedMethods: [HttpMethod.GET],
+				maxAge: Duration.hours(1),
+			},
+		});
+
+		new CfnOutput(this, 'StreamUrl', {
+			value: streamUrl.url,
+		});
 		new CfnOutput(this, 'PlayersTableName', {
 			value: table.tableName,
 		});
