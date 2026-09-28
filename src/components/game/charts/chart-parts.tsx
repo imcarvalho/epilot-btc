@@ -2,14 +2,25 @@
 
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import type { YTick } from '@/lib/axis';
 import { nearestIndex, stepIndex } from '@/lib/chart-inspect';
-import type { Readout } from '../utils';
+import { formatAxisPrice, type Readout } from '../utils';
 import { styles } from './chart-parts.styles';
 
 /** Both charts share one height, so switching views does not move the page. */
 export const CHART_HEIGHT = 300;
 export const CHART_PADDING = 12;
-const GRID_LINES = 4;
+/**
+ * Room on the right for the price labels, the same on both charts so the
+ * plot does not shift when the view switches. "84,531.50", the longest
+ * label, is about 65px in the chart's 12px monospace type; with the 8px gap
+ * before it that leaves a little room.
+ */
+export const Y_AXIS_GUTTER = 80;
+
+/** The plot's width: the chart's, less the price-axis gutter. */
+export const plotWidthOf = (width: number) =>
+	Math.max(0, width - Y_AXIS_GUTTER);
 
 /** Width of an element, tracked as it resizes. The charts are drawn in real pixels. */
 export function useWidth<T extends HTMLElement>() {
@@ -29,20 +40,39 @@ export function useWidth<T extends HTMLElement>() {
 	return [ref, width] as const;
 }
 
-export function GridLines({ width }: { width: number }) {
+/**
+ * The price axis: a light gridline at each round price across the plot,
+ * labelled in the gutter to its right. The labels are part of the picture,
+ * not extra information for assistive technology: the chart's summary and
+ * the inspector already give every price as a sentence.
+ */
+export function GridLines({
+	plotWidth,
+	ticks,
+	step,
+}: {
+	plotWidth: number;
+	ticks: YTick[];
+	step: number;
+}) {
 	return (
-		<g {...stylex.props(styles.grid)}>
-			{Array.from(
-				{
-					length: GRID_LINES,
-				},
-				(_, i) => {
-					const y =
-						CHART_PADDING +
-						(i * (CHART_HEIGHT - 2 * CHART_PADDING)) / (GRID_LINES - 1);
-					return <line key={i} x1={0} x2={width} y1={y} y2={y} />;
-				},
-			)}
+		<g aria-hidden>
+			<g {...stylex.props(styles.grid)}>
+				{ticks.map((t) => (
+					<line key={t.value} x1={0} x2={plotWidth} y1={t.y} y2={t.y} />
+				))}
+			</g>
+			{ticks.map((t) => (
+				<text
+					key={t.value}
+					x={plotWidth + 8}
+					y={t.y}
+					dominantBaseline="middle"
+					{...stylex.props(styles.yLabel)}
+				>
+					{formatAxisPrice(t.value, step)}
+				</text>
+			))}
 		</g>
 	);
 }
@@ -130,9 +160,19 @@ export function PointTag({
 	);
 }
 
-export function Axis({ ticks }: { ticks: { at: number; label: string }[] }) {
+/** The time axis under the plot, stopping where the price labels begin. */
+export function Axis({
+	ticks,
+	inset = Y_AXIS_GUTTER,
+}: {
+	ticks: {
+		at: number;
+		label: string;
+	}[];
+	inset?: number;
+}) {
 	return (
-		<div aria-hidden {...stylex.props(styles.axis)}>
+		<div aria-hidden {...stylex.props(styles.axis, styles.axisInset(inset))}>
 			{ticks.map((t) => (
 				<span key={t.label} {...stylex.props(styles.tick(t.at))}>
 					{t.label}

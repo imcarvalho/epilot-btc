@@ -13,6 +13,7 @@ import {
 	Inspector,
 	LockedLine,
 	ReadoutTip,
+	plotWidthOf,
 	useWidth,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
@@ -53,11 +54,13 @@ export function HourChart({
 }) {
 	const [ref, width] = useWidth<HTMLDivElement>();
 	const [inspected, setInspected] = useState<number | null>(null);
+	// The candles fill the plot; the price labels take the gutter beside it.
+	const plotWidth = plotWidthOf(width);
 
 	const chart =
-		state.kind === 'ready' && width > 0
+		state.kind === 'ready' && plotWidth > 0
 			? buildCandleChart(state.candles, {
-					width,
+					width: plotWidth,
 					height: CHART_HEIGHT,
 					windowEnd: state.windowEnd,
 					padding: CHART_PADDING,
@@ -65,7 +68,9 @@ export function HourChart({
 				})
 			: null;
 	const lockX =
-		chart && lock ? Math.max(0, Math.min(width, chart.xFor(lock.at))) : null;
+		chart && lock
+			? Math.max(0, Math.min(plotWidth, chart.xFor(lock.at)))
+			: null;
 	const candles = state.kind === 'ready' ? state.candles : [];
 	// The hour refreshes under the inspector; hold it to the candles there are.
 	const at =
@@ -93,16 +98,20 @@ export function HourChart({
 							<rect
 								x={lockX}
 								y={0}
-								width={width - lockX}
+								width={plotWidth - lockX}
 								height={CHART_HEIGHT}
 								{...stylex.props(styles.minute)}
 							/>
 						)}
-						<GridLines width={width} />
+						<GridLines
+							plotWidth={plotWidth}
+							ticks={chart.yTicks}
+							step={chart.yStep}
+						/>
 						{chart.lastCloseY !== null && !lock && (
 							<line
 								x1={0}
-								x2={width}
+								x2={plotWidth}
 								y1={chart.lastCloseY}
 								y2={chart.lastCloseY}
 								{...stylex.props(styles.lastPrice)}
@@ -120,7 +129,7 @@ export function HourChart({
 						<path d={chart.downBodies} {...stylex.props(styles.downFill)} />
 						{lock && lockX !== null && (
 							<LockedLine
-								width={width}
+								width={plotWidth}
 								y={chart.yFor(lock.price)}
 								tagX={lockX}
 								label="locked in"
@@ -137,7 +146,7 @@ export function HourChart({
 					<ReadoutTip
 						readout={candleReadout(candles[at!])}
 						x={point.x}
-						width={width}
+						width={plotWidth}
 					/>
 				)}
 				{chart && (

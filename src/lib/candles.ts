@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { niceTicks, type YTick } from './axis';
 
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
@@ -95,6 +96,10 @@ export interface CandleChart {
 	yFor: (price: number) => number;
 	/** x for a moment in the hour, epoch ms. */
 	xFor: (time: number) => number;
+	/** The price axis: round prices inside the range, and where they sit. */
+	yTicks: YTick[];
+	/** Their spacing, which decides how many decimals a label needs. */
+	yStep: number;
 }
 
 /** A flat candle (open = close) still draws as a visible dash. */
@@ -156,12 +161,24 @@ export function buildCandleChart(
 
 	const last = candles[candles.length - 1];
 	const xFor = (time: number) => ((time - windowStart) / MINUTE_MS) * slot;
+	// An empty hour has no range, so no axis either.
+	const ticks = Number.isFinite(span)
+		? niceTicks(lo, hi)
+		: {
+				values: [],
+				step: 0,
+			};
 	return {
 		...paths,
 		candles: placed,
 		lastCloseY: last ? yFor(last.close) : null,
 		yFor,
 		xFor,
+		yTicks: ticks.values.map((value) => ({
+			value,
+			y: yFor(value),
+		})),
+		yStep: ticks.step,
 	};
 }
 

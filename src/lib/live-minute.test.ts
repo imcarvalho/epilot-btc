@@ -191,6 +191,28 @@ describe('buildMinuteChart', () => {
 		expect(chart.line.startsWith('M0 ')).toBe(true);
 	});
 
+	it('labels the price axis finely enough for a quiet minute', () => {
+		const chart = buildMinuteChart(
+			[
+				{
+					t: T0 + 1_000,
+					price: 100.4,
+				},
+			],
+			{
+				...size,
+				now: T0 + 1_000,
+			},
+		);
+		// The range is stretched to at least $2 around the prices, so the axis
+		// steps in fractions of a dollar rather than showing one label.
+		expect(chart.yStep).toBeLessThan(1);
+		expect(chart.yTicks.length).toBeGreaterThanOrEqual(3);
+		for (const t of chart.yTicks) {
+			expect(t.y).toBeCloseTo(chart.yFor(t.value));
+		}
+	});
+
 	it('keeps the locked line inside the chart even when every price is above it', () => {
 		const chart = buildMinuteChart(
 			[

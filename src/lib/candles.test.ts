@@ -150,9 +150,21 @@ describe('buildCandleChart', () => {
 		);
 	});
 
+	it('labels the price axis at round prices, each where that price is drawn', () => {
+		const chart = buildCandleChart([candle(0, 100, 110, 90, 120)], size);
+		expect(chart.yTicks.map((t) => t.value)).toEqual([90, 100, 110, 120]);
+		expect(chart.yStep).toBe(10);
+		for (const t of chart.yTicks) {
+			expect(t.y).toBeCloseTo(chart.yFor(t.value));
+			expect(t.y).toBeGreaterThanOrEqual(0);
+			expect(t.y).toBeLessThanOrEqual(size.height);
+		}
+	});
+
 	it('draws nothing, without failing, for an empty hour', () => {
 		const chart = buildCandleChart([], size);
 		expect(chart.upBodies).toBe('');
 		expect(chart.lastCloseY).toBeNull();
+		expect(chart.yTicks).toEqual([]);
 	});
 });

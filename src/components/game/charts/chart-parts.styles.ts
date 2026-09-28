@@ -50,6 +50,12 @@ export const styles = stylex.create({
 	level: {
 		fill: palette.yellow,
 	},
+	// Checked as "secondary text, on card" in src/components/ui/contrast.test.ts.
+	yLabel: {
+		fill: 'var(--color-text-secondary)',
+		fontFamily: 'var(--font-family-code)',
+		fontSize: 12,
+	},
 	axis: {
 		color: 'var(--color-text-secondary)',
 		fontFamily: 'var(--font-family-code)',
@@ -57,6 +63,9 @@ export const styles = stylex.create({
 		height: '1.25em',
 		position: 'relative',
 	},
+	axisInset: (px: number) => ({
+		marginInlineEnd: `${px}px`,
+	}),
 	// The two ends align to the edges; the rest centre on their mark.
 	tick: (at: number) => ({
 		left: `${at * 100}%`,

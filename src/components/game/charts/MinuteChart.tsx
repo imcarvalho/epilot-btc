@@ -15,6 +15,7 @@ import {
 	LockedLine,
 	PointTag,
 	ReadoutTip,
+	plotWidthOf,
 	useWidth,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
@@ -48,10 +49,12 @@ export function MinuteChart({
 }) {
 	const [ref, width] = useWidth<HTMLDivElement>();
 	const [inspected, setInspected] = useState<number | null>(null);
+	// The line fills the plot; the price labels take the gutter beside it.
+	const plotWidth = plotWidthOf(width);
 	const chart =
-		width > 0
+		plotWidth > 0
 			? buildMinuteChart(live.samples, {
-					width,
+					width: plotWidth,
 					height: CHART_HEIGHT,
 					start: guess.createdAt,
 					lockedPrice: guess.priceAtGuess,
@@ -95,16 +98,20 @@ export function MinuteChart({
 						role="img"
 						aria-label={description}
 					>
-						{chart.nowX < width && (
+						{chart.nowX < plotWidth && (
 							<rect
 								x={chart.nowX}
 								y={0}
-								width={width - chart.nowX}
+								width={plotWidth - chart.nowX}
 								height={CHART_HEIGHT}
 								{...stylex.props(styles.future)}
 							/>
 						)}
-						<GridLines width={width} />
+						<GridLines
+							plotWidth={plotWidth}
+							ticks={chart.yTicks}
+							step={chart.yStep}
+						/>
 						<path
 							d={chart.area}
 							{...stylex.props(
@@ -113,7 +120,7 @@ export function MinuteChart({
 							)}
 						/>
 						<LockedLine
-							width={width}
+							width={plotWidth}
 							y={chart.lockedY}
 							tagX={0}
 							label={`locked at ${plain.format(guess.priceAtGuess)}`}
@@ -137,7 +144,7 @@ export function MinuteChart({
 								/>
 								{current && live.isAlive && !point && (
 									<PointTag
-										width={width}
+										width={plotWidth}
 										x={last.x}
 										y={last.y}
 										tone={tone}
@@ -155,7 +162,7 @@ export function MinuteChart({
 					<ReadoutTip
 						readout={sampleReadout(point, guess)}
 						x={point.x}
-						width={width}
+						width={plotWidth}
 					/>
 				)}
 				{chart && (

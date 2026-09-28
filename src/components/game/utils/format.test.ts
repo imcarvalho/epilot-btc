@@ -1,4 +1,5 @@
 import {
+	formatAxisPrice,
 	formatAge,
 	formatCountdown,
 	formatElapsed,
@@ -48,5 +49,24 @@ describe('formatScore', () => {
 		expect(formatScore(42)).toBe('+42');
 		expect(formatScore(0)).toBe('0');
 		expect(formatScore(-2)).toBe('-2');
+	});
+});
+
+describe('formatAxisPrice', () => {
+	it('shows whole dollars when the axis steps in dollars or more', () => {
+		expect(formatAxisPrice(84_550, 25)).toBe('84,550');
+		expect(formatAxisPrice(84_531, 1)).toBe('84,531');
+	});
+
+	it('shows cents once the step is not a whole dollar', () => {
+		expect(formatAxisPrice(84_531.5, 0.5)).toBe('84,531.50');
+		expect(formatAxisPrice(84_531.25, 0.25)).toBe('84,531.25');
+		// $2.50 steps: rounding to dollars would mislabel every other line.
+		expect(formatAxisPrice(82_992.5, 2.5)).toBe('82,992.50');
+		expect(formatAxisPrice(82_990, 2.5)).toBe('82,990.00');
+	});
+
+	it('shows a flat range, with no step, as a whole price', () => {
+		expect(formatAxisPrice(84_531, 0)).toBe('84,531');
 	});
 });

@@ -7,6 +7,7 @@ export {
 	formatCountdown,
 	formatElapsed,
 	formatScore,
+	formatAxisPrice,
 } from './format';
 export {
 	type Readout,

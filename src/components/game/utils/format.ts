@@ -36,6 +36,24 @@ export function formatElapsed(ms: number): string {
 	return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
 }
 
+const axisWhole = new Intl.NumberFormat('en-US', {
+	maximumFractionDigits: 0,
+});
+const axisCents = new Intl.NumberFormat('en-US', {
+	minimumFractionDigits: 2,
+	maximumFractionDigits: 2,
+});
+
+/**
+ * A price-axis label: "84,550" for an axis stepping in whole dollars,
+ * "84,992.50" for one stepping in fractions of one ($2.50, $0.50) - rounding
+ * those to dollars would label a line with a price it is not at. No currency
+ * sign, since the headline figure already says what the axis is in.
+ */
+export function formatAxisPrice(value: number, step: number): string {
+	return (Number.isInteger(step) ? axisWhole : axisCents).format(value);
+}
+
 /** A score with its sign, as the board shows it: "+42", "-2", "0". */
 export function formatScore(score: number): string {
 	return score > 0 ? `+${score}` : `${score}`;

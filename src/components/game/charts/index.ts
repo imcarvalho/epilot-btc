@@ -6,6 +6,8 @@ export { MinuteChart } from './MinuteChart';
 export {
 	CHART_HEIGHT,
 	CHART_PADDING,
+	Y_AXIS_GUTTER,
+	plotWidthOf,
 	useWidth,
 	GridLines,
 	LockedLine,

@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import type { Direction } from './resolve-guess';
 import { GUESS_WINDOW_MS } from './resolve-guess';
+import { niceTicks, type YTick } from './axis';
 
 export const TICKER_URL = 'wss://ws-feed.exchange.coinbase.com';
 
@@ -120,6 +121,10 @@ export interface MinuteChart {
 	/** A minute after the guess, or later while it waits for a move. */
 	windowEnd: number;
 	yFor: (price: number) => number;
+	/** The price axis: round prices inside the range, and where they sit. */
+	yTicks: YTick[];
+	/** Their spacing, which decides how many decimals a label needs. */
+	yStep: number;
 }
 
 /** Smallest vertical range drawn, so a quiet minute is not blown up into drama. */
@@ -167,6 +172,7 @@ export function buildMinuteChart(
 	const last = points[points.length - 1];
 	const area = `${line}L${last.x} ${lockedY}L0 ${lockedY}Z`;
 
+	const ticks = niceTicks(lo, hi);
 	return {
 		line,
 		area,
@@ -175,6 +181,11 @@ export function buildMinuteChart(
 		nowX: r(Math.min(width, Math.max(0, xFor(now)))),
 		windowEnd,
 		yFor,
+		yTicks: ticks.values.map((value) => ({
+			value,
+			y: yFor(value),
+		})),
+		yStep: ticks.step,
 	};
 }
 
