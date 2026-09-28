@@ -4,9 +4,9 @@
  * renders it - text over translucent washes and the chart's own tags
  * included.
  *
- * axe cannot judge text on a gradient (the two hero buttons), so it reports
- * those as "needs review" rather than failures; the ink on both ends of each
- * gradient is checked by src/components/ui/contrast.test.ts instead.
+ * axe cannot judge text on a gradient (the two hero buttons): it reports
+ * those as "needs review" rather than as failures, so they are not covered
+ * here.
  */
 
 import AxeBuilder from '@axe-core/playwright';

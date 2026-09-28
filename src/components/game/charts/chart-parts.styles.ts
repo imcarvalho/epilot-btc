@@ -50,7 +50,6 @@ export const styles = stylex.create({
 	level: {
 		fill: palette.yellow,
 	},
-	// Checked as "secondary text, on card" in src/components/ui/contrast.test.ts.
 	yLabel: {
 		fill: 'var(--color-text-secondary)',
 		fontFamily: 'var(--font-family-code)',
