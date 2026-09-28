@@ -22,9 +22,19 @@ export const styles = stylex.create({
 		borderRadius: 'var(--radius-element)',
 		borderStyle: 'solid',
 		borderWidth: 1,
+		columnGap: 'var(--spacing-3)',
 		display: 'grid',
-		gap: 'var(--spacing-3)',
-		gridTemplateColumns: '2.5rem 1fr auto 3rem',
+		// On a phone the success rate moves under the name, so the name keeps
+		// the width and is not cut to a few letters.
+		gridTemplateAreas: {
+			default: '"rank name rate score"',
+			'@media (max-width: 640px)': '"rank name score" "rank rate score"',
+		},
+		gridTemplateColumns: {
+			default: '2.5rem 1fr auto 3rem',
+			'@media (max-width: 640px)': '2rem 1fr 3rem',
+		},
+		rowGap: 0,
 		paddingBlock: 'var(--spacing-2)',
 		paddingInline: 'var(--spacing-3)',
 	},
@@ -34,12 +44,14 @@ export const styles = stylex.create({
 	},
 	rank: {
 		color: 'var(--color-text-secondary)',
+		gridArea: 'rank',
 	},
 	first: {
 		color: palette.yellow,
 	},
 	name: {
 		color: 'var(--color-text-primary)',
+		gridArea: 'name',
 		overflow: 'hidden',
 		textOverflow: 'ellipsis',
 		whiteSpace: 'nowrap',
@@ -47,10 +59,12 @@ export const styles = stylex.create({
 	rate: {
 		color: 'var(--color-text-secondary)',
 		fontSize: 'var(--font-size-sm)',
+		gridArea: 'rate',
 	},
 	score: {
 		color: palette.upFrom,
 		fontWeight: 'var(--font-weight-semibold)',
+		gridArea: 'score',
 		textAlign: 'end',
 	},
 	negative: {

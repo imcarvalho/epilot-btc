@@ -124,7 +124,9 @@ export function PriceCard({
 							// the price were on its way.
 							<p {...stylex.props(styles.unavailable)}>{PRICE_UNAVAILABLE}</p>
 						) : (
-							<Skeleton width={420} height={72} />
+							// Sized to the viewport, not the column: the column is only as
+							// wide as its content, which here is the skeleton itself.
+							<Skeleton width="min(420px, 70vw)" height={72} />
 						)}
 						{badge}
 					</div>

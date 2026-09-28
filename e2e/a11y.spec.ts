@@ -53,6 +53,53 @@ test('first visit, at phone width', async ({ page }) => {
 	await expectNoViolations(page);
 });
 
+/** Nothing wider than the viewport, so nothing needs a sideways scroll. */
+async function expectNoSidewaysScroll(page: Page) {
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
+}
+
+test('at 320 px, nothing scrolls sideways and history prices are whole (WCAG 1.4.10)', async ({
+	page,
+}) => {
+	await page.setViewportSize({
+		width: 320,
+		height: 640,
+	});
+	await openGame(page);
+	await expectNoSidewaysScroll(page);
+
+	// A settled guess, so the history has a row with both its prices.
+	await lockGuessAgo(await playerIdOf(page), 'up', 55_000);
+	await page.reload();
+	await expect(page.getByText('Correct.').first()).toBeVisible({
+		timeout: 30_000,
+	});
+	const row = page
+		.getByRole('region', {
+			name: 'Your last guesses',
+		})
+		.getByRole('listitem')
+		.first();
+	await expect(row).toContainText('→');
+	await expectNoSidewaysScroll(page);
+	// Every piece of the row is drawn whole, none cut off by its column.
+	expect(
+		await row.evaluate((li) =>
+			Array.from(li.children).every(
+				(child) =>
+					child.scrollWidth <= child.clientWidth &&
+					child.getBoundingClientRect().right <=
+						li.getBoundingClientRect().right,
+			),
+		),
+	).toBe(true);
+	await expectNoViolations(page);
+});
+
 test('the chart inspector, reached by keyboard', async ({ page }) => {
 	await openGame(page);
 	const inspector = page.getByRole('slider', {

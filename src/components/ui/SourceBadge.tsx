@@ -1,5 +1,6 @@
 import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { Pill } from './Pill';
+import { styles } from './SourceBadge.styles';
 
 const LABEL = {
 	candles: 'Coinbase BTC/USD · 1-minute candles',
@@ -15,7 +16,7 @@ export function SourceBadge({
 	source?: keyof typeof LABEL;
 }) {
 	return (
-		<Pill size="sm">
+		<Pill size="sm" xstyle={styles.wrap}>
 			<StatusDot
 				variant={isLive ? 'success' : 'warning'}
 				label={isLive ? 'Live' : 'Delayed'}

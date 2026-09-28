@@ -37,7 +37,7 @@ export function TopBar({
 						<PlayerChip name={player.name} />
 					</>
 				) : (
-					<Skeleton width={320} height={48} />
+					<Skeleton width="min(320px, 80vw)" height={48} />
 				)}
 				{/* Plain forms posting to server actions: they work before hydration. */}
 				{player?.signedIn ? (

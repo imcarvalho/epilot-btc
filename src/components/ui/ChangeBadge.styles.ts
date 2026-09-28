@@ -12,7 +12,9 @@ export const styles = stylex.create({
 		gap: 'var(--spacing-1-5)',
 		paddingBlock: 'var(--spacing-1)',
 		paddingInline: 'var(--spacing-3)',
-		whiteSpace: 'nowrap',
+		// Wraps rather than overflow when a narrow screen has no room for the
+		// whole sentence on one line (WCAG 1.4.10).
+		whiteSpace: 'normal',
 	},
 	up: {
 		backgroundColor: palette.upWash,
