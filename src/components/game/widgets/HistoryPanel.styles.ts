@@ -22,19 +22,24 @@ export const styles = stylex.create({
 		borderRadius: 'var(--radius-element)',
 		borderStyle: 'solid',
 		borderWidth: 1,
-		columnGap: 'var(--spacing-3)',
+		columnGap: {
+			default: 'var(--spacing-3)',
+			'@media (max-width: 640px)': 'var(--spacing-2)',
+		},
 		display: 'grid',
-		// On a phone the prices, which are what this panel is for (product spec
-		// §6.5), get a line of their own under the direction and the outcome,
-		// rather than a squeezed column that cuts them off (WCAG 1.4.10).
+		// The lock time leads the row, as the chart is read left to right. On a
+		// phone the prices, which are what this panel is for (product spec
+		// §6.5), get a line of their own under the time, the direction and the
+		// outcome, rather than a squeezed column that cuts them off (WCAG
+		// 1.4.10); the points column shrinks to its "+1" to make room.
 		gridTemplateAreas: {
-			default: '"direction prices outcome points"',
+			default: '"time direction prices outcome points"',
 			'@media (max-width: 640px)':
-				'"direction outcome points" "prices prices prices"',
+				'"time direction outcome points" "prices prices prices prices"',
 		},
 		gridTemplateColumns: {
-			default: '6.5rem 1fr auto 2.5rem',
-			'@media (max-width: 640px)': '1fr auto 2.5rem',
+			default: 'auto 6.5rem 1fr auto 2.5rem',
+			'@media (max-width: 640px)': 'auto 1fr auto auto',
 		},
 		rowGap: {
 			default: 'var(--spacing-3)',
@@ -54,6 +59,11 @@ export const styles = stylex.create({
 	highlightLoss: {
 		backgroundColor: 'rgba(255, 138, 138, 0.06)',
 		borderColor: 'rgba(255, 138, 138, 0.4)',
+	},
+	time: {
+		color: 'var(--color-text-secondary)',
+		fontSize: 'var(--font-size-sm)',
+		gridArea: 'time',
 	},
 	direction: {
 		alignItems: 'center',

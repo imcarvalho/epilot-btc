@@ -170,7 +170,7 @@ The brief asks for a score. A bare integer says very little: -2 could be two unl
 | Success rate | Correct ÷ resolved, as a percent - 2 correct out of 10 is 20% | `-` |
 | Current streak | Consecutive wins or losses | `-` |
 | Best streak | Longest winning run | `-` |
-| Recent guesses | Last 10, each with time, direction, both prices and the outcome | "No guesses yet" |
+| Recent guesses | Last 10, each with the time it was locked in, direction, both prices and the outcome | "No guesses yet" |
 
 Why it earns its place:
 

@@ -5,6 +5,7 @@ import type { PendingGuess, ResolvedGuess } from '@/lib/contracts';
 import { EmptyMessage, Numeric, Panel, PanelHeader } from '@/components/ui';
 import { palette } from '@/components/ui/tokens.stylex';
 import { signedWords } from '@/lib/spoken';
+import { clockTime } from '../utils';
 import { styles } from './HistoryPanel.styles';
 
 const WORD = {
@@ -17,12 +18,13 @@ const plain = new Intl.NumberFormat('en-US', {
 });
 
 /**
- * The player's last guesses, each with both prices, so a result can be
- * checked rather than taken on trust (product spec §6.5). A guess in play
- * sits on top as a dashed row; the result just announced is highlighted.
+ * The player's last guesses, each with the minute it was locked in and both
+ * prices, so a result can be checked against the chart rather than taken on
+ * trust (product spec §6.5). A guess in play sits on top as a dashed row;
+ * the result just announced is highlighted.
  *
- * Each row reads as a sentence from its own content - "Higher 84,531.50 to
- * 84,540.10 correct plus 1" - rather than from an `aria-label`, which a
+ * Each row reads as a sentence from its own content - "14:32, Higher
+ * 84,531.50 to 84,540.10 correct plus 1" - rather than from an `aria-label`, which a
  * screen reader reading the list item by item may never announce. The
  * arrows and signs are hidden from it and words stand in for them.
  */
@@ -59,6 +61,7 @@ export function HistoryPanel({
 				<ul role="list" {...stylex.props(styles.list)}>
 					{pending && (
 						<li {...stylex.props(styles.row, styles.pendingRow)}>
+							<LockTime at={pending.createdAt} />
 							<Direction direction={pending.direction} />
 							<Numeric xstyle={styles.prices}>
 								{plain.format(pending.priceAtGuess)} <Arrow /> in play
@@ -82,6 +85,7 @@ export function HistoryPanel({
 										(won ? styles.highlightWin : styles.highlightLoss),
 								)}
 							>
+								<LockTime at={g.createdAt} />
 								<Direction direction={g.direction} />
 								<Numeric xstyle={styles.prices}>
 									{plain.format(g.priceAtGuess)} <Arrow />
@@ -108,6 +112,20 @@ export function HistoryPanel({
 				</ul>
 			)}
 		</Panel>
+	);
+}
+
+/**
+ * The minute the guess was locked in, in the player's own time zone: the
+ * same clock as the chart, so the row can be found on it. The comma is for
+ * the ear, a pause before the direction.
+ */
+function LockTime({ at }: { at: number }) {
+	return (
+		<Numeric xstyle={styles.time}>
+			{clockTime(at)}
+			<VisuallyHidden>,</VisuallyHidden>
+		</Numeric>
 	);
 }
 

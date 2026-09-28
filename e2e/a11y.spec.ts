@@ -406,7 +406,7 @@ test.describe('structure a screen reader navigates by', () => {
 			.first();
 		await expect(row).not.toHaveAttribute('aria-label');
 		expect(await row.ariaSnapshot()).toMatch(
-			/^- listitem: Higher [\d,]+\.\d{2} to [\d,]+\.\d{2} correct plus 1$/,
+			/^- listitem: \d{2}:\d{2} ?, Higher [\d,]+\.\d{2} to [\d,]+\.\d{2} correct plus 1$/,
 		);
 	});
 
