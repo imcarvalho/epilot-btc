@@ -98,6 +98,9 @@ export class BtcGuessStack extends Stack {
 							'dynamodb:GetItem',
 							'dynamodb:PutItem',
 							'dynamodb:UpdateItem',
+							// First sign-in deletes the anonymous item it promotes, inside a
+							// TransactWriteItems - which IAM authorises per item action.
+							'dynamodb:DeleteItem',
 							'dynamodb:Query',
 						],
 						resources: [table.tableArn, `${table.tableArn}/index/*`],
