@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { shouldAsk } from '@/lib/ask-scheduler';
 import type { GuessResponse, StateResponse } from '@/lib/contracts';
+import type { GuessFailure } from '@/lib/guess-phase';
 import { type Direction, GUESS_WINDOW_MS } from '@/lib/resolve-guess';
 
 export type GameStatus =
@@ -23,7 +24,7 @@ export interface TickerSnapshot {
 }
 
 /** Why the last guess did not go through, if it did not. */
-export type GuessError = 'price-unavailable' | 'failed' | null;
+export type GuessError = GuessFailure | null;
 
 /**
  * First contact is "ask for state; if there is no player yet, create one and

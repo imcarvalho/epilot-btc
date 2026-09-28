@@ -2,7 +2,11 @@ import * as stylex from '@stylexjs/stylex';
 import { ArrowDown, ArrowUp, Check, Clock, Loader, Minus } from 'lucide-react';
 import { Icon } from '@astryxdesign/core/Icon';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
-import { type GuessPhase, resultHeadline } from '@/lib/guess-phase';
+import {
+	type GuessPhase,
+	guessFailureSentence,
+	resultHeadline,
+} from '@/lib/guess-phase';
 import { GUESS_WINDOW_MS } from '@/lib/resolve-guess';
 import { IconTile, Numeric, Panel } from '@/components/ui';
 import { formatAge, formatCountdown, formatElapsed, formatUsd } from '../utils';
@@ -92,9 +96,7 @@ function Prompt({
 					</p>
 					{guessError ? (
 						<p {...stylex.props(styles.sub, styles.warn)}>
-							{guessError === 'price-unavailable'
-								? 'Price feed delayed. Nothing can be locked in until it catches up.'
-								: 'That guess did not go through. Try again.'}
+							{guessFailureSentence(guessError)}
 						</p>
 					) : (
 						firstVisit &&
@@ -175,7 +177,8 @@ function LockedStrip({
 						<span {...stylex.props(styles.clockIcon)}>
 							<Icon icon={Clock} size="md" />
 						</span>
-						<div {...stylex.props(styles.stack)}>
+						{/* A timer, which by default does not announce each second. */}
+						<div role="timer" {...stylex.props(styles.stack)}>
 							<Numeric
 								xstyle={[styles.countdown, waiting && styles.countdownDone]}
 							>

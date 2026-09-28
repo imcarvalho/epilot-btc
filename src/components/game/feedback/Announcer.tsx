@@ -25,8 +25,9 @@ function announcementFor(phase: GuessPhase): string | null {
 /**
  * The one `aria-live="polite"` region (engineering spec §7.2): each change
  * of phase is announced once, as the full sentence from product spec §7 -
- * not every tick of the countdown. A one-off `notice` (what a sign-in did)
- * goes through the same region, so there is still only one.
+ * not every tick of the countdown. A one-off `notice` - what a sign-in did,
+ * a guess that did not go through, the game being unreachable - goes
+ * through the same region, so there is still only one.
  */
 export function Announcer({
 	phase,
@@ -54,9 +55,14 @@ export function Announcer({
 	}, [key]);
 
 	useEffect(() => {
-		if (notice) {
-			setMessage(notice);
+		if (!notice) {
+			return;
 		}
+		// Emptied first, then set: a screen reader only speaks when the text
+		// changes, and the same failure twice in a row must be heard twice.
+		setMessage('');
+		const timer = setTimeout(() => setMessage(notice), 100);
+		return () => clearTimeout(timer);
 	}, [notice]);
 
 	return (

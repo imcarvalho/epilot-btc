@@ -22,7 +22,10 @@ export function SourceBadge({
 			/>
 			<span>
 				{LABEL[source]}
-				{source === 'candles' && ` · ${isLive ? 'live' : 'delayed'}`}
+				{/* The dot's label already says it; this repeat is for the eye. */}
+				{source === 'candles' && (
+					<span aria-hidden>{` · ${isLive ? 'live' : 'delayed'}`}</span>
+				)}
 			</span>
 		</Pill>
 	);

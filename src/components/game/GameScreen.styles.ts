@@ -22,6 +22,12 @@ export const styles = stylex.create({
 			'@media (max-width: 640px)': 'var(--spacing-4)',
 		},
 	},
+	// The page's content under the top bar, spaced like the column around it.
+	main: {
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 'var(--spacing-5)',
+	},
 	panels: {
 		display: 'grid',
 		gap: 'var(--spacing-5)',

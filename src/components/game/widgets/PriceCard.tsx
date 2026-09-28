@@ -111,12 +111,10 @@ export function PriceCard({
 		<Panel aria-labelledby="price-heading">
 			<div {...stylex.props(styles.header)}>
 				<div {...stylex.props(styles.headline)}>
-					<Eyebrow>
-						<span id="price-heading">
-							{showMinute && guess
-								? `Your minute · ${WORD[guess.direction]}`
-								: 'Bitcoin · US Dollar'}
-						</span>
+					<Eyebrow as="h2" id="price-heading">
+						{showMinute && guess
+							? `Your minute · ${WORD[guess.direction]}`
+							: 'Bitcoin · US Dollar'}
 					</Eyebrow>
 					<div {...stylex.props(styles.figure)}>
 						{figure !== null ? (
@@ -130,7 +128,8 @@ export function PriceCard({
 
 				<div {...stylex.props(styles.side)}>
 					{showMinute ? (
-						<div {...stylex.props(styles.countdown)}>
+						// A timer, which by default does not announce each second.
+						<div role="timer" {...stylex.props(styles.countdown)}>
 							<Numeric
 								xstyle={[
 									styles.countdownValue,

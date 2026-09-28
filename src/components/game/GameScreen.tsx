@@ -5,7 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import type { SignInOutcome } from '@/lib/contracts';
-import { guessPhase } from '@/lib/guess-phase';
+import {
+	UNREACHABLE_BODY,
+	UNREACHABLE_TITLE,
+	guessFailureSentence,
+	guessPhase,
+} from '@/lib/guess-phase';
 import { signInSentence } from '@/lib/sign-in';
 import { EmptyMessage, Panel } from '@/components/ui';
 import { Announcer, Confetti } from './feedback';
@@ -78,9 +83,18 @@ export function GameScreen() {
 		setNotice(signInSentence(state.signIn));
 	}
 
+	// Failures are shown on screen, and heard: through the same announcer.
+	const failure =
+		status.kind === 'error'
+			? `${UNREACHABLE_TITLE} ${UNREACHABLE_BODY}`
+			: guessError
+				? guessFailureSentence(guessError)
+				: null;
+
 	return (
 		<div {...stylex.props(styles.page)}>
-			<main {...stylex.props(styles.column)}>
+			<div {...stylex.props(styles.column)}>
+				{/* Outside <main>, so the header is the page's banner landmark. */}
 				<TopBar
 					player={
 						state && {
@@ -95,75 +109,75 @@ export function GameScreen() {
 					}
 					source={isMinuteView ? 'ticker' : 'candles'}
 				/>
+				<main {...stylex.props(styles.main)}>
+					{status.kind === 'error' ? (
+						<Panel>
+							<EmptyMessage title={UNREACHABLE_TITLE} body={UNREACHABLE_BODY} />
+							<div {...stylex.props(styles.retry)}>
+								<Button
+									label="Try again"
+									variant="primary"
+									clickAction={refresh}
+								/>
+							</div>
+						</Panel>
+					) : (
+						<>
+							{notice && (
+								<Banner
+									status={signInSeen === 'kept-existing' ? 'info' : 'success'}
+									title={notice}
+									isDismissable
+									onDismiss={() => setNotice(null)}
+									dismissLabel="Dismiss"
+								/>
+							)}
+							<GuessStrip
+								phase={phase}
+								name={state?.publicName ?? null}
+								signedIn={state?.signedIn ?? false}
+								guessError={guessError}
+								now={now}
+								live={live}
+								isMinuteView={isMinuteView}
+							/>
+							<PriceCard
+								price={state?.price ?? null}
+								priceUpdatedAt={state?.priceUpdatedAt ?? null}
+								priceStale={state?.priceStale ?? false}
+								now={ready ? now : null}
+								phase={phase}
+								live={live}
+								view={view}
+								onViewChange={setView}
+							/>
+							<GuessButtons
+								phase={phase}
+								onGuess={placeGuess}
+								isBusy={isPlacing}
+							/>
 
-				{status.kind === 'error' ? (
-					<Panel>
-						<EmptyMessage
-							title="The game could not be reached."
-							body="Nothing has been lost: your score is kept on the server. Try again in a moment."
-						/>
-						<div {...stylex.props(styles.retry)}>
-							<Button
-								label="Try again"
-								variant="primary"
-								clickAction={refresh}
-							/>
-						</div>
-					</Panel>
-				) : (
-					<>
-						{notice && (
-							<Banner
-								status={signInSeen === 'kept-existing' ? 'info' : 'success'}
-								title={notice}
-								isDismissable
-								onDismiss={() => setNotice(null)}
-								dismissLabel="Dismiss"
-							/>
-						)}
-						<GuessStrip
-							phase={phase}
-							name={state?.publicName ?? null}
-							signedIn={state?.signedIn ?? false}
-							guessError={guessError}
-							now={now}
-							live={live}
-							isMinuteView={isMinuteView}
-						/>
-						<PriceCard
-							price={state?.price ?? null}
-							priceUpdatedAt={state?.priceUpdatedAt ?? null}
-							priceStale={state?.priceStale ?? false}
-							now={ready ? now : null}
-							phase={phase}
-							live={live}
-							view={view}
-							onViewChange={setView}
-						/>
-						<GuessButtons
-							phase={phase}
-							onGuess={placeGuess}
-							isBusy={isPlacing}
-						/>
-
-						<div {...stylex.props(styles.panels)}>
-							<LeaderboardPanel board={board} />
-							<HistoryPanel
-								history={state?.history ?? []}
-								pending={state?.pendingGuess ?? null}
-								resolvedCount={
-									state ? state.stats.wins + state.stats.losses : 0
-								}
-								highlightId={phase?.kind === 'result' ? phase.result.id : null}
-							/>
-						</div>
-					</>
-				)}
-				<Announcer phase={phase} notice={notice} />
-				{phase?.kind === 'result' && phase.result.delta === 1 && (
-					<Confetti key={phase.result.id} />
-				)}
-			</main>
+							<div {...stylex.props(styles.panels)}>
+								<LeaderboardPanel board={board} />
+								<HistoryPanel
+									history={state?.history ?? []}
+									pending={state?.pendingGuess ?? null}
+									resolvedCount={
+										state ? state.stats.wins + state.stats.losses : 0
+									}
+									highlightId={
+										phase?.kind === 'result' ? phase.result.id : null
+									}
+								/>
+							</div>
+						</>
+					)}
+					<Announcer phase={phase} notice={failure ?? notice} />
+					{phase?.kind === 'result' && phase.result.delta === 1 && (
+						<Confetti key={phase.result.id} />
+					)}
+				</main>
+			</div>
 		</div>
 	);
 }

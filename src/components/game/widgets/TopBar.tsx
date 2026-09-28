@@ -27,7 +27,7 @@ export function TopBar({
 		<header {...stylex.props(styles.bar)}>
 			<div {...stylex.props(styles.group)}>
 				<BrandMark />
-				<span {...stylex.props(styles.title)}>BTC Guess</span>
+				<h1 {...stylex.props(styles.title)}>BTC Guess</h1>
 				<SourceBadge isLive={isLive} source={source} />
 			</div>
 			<div {...stylex.props(styles.group, styles.end)}>

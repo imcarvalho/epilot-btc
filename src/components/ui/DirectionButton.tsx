@@ -47,6 +47,10 @@ export function DirectionButton({
 	return (
 		<button
 			type="button"
+			// Named as one phrase ("Higher, in 60 seconds"): the word and the hint
+			// are separate blocks, which a name built from content splits oddly.
+			// It starts with the visible word, so voice control still finds it.
+			aria-label={`${word}, ${hint}`}
 			onClick={onClick}
 			disabled={isDisabled || mode !== 'ready'}
 			{...stylex.props(
@@ -70,8 +74,9 @@ export function DirectionButton({
 				</span>
 			</span>
 			{mode === 'chosen' && (
-				<span {...stylex.props(styles.badge)}>
-					<Check aria-hidden size={14} strokeWidth={3} />
+				// The hint already says so ("your guess is in play"): the badge is for the eye.
+				<span aria-hidden {...stylex.props(styles.badge)}>
+					<Check size={14} strokeWidth={3} />
 					chosen
 				</span>
 			)}

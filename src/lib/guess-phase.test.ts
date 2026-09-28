@@ -1,5 +1,9 @@
 import type { PendingGuess, ResolvedGuess, StateResponse } from './contracts';
-import { guessPhase, resultSentence } from './guess-phase';
+import {
+	guessFailureSentence,
+	guessPhase,
+	resultSentence,
+} from './guess-phase';
 
 const T0 = 1_700_000_000_000;
 
@@ -204,5 +208,16 @@ describe('resultSentence', () => {
 				2,
 			),
 		).toBe('Correct. The price went down. Score 2.');
+	});
+});
+
+describe('guessFailureSentence', () => {
+	it('says why a guess did not go through', () => {
+		expect(guessFailureSentence('price-unavailable')).toBe(
+			'Price feed delayed. Nothing can be locked in until it catches up.',
+		);
+		expect(guessFailureSentence('failed')).toBe(
+			'That guess did not go through. Try again.',
+		);
 	});
 });

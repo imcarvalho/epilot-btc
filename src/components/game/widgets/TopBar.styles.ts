@@ -21,6 +21,7 @@ export const styles = stylex.create({
 		color: 'var(--color-text-primary)',
 		fontSize: 'var(--font-size-xl)',
 		fontWeight: 'var(--font-weight-semibold)',
+		marginBlock: 0,
 		marginInlineEnd: 'var(--spacing-2)',
 	},
 });

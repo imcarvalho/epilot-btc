@@ -37,6 +37,10 @@ export function ScoreChip({ score, stats }: { score: number; stats: Stats }) {
 					<span aria-hidden {...stylex.props(styles.divider)} />
 					<span title={best ?? undefined} {...stylex.props(styles.secondary)}>
 						{streak}
+						{/* The tooltip is for the pointer; this is for everyone else. */}
+						{best && (
+							<span {...stylex.props(styles.visuallyHidden)}>. {best}.</span>
+						)}
 					</span>
 				</>
 			)}
