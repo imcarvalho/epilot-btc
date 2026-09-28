@@ -207,6 +207,13 @@ async function main() {
 		`Table ready. Sweep by hand: curl -X POST -H 'x-cron-secret: ${env.CRON_SECRET}' localhost:${appPort}/api/cron/resolve`,
 	);
 
+	// The theme is generated, not committed: build it before Next reads it.
+	const theme = spawnSync('npm', ['run', 'theme'], { stdio: 'inherit' });
+	if (theme.status !== 0) {
+		console.error('[dev:local] npm run theme failed (it needs Node >= 22.13)');
+		process.exit(theme.status ?? 1);
+	}
+
 	const next = spawn('npx', ['next', 'dev', ...args], {
 		cwd: ROOT,
 		env,

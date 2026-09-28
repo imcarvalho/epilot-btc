@@ -108,7 +108,7 @@ The sweep is scheduled from `infra/`: EventBridge Scheduler invokes `infra/lambd
 
 The screen (build order item 1, client half, first-visit state):
 
-- `src/themes/dracula.theme.ts` - the Dracula token set; `dracula.{css,js,d.ts}` beside it are **generated** by `npx astryx theme build src/themes/dracula.theme.ts -o src/themes/dracula.css` (needs Node >= 22.13) - rebuild after editing it or upgrading Astryx
+- `src/themes/dracula.theme.ts` - the Dracula token set, the only theme file in the repository. `dracula.{css,js,d.ts,variants.d.ts}` beside it are **generated and git-ignored**: `npm run theme` (`astryx theme build`) writes them before every `dev`, `dev:local` and `build`. Node >= 22.13 is needed for that, so the project pins Node 24 in `.nvmrc`, and `amplify.yml` runs `nvm install` from it
 - `src/components/ui/` - the design language as atoms (`Panel`, `Pill`, `DirectionButton`, `Numeric`, ...), built on Astryx primitives and tokens; `tokens.stylex.ts` holds what the theme has no slot for
 - `src/components/game/` - the screen. `GameScreen` composes it; the rest is foldered, each folder with an `index.ts` of named exports that other folders import through:
   - `widgets/` - the screen's self-contained blocks: `TopBar`, `PriceCard`, `GuessButtons`, `GuessStrip`, `LeaderboardPanel`, `HistoryPanel`

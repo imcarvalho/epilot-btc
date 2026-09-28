@@ -5,6 +5,9 @@ frontend:
       commands:
         # A cache saved before the change below may still carry .next/cache.
         - rm -rf .next/cache
+        # The Node in .nvmrc: the Astryx CLI that builds the theme needs >= 22.13.
+        - nvm install
+        - nvm use
         - npm ci --cache .npm --prefer-offline
     build:
       commands:

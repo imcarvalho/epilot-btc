@@ -2,15 +2,21 @@
 	"name": "btc-guess",
 	"version": "0.1.0",
 	"private": true,
+	"engines": {
+		"node": ">=22.13"
+	},
 	"scripts": {
+		"predev": "npm run theme",
 		"dev": "next dev",
 		"dev:local": "node scripts/dev-local.mjs",
+		"prebuild": "npm run theme",
 		"build": "next build",
 		"start": "next start",
 		"test": "vitest run",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"lint": "eslint ."
+		"lint": "eslint .",
+		"theme": "astryx theme build src/themes/dracula.theme.ts -o src/themes/dracula.css"
 	},
 	"dependencies": {
 		"@astryxdesign/core": "0.6.3",

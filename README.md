@@ -44,7 +44,7 @@ Named here rather than found later:
 - **Cold starts** can show in the first request after a quiet period, and the request cadence is deliberately sparse, so quiet periods are normal.
 - **The chart fetches Coinbase straight from the browser**, since both endpoints send `access-control-allow-origin: *` (checked from the deployed origin). If that ever changes, the chart moves behind a cached `GET /api/history` using the same cache-item pattern as the price.
 - **Google brand verification was skipped, on purpose.** The OAuth app asks for `openid` only, a non-sensitive scope, so it can be published and used by anyone without verification, and Google shows no unverified-app warning. What verification adds is the app's name and logo on the consent screen, which is why Google shows the `amplifyapp.com` domain there instead. It needs a domain registered to us and a privacy policy page, out of scope for this exercise.
-- **Astryx is pre-1.0**, so it is pinned exactly: `@astryxdesign/core`, `theme-neutral` and `cli` at 0.6.3. Upgrading is a deliberate change of all three together. The Dracula theme is compiled from `src/themes/dracula.theme.ts`; after an upgrade, rebuild it with `npx astryx theme build src/themes/dracula.theme.ts -o src/themes/dracula.css` (Node >= 22.13) and check the screen.
+- **Astryx is pre-1.0**, so it is pinned exactly: `@astryxdesign/core`, `theme-neutral` and `cli` at 0.6.3. Upgrading is a deliberate change of all three together. The Dracula theme is compiled from `src/themes/dracula.theme.ts` on every `dev` and `build`, so an upgrade takes effect on the next run; check the screen after one.
 
 ### Alternatives considered
 
@@ -73,6 +73,7 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 ## Running it
 
 ```
+nvm use           # Node 24, from .nvmrc: the Astryx CLI that builds the theme needs >= 22.13
 npm install
 npm run dev:local  # http://localhost:3000 - the whole app, no AWS account needed
 npm test           # vitest: the rules, the store's conditions, the routes, every screen state

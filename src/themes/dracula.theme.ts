@@ -5,11 +5,10 @@
  *
  * Dark only. Extends Neutral for everything not named here.
  *
- * This is the source. The app imports the built output next to it
- * (`dracula.js` + `dracula.css`), which is present on first paint; rebuild
- * after editing this file or upgrading Astryx:
- *
- *   npx @astryxdesign/cli theme build src/themes/dracula.theme.ts -o src/themes/dracula.css
+ * This is the source, and the only theme file in the repository. The app
+ * imports the built output next to it (`dracula.js` + `dracula.css`, present
+ * on first paint), which `npm run theme` generates before every `dev` and
+ * `build` (Node >= 22.13, see .nvmrc).
  */
 
 import { defineTheme } from '@astryxdesign/core/theme';
