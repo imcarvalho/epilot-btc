@@ -31,9 +31,21 @@ export interface CadenceInput {
 export type CadenceDecision =
 	| {
 			ask: true;
-			reason: 'mount' | 'countdown-ended' | 'price-moved' | 'fallback-poll';
+			reason:
+				| 'mount'
+				| 'idle-refresh'
+				| 'countdown-ended'
+				| 'price-moved'
+				| 'fallback-poll';
 	  }
 	| { ask: false };
+
+/**
+ * With no guess in play, the price on screen is the server's, and it only
+ * moves when the client asks. Every ten seconds keeps "Updated Xs ago"
+ * honest and short; the tab being visible is already a condition above.
+ */
+export const IDLE_REFRESH_MS = 10_000;
 
 /** Fallback polling only, for when the ticker cannot tell us anything. */
 export const FALLBACK_POLL_MS = 5_000;
@@ -51,16 +63,26 @@ export const PRICE_MOVED_MIN_GAP_MS = 2_000;
 export function shouldAsk(input: CadenceInput): CadenceDecision {
 	// A hidden tab asks for nothing. It resyncs immediately on becoming visible,
 	// which is the `msSinceLastAsk === null` case below.
-	if (!input.visible) return { ask: false };
+	if (!input.visible) {
+		return { ask: false };
+	}
 
 	// First contact, or the first tick after the tab came back.
-	if (input.msSinceLastAsk === null) return { ask: true, reason: 'mount' };
+	if (input.msSinceLastAsk === null) {
+		return { ask: true, reason: 'mount' };
+	}
 
-	// Nothing pending: the score and price already arrived with the last read.
-	if (input.lockedPrice === null) return { ask: false };
+	// Nothing pending: only the price can have changed. Refresh it slowly.
+	if (input.lockedPrice === null) {
+		return input.msSinceLastAsk >= IDLE_REFRESH_MS
+			? { ask: true, reason: 'idle-refresh' }
+			: { ask: false };
+	}
 
 	// During the minute there is nothing to learn - the countdown is local.
-	if (!input.countdownEnded) return { ask: false };
+	if (!input.countdownEnded) {
+		return { ask: false };
+	}
 
 	// The minute is up: ask once. Most of the time this resolves it.
 	if (!input.askedSinceCountdownEnded) {

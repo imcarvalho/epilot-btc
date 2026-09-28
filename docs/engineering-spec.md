@@ -155,11 +155,12 @@ Both halves of the resolution condition are visible to the client. The minute is
 | On mount, and when the tab becomes visible again | One `GET /api/state` - answers "is a guess in play, and has it settled?" |
 | During the minute | Nothing. The countdown is local and there is nothing to learn |
 | At t+60 s | One `GET /api/state` |
-| Resolved | Stop. No further requests |
+| Resolved | Stop asking about the guess; the idle refresh below takes over |
+| No guess in play | One `GET /api/state` every 10 s, for the price on screen - the server's game price, which otherwise only moves when the client asks |
 | Not resolved (price unchanged) | Wait for the ticker to print a price different from the locked one, then `GET /api/state` - at most every 2 s, since the server's price is cached for a few seconds and can lag the ticker |
 | Socket down, or no ticks arriving | Fall back to polling every 5 s, backing off to 10 s |
 
-A normal guess therefore costs **two requests**: one when the app opens and one when the minute is up. Sustained polling exists only in the unchanged-price case, which on BTC is rare and is exactly the case the UI has a screen for.
+A normal guess therefore costs **two requests**: one when the app opens and one when the minute is up. Between guesses, a visible tab asks every 10 s so the price and its "updated" age stay current - six cheap reads a minute (the player item and the shared price item; Coinbase is still called at most once per 5 s cache window for everyone), and nothing at all once the tab is hidden. The chart refreshes on the same 10 s rhythm straight from Coinbase, and just after each minute turns, so the forming candle grows rather than jumping once a minute. Sustained polling exists only in the unchanged-price case, which on BTC is rare and is exactly the case the UI has a screen for.
 
 Three properties worth stating, because they are what makes this safe rather than merely cheap:
 

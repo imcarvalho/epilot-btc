@@ -16,10 +16,14 @@ export type CandlesState =
 /** A few seconds past the minute, so Coinbase has closed the candle. */
 const SETTLE_MS = 2_000;
 
+/** The forming candle grows between minutes, so the chart is not still for a whole one. */
+const CANDLE_REFRESH_MS = 10_000;
+
 /**
  * The last hour of candles, straight from Coinbase (engineering spec §5).
- * Fetched on mount and again just after each minute turns, and only while
- * the tab is visible: a hidden tab asks for nothing, and catches up the
+ * Fetched on mount, then every ten seconds - and just after each minute
+ * turns, so a new candle appears promptly - and only while the tab is
+ * visible: a hidden tab asks for nothing, and catches up the
  * moment it is shown again.
  *
  * `no-store` because Coinbase marks these responses cacheable for five
@@ -37,25 +41,36 @@ export function useCandles(): CandlesState {
 			const now = Date.now();
 			try {
 				const res = await fetch(candlesUrl(now), { cache: 'no-store' });
-				if (!res.ok) throw new Error(`candles ${res.status}`);
+				if (!res.ok) {
+					throw new Error(`candles ${res.status}`);
+				}
 				const candles = parseCandles(await res.json());
-				if (!cancelled) setState({ kind: 'ready', candles, windowEnd: now });
+				if (!cancelled) {
+					setState({ kind: 'ready', candles, windowEnd: now });
+				}
 			} catch {
 				// Keep the last good chart on a failed refresh; only an empty one
 				// becomes an error.
-				if (!cancelled)
+				if (!cancelled) {
 					setState((s) => (s.kind === 'ready' ? s : { kind: 'error' }));
+				}
 			}
 			if (!cancelled && document.visibilityState === 'visible') {
 				const untilNextMinute =
 					MINUTE_MS - (Date.now() % MINUTE_MS) + SETTLE_MS;
-				timer.current = setTimeout(load, untilNextMinute);
+				timer.current = setTimeout(
+					load,
+					Math.min(CANDLE_REFRESH_MS, untilNextMinute),
+				);
 			}
 		};
 
 		const onVisibility = () => {
-			if (document.visibilityState === 'visible') void load();
-			else clearTimeout(timer.current);
+			if (document.visibilityState === 'visible') {
+				void load();
+			} else {
+				clearTimeout(timer.current);
+			}
 		};
 
 		void load();
