@@ -49,12 +49,31 @@ export const styles = stylex.create({
 	first: {
 		color: palette.yellow,
 	},
+	nameCell: {
+		alignItems: 'center',
+		display: 'flex',
+		gap: 'var(--spacing-2)',
+		gridArea: 'name',
+		minWidth: 0,
+	},
 	name: {
 		color: 'var(--color-text-primary)',
-		gridArea: 'name',
+		minWidth: 0,
 		overflow: 'hidden',
 		textOverflow: 'ellipsis',
 		whiteSpace: 'nowrap',
+	},
+	// Your row is marked in words as well as by its wash (WCAG 1.4.1).
+	youTag: {
+		borderColor: 'rgba(125, 251, 170, 0.4)',
+		borderRadius: 'var(--radius-full)',
+		borderStyle: 'solid',
+		borderWidth: 1,
+		color: palette.upFrom,
+		flexShrink: 0,
+		fontSize: 'var(--font-size-sm)',
+		lineHeight: 1.4,
+		paddingInline: 'var(--spacing-2)',
 	},
 	rate: {
 		color: 'var(--color-text-secondary)',

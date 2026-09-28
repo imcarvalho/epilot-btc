@@ -1,8 +1,10 @@
 import * as stylex from '@stylexjs/stylex';
+import { VisuallyHidden } from '@astryxdesign/core/VisuallyHidden';
 import { ArrowDown, ArrowUp, History } from 'lucide-react';
 import type { PendingGuess, ResolvedGuess } from '@/lib/contracts';
 import { EmptyMessage, Numeric, Panel, PanelHeader } from '@/components/ui';
 import { palette } from '@/components/ui/tokens.stylex';
+import { signedWords } from '@/lib/spoken';
 import { styles } from './HistoryPanel.styles';
 
 const WORD = {
@@ -18,6 +20,11 @@ const plain = new Intl.NumberFormat('en-US', {
  * The player's last guesses, each with both prices, so a result can be
  * checked rather than taken on trust (product spec §6.5). A guess in play
  * sits on top as a dashed row; the result just announced is highlighted.
+ *
+ * Each row reads as a sentence from its own content - "Higher 84,531.50 to
+ * 84,540.10 correct plus 1" - rather than from an `aria-label`, which a
+ * screen reader reading the list item by item may never announce. The
+ * arrows and signs are hidden from it and words stand in for them.
  */
 export function HistoryPanel({
 	history,
@@ -48,20 +55,20 @@ export function HistoryPanel({
 					body="Each one lands here with both prices, so you can check the result rather than take our word for it."
 				/>
 			) : (
-				<ul {...stylex.props(styles.list)}>
+				// `role="list"`: with `list-style: none`, Safari drops the list semantics.
+				<ul role="list" {...stylex.props(styles.list)}>
 					{pending && (
-						<li
-							aria-label={`${WORD[pending.direction]} at ${plain.format(pending.priceAtGuess)}, in play.`}
-							{...stylex.props(styles.row, styles.pendingRow)}
-						>
+						<li {...stylex.props(styles.row, styles.pendingRow)}>
 							<Direction direction={pending.direction} />
 							<Numeric xstyle={styles.prices}>
-								{plain.format(pending.priceAtGuess)} → in play
+								{plain.format(pending.priceAtGuess)} <Arrow /> in play
 							</Numeric>
 							<span {...stylex.props(styles.outcome, styles.waiting)}>
 								waiting
 							</span>
-							<Numeric xstyle={[styles.points, styles.waiting]}>-</Numeric>
+							<Numeric xstyle={[styles.points, styles.waiting]}>
+								<span aria-hidden>-</span>
+							</Numeric>
 						</li>
 					)}
 					{history.map((g) => {
@@ -69,7 +76,6 @@ export function HistoryPanel({
 						return (
 							<li
 								key={g.id}
-								aria-label={`${WORD[g.direction]}, ${plain.format(g.priceAtGuess)} to ${plain.format(g.priceAtResolve)}, ${won ? 'correct, plus 1' : 'wrong, minus 1'}.`}
 								{...stylex.props(
 									styles.row,
 									g.id === highlightId &&
@@ -78,7 +84,8 @@ export function HistoryPanel({
 							>
 								<Direction direction={g.direction} />
 								<Numeric xstyle={styles.prices}>
-									{plain.format(g.priceAtGuess)} →{' '}
+									{plain.format(g.priceAtGuess)} <Arrow />
+									<VisuallyHidden>to</VisuallyHidden>{' '}
 									{plain.format(g.priceAtResolve)}
 								</Numeric>
 								<span
@@ -92,7 +99,8 @@ export function HistoryPanel({
 								<Numeric
 									xstyle={[styles.points, won ? styles.win : styles.loss]}
 								>
-									{won ? '+1' : '−1'}
+									<span aria-hidden>{won ? '+1' : '−1'}</span>
+									<VisuallyHidden>{signedWords(g.delta)}</VisuallyHidden>
 								</Numeric>
 							</li>
 						);
@@ -103,18 +111,23 @@ export function HistoryPanel({
 	);
 }
 
+/** The icon is for the eye; the word beside it is what is read. */
 function Direction({ direction }: { direction: 'up' | 'down' }) {
-	const Arrow = direction === 'up' ? ArrowUp : ArrowDown;
+	const Icon = direction === 'up' ? ArrowUp : ArrowDown;
 	return (
 		<span
-			aria-hidden
 			{...stylex.props(
 				styles.direction,
 				direction === 'up' ? styles.up : styles.down,
 			)}
 		>
-			<Arrow size={16} strokeWidth={2.5} />
+			<Icon aria-hidden size={16} strokeWidth={2.5} />
 			{WORD[direction]}
 		</span>
 	);
+}
+
+/** The arrow between the two prices, for the eye only. */
+function Arrow() {
+	return <span aria-hidden>→</span>;
 }

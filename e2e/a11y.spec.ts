@@ -360,4 +360,45 @@ test.describe('structure a screen reader navigates by', () => {
 				.toEqual(Array(attempt).fill(message));
 		}
 	});
+
+	// A list item's aria-label is not reliably read (NVDA in browse mode reads
+	// the content), so each row has to read as a sentence from its content:
+	// arrows and signs hidden, words in their place.
+	test('a history row reads as a sentence from its own content', async ({
+		page,
+	}) => {
+		await openGame(page);
+		await lockGuessAgo(await playerIdOf(page), 'up', 55_000);
+		await page.reload();
+		await expect(page.getByText('Correct.').first()).toBeVisible({
+			timeout: 30_000,
+		});
+		const row = page
+			.getByRole('region', {
+				name: 'Your last guesses',
+			})
+			.getByRole('listitem')
+			.first();
+		await expect(row).not.toHaveAttribute('aria-label');
+		expect(await row.ariaSnapshot()).toMatch(
+			/^- listitem: Higher [\d,]+\.\d{2} to [\d,]+\.\d{2} correct plus 1$/,
+		);
+	});
+
+	test('a board row reads as a sentence from its own content', async ({
+		page,
+	}) => {
+		await openGame(page);
+		const row = page
+			.getByRole('region', {
+				name: 'Leaderboard',
+			})
+			.getByRole('listitem')
+			.first();
+		await expect(row).toContainText('SolemnOtter');
+		await expect(row).not.toHaveAttribute('aria-label');
+		expect(await row.ariaSnapshot()).toMatch(
+			/^- listitem: 1st SolemnOtter \d+% correct over 75 guesses 42 points$/,
+		);
+	});
 });
