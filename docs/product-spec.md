@@ -139,7 +139,7 @@ The second is the brief's own rule made visible. The third is ours: a stale pric
 
 A first-time visitor guesses immediately. No account, no email, nothing asked. Their score lives with their browser.
 
-Signing in with Google is offered as a benefit, never a gate: **"Keep your score across devices."** Once signed in, score, streak and history follow them from laptop to phone and survive clearing the browser.
+Signing in with Google is offered as a benefit, never a gate: the button says what it does and what it is for, **"Sign in to save your score"**, and the reason is keeping that score across devices. Once signed in, score, streak and history follow them from laptop to phone and survive clearing the browser.
 
 - **Playing anonymously and then signing in carries the score over**, so nobody is punished for trying the game first.
 - **Signing in on a device that already has an account shows the saved score**, and says so plainly rather than silently replacing what was on screen.
@@ -238,7 +238,7 @@ Decisions worth stating:
 - Win: *"Correct. The price went up. Score 3."*
 - Loss: *"Not this time. The price went down. Score 1."*
 - Returning to a settled guess: *"While you were away: your up guess was correct. +1."*, or *"While you were away: your down guess was wrong. -1."* - in the result banner, said once, and not again on the next visit.
-- Sign-in prompt: *"Keep your score across devices."*
+- Sign-in prompt, the top bar's button: *"Sign in to save your score"*
 - Signed in, score carried over (or a fresh account): *"Signed in. Your score now follows you to any device."*
 - Signed in to an account that already had a score: *"Signed in. This is the score saved to your account. The one played on this browser is kept apart, and comes back if you sign out."*
 - First visit, signed in: *"You are AudaciousRaccoon. Your score is kept with your account."*
