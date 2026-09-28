@@ -52,13 +52,21 @@ export function TopBar({
 					</form>
 				) : (
 					<form action={signInWithGoogle}>
+						{/*
+						 * The sign-in prompt from product spec §7, verbatim, as the
+						 * button's visible text. The accessible name starts with the
+						 * same words (so voice control finds it) and then says what
+						 * the button does, which the prompt alone leaves implicit.
+						 */}
 						<Button
 							type="submit"
-							label="Sign in to save your score"
+							label="Keep your score across devices. Sign in with Google."
 							size="lg"
 							variant="secondary"
 							icon={<Icon icon={Download} size="sm" color="accent" />}
-						/>
+						>
+							Keep your score across devices.
+						</Button>
 					</form>
 				)}
 			</div>
