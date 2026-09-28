@@ -129,7 +129,7 @@ Fairness is the thing being demonstrated, so the tests carry the argument. `npm 
 
 ## Deploying it
 
-A push to `main` deploys the app: Amplify Hosting builds it with `amplify.yml`. The infrastructure around it:
+A push to `main` deploys the app: Amplify Hosting builds it with `amplify.yml`, and **only if every test passes** - `npm test` (the app's and the infra stack's), then the accessibility tests against the very build about to be deployed. A failing test fails the build, and the live site stays on the last good one. The infrastructure around it:
 
 ```
 cd infra

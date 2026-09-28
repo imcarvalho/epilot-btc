@@ -75,6 +75,7 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 
 ## Conventions
 
+- **Every test gates the deploy.** `amplify.yml` runs `npm test` (app and infra) and `npm run test:a11y` (axe, against the build it is about to ship) inside the Amplify build; a failure fails the build and nothing deploys. Keep them passing locally before pushing.
 - **Formatting: tabs and single quotes**, enforced by Prettier (`.prettierrc`). Run `npm run format` before committing; `npm run format:check` must pass.
 - **Braces on every `if`, `else` and loop body**, on their own lines - never `if (x) return y;`. Enforced by ESLint's `curly: all`.
 - **Every non-empty object literal broken over lines**, never `{ ask: false }` on one line: the braces and each property get their own lines, arguments and test expectations included. Enforced by `@stylistic/object-curly-newline` (`minProperties: 1`); Prettier keeps an expanded object expanded, so the two agree.

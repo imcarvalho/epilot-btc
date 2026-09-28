@@ -8,6 +8,10 @@ import { defineConfig, devices } from '@playwright/test';
  * table (`PlayersE2E`), so the tests never touch the players you play with.
  * It needs Java for DynamoDB Local, and the network: the price and the chart
  * come from Coinbase, as they do for a player.
+ *
+ * It builds the app first, unless E2E_PREBUILT is set: the Amplify build
+ * (amplify.yml) runs these tests against the build it has just made and is
+ * about to deploy, rather than building twice.
  */
 
 const PORT = 3100;
@@ -23,7 +27,7 @@ export default defineConfig({
 		...devices['Desktop Chrome'],
 	},
 	webServer: {
-		command: `npm run build && node scripts/dev-local.mjs --prod -p ${PORT}`,
+		command: `${process.env.E2E_PREBUILT ? '' : 'npm run build && '}node scripts/dev-local.mjs --prod -p ${PORT}`,
 		url: `http://localhost:${PORT}`,
 		env: {
 			DEV_LOCAL_TABLE: 'PlayersE2E',

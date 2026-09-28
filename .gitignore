@@ -26,6 +26,8 @@ infra/cdk.context.json
 coverage/
 test-results/
 playwright-report/
+# Playwright's Chromium, when installed into the project (the Amplify build)
+.playwright-browsers/
 .nyc_output/
 
 # editors and OS
