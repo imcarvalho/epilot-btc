@@ -98,7 +98,12 @@ export async function signIn(
 
 		const now = deps.now();
 		const player: PlayerRecord = anon
-			? { ...anon, playerId, onBoard: true, updatedAt: now }
+			? {
+					...anon,
+					playerId,
+					onBoard: true,
+					updatedAt: now,
+				}
 			: {
 					...newPlayerRecord(playerId, generateName(deps.random), now),
 					onBoard: true,
@@ -133,12 +138,18 @@ async function settleIfDue(
 ): Promise<{ player: PlayerRecord; settled: boolean }> {
 	const pending = player.pendingGuess;
 	if (!pending || !price || isStale(price, deps.now())) {
-		return { player, settled: false };
+		return {
+			player,
+			settled: false,
+		};
 	}
 
 	const outcome = resolveGuess(pending, price.price, price.updatedAt);
 	if (!outcome.resolved) {
-		return { player, settled: false };
+		return {
+			player,
+			settled: false,
+		};
 	}
 
 	const board = applyResolution(
@@ -159,7 +170,12 @@ async function settleIfDue(
 			}),
 		);
 		return {
-			player: { ...player, ...board, pendingGuess: null, updatedAt: now },
+			player: {
+				...player,
+				...board,
+				pendingGuess: null,
+				updatedAt: now,
+			},
 			settled: true,
 		};
 	}
@@ -235,7 +251,9 @@ export async function placeGuess(
 	const price = await getGamePrice(deps);
 	const now = deps.now();
 	if (!price || isStale(price, now)) {
-		return { kind: 'price-unavailable' };
+		return {
+			kind: 'price-unavailable',
+		};
 	}
 
 	const pendingGuess: PendingGuess = {
@@ -247,9 +265,15 @@ export async function placeGuess(
 
 	const result = await deps.store.startGuess(playerId, pendingGuess, now);
 	if (result !== 'started') {
-		return { kind: result };
+		return {
+			kind: result,
+		};
 	}
-	return { kind: 'started', pendingGuess, serverNow: now };
+	return {
+		kind: 'started',
+		pendingGuess,
+		serverNow: now,
+	};
 }
 
 export interface SweepResult {
@@ -267,7 +291,11 @@ export interface SweepResult {
 export async function sweep(deps: GameDeps): Promise<SweepResult> {
 	const price = await getGamePrice(deps);
 	if (!price || isStale(price, deps.now())) {
-		return { due: 0, resolved: 0, priceStale: true };
+		return {
+			due: 0,
+			resolved: 0,
+			priceStale: true,
+		};
 	}
 
 	// Only guesses the current price can actually settle: created at least a
@@ -282,6 +310,16 @@ export async function sweep(deps: GameDeps): Promise<SweepResult> {
 	);
 	const resolved = outcomes.filter((o) => o.settled).length;
 
-	console.log(JSON.stringify({ event: 'sweep', due: due.length, resolved }));
-	return { due: due.length, resolved, priceStale: false };
+	console.log(
+		JSON.stringify({
+			event: 'sweep',
+			due: due.length,
+			resolved,
+		}),
+	);
+	return {
+		due: due.length,
+		resolved,
+		priceStale: false,
+	};
 }

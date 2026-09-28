@@ -47,7 +47,10 @@ export class BtcGuessStack extends Stack {
 		// exercise, not a production game, and a clean `cdk destroy` matters
 		// more here than retaining demo player data.
 		const table = new Table(this, 'PlayersTable', {
-			partitionKey: { name: 'playerId', type: AttributeType.STRING },
+			partitionKey: {
+				name: 'playerId',
+				type: AttributeType.STRING,
+			},
 			billingMode: BillingMode.PAY_PER_REQUEST,
 			timeToLiveAttribute: 'ttl',
 			removalPolicy: RemovalPolicy.DESTROY,
@@ -60,8 +63,14 @@ export class BtcGuessStack extends Stack {
 		// reads back to the table.
 		table.addGlobalSecondaryIndex({
 			indexName: 'byScore',
-			partitionKey: { name: 'board', type: AttributeType.STRING },
-			sortKey: { name: 'score', type: AttributeType.NUMBER },
+			partitionKey: {
+				name: 'board',
+				type: AttributeType.STRING,
+			},
+			sortKey: {
+				name: 'score',
+				type: AttributeType.NUMBER,
+			},
 			projectionType: ProjectionType.INCLUDE,
 			nonKeyAttributes: ['publicName', 'wins', 'losses'],
 		});
@@ -74,8 +83,14 @@ export class BtcGuessStack extends Stack {
 		// only ever holds the current working set, not the whole table.
 		table.addGlobalSecondaryIndex({
 			indexName: 'byPending',
-			partitionKey: { name: 'pendingBucket', type: AttributeType.STRING },
-			sortKey: { name: 'pendingAt', type: AttributeType.NUMBER },
+			partitionKey: {
+				name: 'pendingBucket',
+				type: AttributeType.STRING,
+			},
+			sortKey: {
+				name: 'pendingAt',
+				type: AttributeType.NUMBER,
+			},
 			projectionType: ProjectionType.ALL,
 		});
 
@@ -155,8 +170,12 @@ export class BtcGuessStack extends Stack {
 			}),
 		});
 
-		new CfnOutput(this, 'PlayersTableName', { value: table.tableName });
-		new CfnOutput(this, 'PlayersTableArn', { value: table.tableArn });
+		new CfnOutput(this, 'PlayersTableName', {
+			value: table.tableName,
+		});
+		new CfnOutput(this, 'PlayersTableArn', {
+			value: table.tableArn,
+		});
 		new CfnOutput(this, 'PlayersTableAccessPolicyArn', {
 			value: tableAccessPolicy.managedPolicyArn,
 		});

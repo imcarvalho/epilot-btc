@@ -42,7 +42,10 @@ async function podiumEntries({ store, now }: GameDeps): Promise<BoardEntry[]> {
 		return cached.entries;
 	}
 	const entries = await store.listTopOfBoard(PODIUM_SIZE);
-	await store.putCachedPodium({ entries, updatedAt: now() });
+	await store.putCachedPodium({
+		entries,
+		updatedAt: now(),
+	});
 	return entries;
 }
 
@@ -69,7 +72,12 @@ export async function getLeaderboard(
 		you = toRow(caller, above + 1, callerId);
 	}
 
-	return { podium, you, total, isEligible };
+	return {
+		podium,
+		you,
+		total,
+		isEligible,
+	};
 }
 
 /** 1st, 2nd, 3rd, 4th ... 11th, 12th, 13th ... 21st. */
@@ -77,8 +85,13 @@ export function ordinal(n: number): string {
 	const teen = n % 100 >= 11 && n % 100 <= 13;
 	const suffix = teen
 		? 'th'
-		: (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ??
-			'th');
+		: ((
+				{
+					1: 'st',
+					2: 'nd',
+					3: 'rd',
+				} as Record<number, string>
+			)[n % 10] ?? 'th');
 	return `${n}${suffix}`;
 }
 

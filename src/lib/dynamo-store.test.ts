@@ -32,7 +32,11 @@ import {
 const TABLE = 'Players';
 const ddb = mockClient(DynamoDBDocumentClient);
 const store = new DynamoStore(
-	DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'eu-central-1' })),
+	DynamoDBDocumentClient.from(
+		new DynamoDBClient({
+			region: 'eu-central-1',
+		}),
+	),
 	TABLE,
 );
 
@@ -97,7 +101,12 @@ describe('DynamoStore', () => {
 			'BriskOtter',
 			T,
 		);
-		ddb.on(GetCommand).resolves({ Item: { ...old, currentStreak: -1 } });
+		ddb.on(GetCommand).resolves({
+			Item: {
+				...old,
+				currentStreak: -1,
+			},
+		});
 		await expect(store.getPlayer('anon:a')).resolves.toMatchObject({
 			currentStreak: -1,
 			previousStreak: 0,
@@ -105,9 +114,11 @@ describe('DynamoStore', () => {
 	});
 
 	it('reads a player with a strongly consistent read', async () => {
-		ddb
-			.on(GetCommand)
-			.resolves({ Item: { ...newPlayerRecord('anon:a', 'BriskOtter', T) } });
+		ddb.on(GetCommand).resolves({
+			Item: {
+				...newPlayerRecord('anon:a', 'BriskOtter', T),
+			},
+		});
 		const player = await store.getPlayer('anon:a');
 		expect(player).toMatchObject({
 			playerId: 'anon:a',
@@ -117,7 +128,9 @@ describe('DynamoStore', () => {
 		});
 		expect(ddb.commandCalls(GetCommand)[0].args[0].input).toMatchObject({
 			TableName: TABLE,
-			Key: { playerId: 'anon:a' },
+			Key: {
+				playerId: 'anon:a',
+			},
 			ConsistentRead: true,
 		});
 	});
@@ -159,9 +172,13 @@ describe('DynamoStore', () => {
 		});
 
 		it('reports a pending guess when the condition fails on an existing player', async () => {
-			ddb
-				.on(UpdateCommand)
-				.rejects(conditionFailed({ playerId: { S: 'anon:a' } }));
+			ddb.on(UpdateCommand).rejects(
+				conditionFailed({
+					playerId: {
+						S: 'anon:a',
+					},
+				}),
+			);
 			await expect(store.startGuess('anon:a', guess, T)).resolves.toBe(
 				'guess-pending',
 			);
@@ -242,24 +259,37 @@ describe('DynamoStore', () => {
 			expect(put.Put!.Item).not.toHaveProperty('onBoard');
 
 			expect(del.Delete).toMatchObject({
-				Key: { playerId: 'anon:a' },
+				Key: {
+					playerId: 'anon:a',
+				},
 				ConditionExpression:
 					'#updatedAt = :updatedAt AND #pendingGuess.#id = :guessId',
-				ExpressionAttributeValues: { ':updatedAt': T, ':guessId': 'g1' },
+				ExpressionAttributeValues: {
+					':updatedAt': T,
+					':guessId': 'g1',
+				},
 			});
 			expectPlaceholdersToMatch(del.Delete!);
 
 			expect(count.Update).toMatchObject({
-				Key: { playerId: BOARD_TOTAL_KEY },
+				Key: {
+					playerId: BOARD_TOTAL_KEY,
+				},
 				UpdateExpression: 'ADD #total :one',
 			});
 		});
 
 		it('conditions the delete on no guess pending when none was', async () => {
 			ddb.on(TransactWriteCommand).resolves({});
-			const idle = { ...anon, pendingGuess: null };
+			const idle = {
+				...anon,
+				pendingGuess: null,
+			};
 			await store.createSignedInPlayer(
-				{ ...account, pendingGuess: null },
+				{
+					...account,
+					pendingGuess: null,
+				},
 				idle,
 			);
 			const del =
@@ -274,7 +304,10 @@ describe('DynamoStore', () => {
 		it('creates a fresh account with no delete at all', async () => {
 			ddb.on(TransactWriteCommand).resolves({});
 			await store.createSignedInPlayer(
-				{ ...newPlayerRecord('google:b', 'SolemnOtter', T), onBoard: true },
+				{
+					...newPlayerRecord('google:b', 'SolemnOtter', T),
+					onBoard: true,
+				},
 				null,
 			);
 			const items =
@@ -287,8 +320,12 @@ describe('DynamoStore', () => {
 				Object.assign(new Error('cancelled'), {
 					name: 'TransactionCanceledException',
 					CancellationReasons: [
-						{ Code: 'None' },
-						{ Code: 'ConditionalCheckFailed' },
+						{
+							Code: 'None',
+						},
+						{
+							Code: 'ConditionalCheckFailed',
+						},
 					],
 				}),
 			);
@@ -351,7 +388,10 @@ describe('DynamoStore', () => {
 		expect(due[0].pendingGuess).toEqual(guess);
 
 		const input = ddb.commandCalls(QueryCommand)[0].args[0].input;
-		expect(input).toMatchObject({ IndexName: PENDING_INDEX, Limit: 100 });
+		expect(input).toMatchObject({
+			IndexName: PENDING_INDEX,
+			Limit: 100,
+		});
 		expect(input.ExpressionAttributeValues).toEqual({
 			':bucket': PENDING_BUCKET,
 			':cutoff': T + 1,
@@ -361,9 +401,13 @@ describe('DynamoStore', () => {
 
 	describe('price cache', () => {
 		it('reads the one cache item', async () => {
-			ddb
-				.on(GetCommand)
-				.resolves({ Item: { playerId: PRICE_KEY, price: 100, updatedAt: T } });
+			ddb.on(GetCommand).resolves({
+				Item: {
+					playerId: PRICE_KEY,
+					price: 100,
+					updatedAt: T,
+				},
+			});
 			await expect(store.getCachedPrice()).resolves.toEqual({
 				price: 100,
 				updatedAt: T,
@@ -373,7 +417,10 @@ describe('DynamoStore', () => {
 		it('never moves the cache backwards, and ignores losing that race', async () => {
 			ddb.on(PutCommand).rejects(conditionFailed());
 			await expect(
-				store.putCachedPrice({ price: 100, updatedAt: T }),
+				store.putCachedPrice({
+					price: 100,
+					updatedAt: T,
+				}),
 			).resolves.toBeUndefined();
 
 			const input = ddb.commandCalls(PutCommand)[0].args[0].input;
@@ -401,7 +448,9 @@ describe('DynamoStore', () => {
 				.map((c) => c.args[0].input.Item);
 			expect(anon).not.toHaveProperty('board');
 			expect(anon).not.toHaveProperty('onBoard');
-			expect(signedIn).toMatchObject({ board: BOARD });
+			expect(signedIn).toMatchObject({
+				board: BOARD,
+			});
 			expect(signedIn).not.toHaveProperty('onBoard');
 		});
 
@@ -451,8 +500,15 @@ describe('DynamoStore', () => {
 		it('counts the players above a score across every page of the index', async () => {
 			ddb
 				.on(QueryCommand)
-				.resolvesOnce({ Count: 1000, LastEvaluatedKey: { playerId: 'x' } })
-				.resolvesOnce({ Count: 37 });
+				.resolvesOnce({
+					Count: 1000,
+					LastEvaluatedKey: {
+						playerId: 'x',
+					},
+				})
+				.resolvesOnce({
+					Count: 37,
+				});
 			await expect(store.countAboveOnBoard(-2)).resolves.toBe(1037);
 			const calls = ddb.commandCalls(QueryCommand);
 			expect(calls).toHaveLength(2);
@@ -472,8 +528,17 @@ describe('DynamoStore', () => {
 
 		it('reads the total from the counter item, zero if nobody has joined', async () => {
 			ddb
-				.on(GetCommand, { Key: { playerId: BOARD_TOTAL_KEY } })
-				.resolves({ Item: { playerId: BOARD_TOTAL_KEY, total: 1204 } });
+				.on(GetCommand, {
+					Key: {
+						playerId: BOARD_TOTAL_KEY,
+					},
+				})
+				.resolves({
+					Item: {
+						playerId: BOARD_TOTAL_KEY,
+						total: 1204,
+					},
+				});
 			await expect(store.getBoardTotal()).resolves.toBe(1204);
 			ddb.reset();
 			ddb.on(GetCommand).resolves({});

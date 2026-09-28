@@ -139,8 +139,16 @@ function toItem(player: PlayerRecord): Record<string, unknown> {
 			: {}),
 		// Sparse: written only for a player on the board, so everyone else
 		// stays out of the leaderboard index entirely.
-		...(onBoard ? { board: BOARD } : {}),
-		...(ttl === null ? {} : { ttl }),
+		...(onBoard
+			? {
+					board: BOARD,
+				}
+			: {}),
+		...(ttl === null
+			? {}
+			: {
+					ttl,
+				}),
 	};
 }
 
@@ -173,7 +181,9 @@ export class DynamoStore implements GameStore {
 		const { Item } = await this.client.send(
 			new GetCommand({
 				TableName: this.tableName,
-				Key: { playerId },
+				Key: {
+					playerId,
+				},
 				ConsistentRead: true,
 			}),
 		);
@@ -187,7 +197,9 @@ export class DynamoStore implements GameStore {
 					TableName: this.tableName,
 					Item: toItem(player),
 					ConditionExpression: 'attribute_not_exists(#playerId)',
-					ExpressionAttributeNames: { '#playerId': 'playerId' },
+					ExpressionAttributeNames: {
+						'#playerId': 'playerId',
+					},
 				}),
 			);
 			return true;
@@ -210,9 +222,14 @@ export class DynamoStore implements GameStore {
 						{
 							Put: {
 								TableName: this.tableName,
-								Item: toItem({ ...player, onBoard: true }),
+								Item: toItem({
+									...player,
+									onBoard: true,
+								}),
 								ConditionExpression: 'attribute_not_exists(#playerId)',
-								ExpressionAttributeNames: { '#playerId': 'playerId' },
+								ExpressionAttributeNames: {
+									'#playerId': 'playerId',
+								},
 							},
 						},
 						...(replacing
@@ -220,7 +237,9 @@ export class DynamoStore implements GameStore {
 									{
 										Delete: {
 											TableName: this.tableName,
-											Key: { playerId: replacing.playerId },
+											Key: {
+												playerId: replacing.playerId,
+											},
 											// Unchanged since it was read: the only writes to an
 											// anonymous record start or settle a guess, and both
 											// change the pending guess and `updatedAt`.
@@ -230,12 +249,18 @@ export class DynamoStore implements GameStore {
 											ExpressionAttributeNames: {
 												'#updatedAt': 'updatedAt',
 												'#pendingGuess': 'pendingGuess',
-												...(replacing.pendingGuess ? { '#id': 'id' } : {}),
+												...(replacing.pendingGuess
+													? {
+															'#id': 'id',
+														}
+													: {}),
 											},
 											ExpressionAttributeValues: {
 												':updatedAt': replacing.updatedAt,
 												...(replacing.pendingGuess
-													? { ':guessId': replacing.pendingGuess.id }
+													? {
+															':guessId': replacing.pendingGuess.id,
+														}
 													: {}),
 											},
 										},
@@ -245,10 +270,16 @@ export class DynamoStore implements GameStore {
 						{
 							Update: {
 								TableName: this.tableName,
-								Key: { playerId: BOARD_TOTAL_KEY },
+								Key: {
+									playerId: BOARD_TOTAL_KEY,
+								},
 								UpdateExpression: 'ADD #total :one',
-								ExpressionAttributeNames: { '#total': 'total' },
-								ExpressionAttributeValues: { ':one': 1 },
+								ExpressionAttributeNames: {
+									'#total': 'total',
+								},
+								ExpressionAttributeValues: {
+									':one': 1,
+								},
 							},
 						},
 					],
@@ -273,7 +304,9 @@ export class DynamoStore implements GameStore {
 			await this.client.send(
 				new UpdateCommand({
 					TableName: this.tableName,
-					Key: { playerId },
+					Key: {
+						playerId,
+					},
 					UpdateExpression:
 						'SET #pendingGuess = :guess, #pendingAt = :pendingAt, #pendingBucket = :bucket, #updatedAt = :now' +
 						(ttl === null ? '' : ', #ttl = :ttl'),
@@ -293,7 +326,11 @@ export class DynamoStore implements GameStore {
 						':pendingAt': guess.createdAt,
 						':bucket': PENDING_BUCKET,
 						':now': now,
-						...(ttl === null ? {} : { ':ttl': ttl }),
+						...(ttl === null
+							? {}
+							: {
+									':ttl': ttl,
+								}),
 					},
 					// Tells the two failure cases apart without a second read: an item
 					// came back, so the player exists and it was the pending guess.
@@ -321,7 +358,9 @@ export class DynamoStore implements GameStore {
 			await this.client.send(
 				new UpdateCommand({
 					TableName: this.tableName,
-					Key: { playerId },
+					Key: {
+						playerId,
+					},
 					UpdateExpression:
 						'SET #score = :score, #wins = :wins, #losses = :losses, #currentStreak = :currentStreak, ' +
 						'#previousStreak = :previousStreak, #bestStreak = :bestStreak, #history = :history, ' +
@@ -340,7 +379,11 @@ export class DynamoStore implements GameStore {
 						':bestStreak': board.bestStreak,
 						':history': board.history,
 						':now': now,
-						...(ttl === null ? {} : { ':ttl': ttl }),
+						...(ttl === null
+							? {}
+							: {
+									':ttl': ttl,
+								}),
 						':guessId': guessId,
 					},
 				}),
@@ -379,12 +422,17 @@ export class DynamoStore implements GameStore {
 		const { Item } = await this.client.send(
 			new GetCommand({
 				TableName: this.tableName,
-				Key: { playerId: PRICE_KEY },
+				Key: {
+					playerId: PRICE_KEY,
+				},
 				ConsistentRead: true,
 			}),
 		);
 		return Item
-			? { price: Item.price as number, updatedAt: Item.updatedAt as number }
+			? {
+					price: Item.price as number,
+					updatedAt: Item.updatedAt as number,
+				}
 			: null;
 	}
 
@@ -396,11 +444,19 @@ export class DynamoStore implements GameStore {
 			await this.client.send(
 				new PutCommand({
 					TableName: this.tableName,
-					Item: { playerId: PRICE_KEY, price, updatedAt },
+					Item: {
+						playerId: PRICE_KEY,
+						price,
+						updatedAt,
+					},
 					ConditionExpression:
 						'attribute_not_exists(#updatedAt) OR #updatedAt < :updatedAt',
-					ExpressionAttributeNames: { '#updatedAt': 'updatedAt' },
-					ExpressionAttributeValues: { ':updatedAt': updatedAt },
+					ExpressionAttributeNames: {
+						'#updatedAt': 'updatedAt',
+					},
+					ExpressionAttributeValues: {
+						':updatedAt': updatedAt,
+					},
 				}),
 			);
 		} catch (error) {
@@ -417,8 +473,12 @@ export class DynamoStore implements GameStore {
 				TableName: this.tableName,
 				IndexName: BOARD_INDEX,
 				KeyConditionExpression: '#board = :board',
-				ExpressionAttributeNames: { '#board': 'board' },
-				ExpressionAttributeValues: { ':board': BOARD },
+				ExpressionAttributeNames: {
+					'#board': 'board',
+				},
+				ExpressionAttributeValues: {
+					':board': BOARD,
+				},
 				ScanIndexForward: false,
 				Limit: limit,
 			}),
@@ -444,8 +504,14 @@ export class DynamoStore implements GameStore {
 					TableName: this.tableName,
 					IndexName: BOARD_INDEX,
 					KeyConditionExpression: '#board = :board AND #score > :score',
-					ExpressionAttributeNames: { '#board': 'board', '#score': 'score' },
-					ExpressionAttributeValues: { ':board': BOARD, ':score': score },
+					ExpressionAttributeNames: {
+						'#board': 'board',
+						'#score': 'score',
+					},
+					ExpressionAttributeValues: {
+						':board': BOARD,
+						':score': score,
+					},
 					Select: 'COUNT',
 					ExclusiveStartKey: start,
 				}),
@@ -460,7 +526,9 @@ export class DynamoStore implements GameStore {
 		const { Item } = await this.client.send(
 			new GetCommand({
 				TableName: this.tableName,
-				Key: { playerId: BOARD_TOTAL_KEY },
+				Key: {
+					playerId: BOARD_TOTAL_KEY,
+				},
 			}),
 		);
 		return (Item?.total as number | undefined) ?? 0;
@@ -470,7 +538,9 @@ export class DynamoStore implements GameStore {
 		const { Item } = await this.client.send(
 			new GetCommand({
 				TableName: this.tableName,
-				Key: { playerId: PODIUM_KEY },
+				Key: {
+					playerId: PODIUM_KEY,
+				},
 			}),
 		);
 		return Item
@@ -487,7 +557,11 @@ export class DynamoStore implements GameStore {
 		await this.client.send(
 			new PutCommand({
 				TableName: this.tableName,
-				Item: { playerId: PODIUM_KEY, entries, updatedAt },
+				Item: {
+					playerId: PODIUM_KEY,
+					entries,
+					updatedAt,
+				},
 			}),
 		);
 	}

@@ -8,10 +8,14 @@ import { signIn, signOut } from '@/auth';
  * CSRF protection without the client handling a token.
  */
 export async function signInWithGoogle() {
-	await signIn('google', { redirectTo: '/' });
+	await signIn('google', {
+		redirectTo: '/',
+	});
 }
 
 /** Back to anonymous play (product spec §6.3). Nothing is deleted. */
 export async function signOutOfGoogle() {
-	await signOut({ redirectTo: '/' });
+	await signOut({
+		redirectTo: '/',
+	});
 }

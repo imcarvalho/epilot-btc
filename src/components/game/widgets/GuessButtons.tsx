@@ -15,8 +15,14 @@ function buttonFor(
 		phase?.kind === 'stale'
 	) {
 		return phase.guess.direction === direction
-			? { mode: 'chosen', hint: 'your guess is in play' }
-			: { mode: 'muted', hint: 'one guess at a time' };
+			? {
+					mode: 'chosen',
+					hint: 'your guess is in play',
+				}
+			: {
+					mode: 'muted',
+					hint: 'one guess at a time',
+				};
 	}
 	return {
 		mode: 'ready',

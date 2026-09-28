@@ -9,6 +9,8 @@ const app = new App();
 const SWEEP_URL = 'https://main.dalnijp0oanzq.amplifyapp.com/api/cron/resolve';
 
 new BtcGuessStack(app, 'BtcGuessStack', {
-	env: { region: process.env.CDK_DEFAULT_REGION ?? 'eu-central-1' },
+	env: {
+		region: process.env.CDK_DEFAULT_REGION ?? 'eu-central-1',
+	},
 	sweepUrl: SWEEP_URL,
 });

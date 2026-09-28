@@ -57,7 +57,10 @@ export function signInOutcomeFromCookie(
 export function signInCookieOptions(
 	production = process.env.NODE_ENV === 'production',
 ) {
-	return { ...playerCookieOptions(production), maxAge: 5 * 60 };
+	return {
+		...playerCookieOptions(production),
+		maxAge: 5 * 60,
+	};
 }
 
 export function playerCookieOptions(

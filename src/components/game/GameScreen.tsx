@@ -36,7 +36,10 @@ import { styles } from './GameScreen.styles';
 export function GameScreen() {
 	// The browser's ticker tells the cadence when the price has moved, so
 	// the client can ask then rather than poll (engineering spec §3.1).
-	const ticker = useRef<TickerSnapshot>({ price: null, isAlive: false });
+	const ticker = useRef<TickerSnapshot>({
+		price: null,
+		isAlive: false,
+	});
 	const { status, refresh, placeGuess, isPlacing, guessError, watchedGuessId } =
 		useGame(ticker);
 	const ready = status.kind === 'ready' ? status : null;
@@ -49,7 +52,10 @@ export function GameScreen() {
 	const board = useLeaderboard(state?.lastResult?.id ?? null);
 	const live = useLiveMinute(pending, ready?.clockOffset ?? 0);
 	useEffect(() => {
-		ticker.current = { price: live.price, isAlive: live.isAlive };
+		ticker.current = {
+			price: live.price,
+			isAlive: live.isAlive,
+		};
 	}, [live]);
 
 	// The chart follows the guess (product spec §6.1): to the minute when one

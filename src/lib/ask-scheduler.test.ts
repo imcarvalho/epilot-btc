@@ -22,34 +22,75 @@ const base = (over: Partial<CadenceInput> = {}): CadenceInput => ({
 
 describe('shouldAsk', () => {
 	it('asks once on mount', () => {
-		expect(shouldAsk(base({ msSinceLastAsk: null }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					msSinceLastAsk: null,
+				}),
+			),
+		).toEqual({
 			ask: true,
 			reason: 'mount',
 		});
 	});
 
 	it('asks nothing at all while the tab is hidden', () => {
-		expect(shouldAsk(base({ visible: false, countdownEnded: true }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					visible: false,
+					countdownEnded: true,
+				}),
+			),
+		).toEqual({
 			ask: false,
 		});
-		expect(shouldAsk(base({ visible: false, msSinceLastAsk: null }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					visible: false,
+					msSinceLastAsk: null,
+				}),
+			),
+		).toEqual({
 			ask: false,
 		});
 	});
 
 	it('resyncs immediately when the tab becomes visible again', () => {
-		expect(shouldAsk(base({ visible: true, msSinceLastAsk: null }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					visible: true,
+					msSinceLastAsk: null,
+				}),
+			),
+		).toEqual({
 			ask: true,
 			reason: 'mount',
 		});
 	});
 
 	it('does not ask during the minute', () => {
-		expect(shouldAsk(base({ countdownEnded: false }))).toEqual({ ask: false });
+		expect(
+			shouldAsk(
+				base({
+					countdownEnded: false,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
 	});
 
 	it('asks once when the countdown ends', () => {
-		expect(shouldAsk(base({ countdownEnded: true }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					countdownEnded: true,
+				}),
+			),
+		).toEqual({
 			ask: true,
 			reason: 'countdown-ended',
 		});
@@ -64,7 +105,9 @@ describe('shouldAsk', () => {
 					lastTickerPrice: 100_000,
 				}),
 			),
-		).toEqual({ ask: false });
+		).toEqual({
+			ask: false,
+		});
 	});
 
 	it('asks when the ticker first shows a price different from the locked one', () => {
@@ -77,7 +120,10 @@ describe('shouldAsk', () => {
 					msSinceLastAsk: 2_000,
 				}),
 			),
-		).toEqual({ ask: true, reason: 'price-moved' });
+		).toEqual({
+			ask: true,
+			reason: 'price-moved',
+		});
 	});
 
 	it('spaces repeat asks while the ticker still differs but the server has not settled', () => {
@@ -86,10 +132,24 @@ describe('shouldAsk', () => {
 			askedSinceCountdownEnded: true,
 			lastTickerPrice: 100_012,
 		};
-		expect(shouldAsk(base({ ...moved, msSinceLastAsk: 1_000 }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					...moved,
+					msSinceLastAsk: 1_000,
+				}),
+			),
+		).toEqual({
 			ask: false,
 		});
-		expect(shouldAsk(base({ ...moved, msSinceLastAsk: 2_000 }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					...moved,
+					msSinceLastAsk: 2_000,
+				}),
+			),
+		).toEqual({
 			ask: true,
 			reason: 'price-moved',
 		});
@@ -102,31 +162,69 @@ describe('shouldAsk', () => {
 			socketAlive: false,
 			lastTickerPrice: null,
 		};
-		expect(shouldAsk(base({ ...stuck, msSinceLastAsk: 4_000 }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					...stuck,
+					msSinceLastAsk: 4_000,
+				}),
+			),
+		).toEqual({
 			ask: false,
 		});
-		expect(shouldAsk(base({ ...stuck, msSinceLastAsk: 5_000 }))).toEqual({
+		expect(
+			shouldAsk(
+				base({
+					...stuck,
+					msSinceLastAsk: 5_000,
+				}),
+			),
+		).toEqual({
 			ask: true,
 			reason: 'fallback-poll',
 		});
 	});
 
 	it('refreshes the price every ten seconds when no guess is in play', () => {
-		const idle = { lockedPrice: null, countdownEnded: true };
+		const idle = {
+			lockedPrice: null,
+			countdownEnded: true,
+		};
 		expect(
-			shouldAsk(base({ ...idle, msSinceLastAsk: IDLE_REFRESH_MS - 1 })),
-		).toEqual({ ask: false });
+			shouldAsk(
+				base({
+					...idle,
+					msSinceLastAsk: IDLE_REFRESH_MS - 1,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
 		expect(
-			shouldAsk(base({ ...idle, msSinceLastAsk: IDLE_REFRESH_MS })),
-		).toEqual({ ask: true, reason: 'idle-refresh' });
+			shouldAsk(
+				base({
+					...idle,
+					msSinceLastAsk: IDLE_REFRESH_MS,
+				}),
+			),
+		).toEqual({
+			ask: true,
+			reason: 'idle-refresh',
+		});
 	});
 
 	it('does not refresh an idle tab that is hidden', () => {
 		expect(
 			shouldAsk(
-				base({ lockedPrice: null, visible: false, msSinceLastAsk: 60_000 }),
+				base({
+					lockedPrice: null,
+					visible: false,
+					msSinceLastAsk: 60_000,
+				}),
 			),
-		).toEqual({ ask: false });
+		).toEqual({
+			ask: false,
+		});
 	});
 
 	it('costs two requests for an ordinary guess', () => {
@@ -138,9 +236,15 @@ describe('shouldAsk', () => {
 			}
 		};
 
-		record({ msSinceLastAsk: null }); // opening the app
-		record({ countdownEnded: false }); // mid-minute
-		record({ countdownEnded: true }); // the minute is up
+		record({
+			msSinceLastAsk: null,
+		}); // opening the app
+		record({
+			countdownEnded: false,
+		}); // mid-minute
+		record({
+			countdownEnded: true,
+		}); // the minute is up
 
 		expect(calls).toEqual(['mount', 'countdown-ended']);
 	});

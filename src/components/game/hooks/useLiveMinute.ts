@@ -66,7 +66,11 @@ export function useLiveMinute(
 		let closed = false;
 		let attempt = 0;
 		let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-		const latest = { price: null as number | null, at: 0, ticks: 0 };
+		const latest = {
+			price: null as number | null,
+			at: 0,
+			ticks: 0,
+		};
 		let samples: Sample[] = [];
 
 		const connect = () => {

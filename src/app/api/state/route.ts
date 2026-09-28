@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
 	const signIn = state.signedIn
 		? signInOutcomeFromCookie(request.cookies.get(SIGN_IN_COOKIE)?.value)
 		: null;
-	const response = json({ ...state, signIn });
+	const response = json({
+		...state,
+		signIn,
+	});
 	if (request.cookies.has(SIGN_IN_COOKIE)) {
 		response.cookies.delete(SIGN_IN_COOKIE);
 	}

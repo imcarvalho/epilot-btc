@@ -16,7 +16,9 @@ export function useLeaderboard(
 
 	const load = useCallback(async () => {
 		try {
-			const res = await fetch('/api/leaderboard', { cache: 'no-store' });
+			const res = await fetch('/api/leaderboard', {
+				cache: 'no-store',
+			});
 			if (res.ok) {
 				setBoard(await res.json());
 			}

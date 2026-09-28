@@ -31,7 +31,12 @@ export function applyResolution(
 	delta: 1 | -1,
 ): Scoreboard {
 	const currentStreak = nextStreak(before.currentStreak, delta);
-	const entry: ResolvedGuess = { ...guess, priceAtResolve, resolvedAt, delta };
+	const entry: ResolvedGuess = {
+		...guess,
+		priceAtResolve,
+		resolvedAt,
+		delta,
+	};
 
 	return {
 		score: before.score + delta,

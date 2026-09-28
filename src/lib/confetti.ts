@@ -36,23 +36,28 @@ export function confettiPieces(
 	count: number,
 	random: () => number,
 ): ConfettiPiece[] {
-	return Array.from({ length: count }, () => {
-		const colour =
-			CONFETTI_COLOURS[
-				Math.min(
-					CONFETTI_COLOURS.length - 1,
-					Math.floor(random() * CONFETTI_COLOURS.length),
-				)
-			];
-		return {
-			left: between(random, 0, 100),
-			delayMs: between(random, 0, 400),
-			durationMs: between(random, 1_600, 2_600),
-			driftPx: between(random, -120, 120),
-			spin: between(random, -3, 3),
-			widthPx: between(random, 6, 10),
-			heightPx: between(random, 10, 16),
-			colour,
-		};
-	});
+	return Array.from(
+		{
+			length: count,
+		},
+		() => {
+			const colour =
+				CONFETTI_COLOURS[
+					Math.min(
+						CONFETTI_COLOURS.length - 1,
+						Math.floor(random() * CONFETTI_COLOURS.length),
+					)
+				];
+			return {
+				left: between(random, 0, 100),
+				delayMs: between(random, 0, 400),
+				durationMs: between(random, 1_600, 2_600),
+				driftPx: between(random, -120, 120),
+				spin: between(random, -3, 3),
+				widthPx: between(random, 6, 10),
+				heightPx: between(random, 10, 16),
+				colour,
+			};
+		},
+	);
 }

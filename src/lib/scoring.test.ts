@@ -77,7 +77,10 @@ describe('applyResolution', () => {
 			bestStreak: 2,
 		};
 		const after = applyResolution(onARoll, guess(), 99_990, 61_000, -1);
-		expect(after).toMatchObject({ currentStreak: -1, previousStreak: 2 });
+		expect(after).toMatchObject({
+			currentStreak: -1,
+			previousStreak: 2,
+		});
 	});
 
 	it('keeps the best streak when the current one breaks', () => {

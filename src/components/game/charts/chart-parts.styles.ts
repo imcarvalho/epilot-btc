@@ -38,10 +38,18 @@ export const styles = stylex.create({
 		fontFamily: 'var(--font-family-code)',
 		fontSize: 13,
 	},
-	lockedText: { fill: palette.yellow },
-	ahead: { fill: palette.upFrom },
-	behind: { fill: 'var(--color-error)' },
-	level: { fill: palette.yellow },
+	lockedText: {
+		fill: palette.yellow,
+	},
+	ahead: {
+		fill: palette.upFrom,
+	},
+	behind: {
+		fill: 'var(--color-error)',
+	},
+	level: {
+		fill: palette.yellow,
+	},
 	axis: {
 		color: 'var(--color-text-secondary)',
 		fontFamily: 'var(--font-family-code)',
@@ -63,7 +71,10 @@ export const styles = stylex.create({
 		inset: 0,
 		outlineColor: palette.purple,
 		outlineOffset: 4,
-		outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+		outlineStyle: {
+			default: 'none',
+			':focus-visible': 'solid',
+		},
 		outlineWidth: 2,
 		position: 'absolute',
 		// Vertical swipes still scroll the page; horizontal ones scrub.

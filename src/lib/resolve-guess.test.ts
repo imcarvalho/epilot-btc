@@ -34,14 +34,32 @@ describe('resolveGuess', () => {
 
 	it('resolves a down guess as correct when the price fell', () => {
 		expect(
-			resolveGuess(guess({ direction: 'down' }), 99_999, T0 + 60_000),
-		).toEqual({ resolved: true, delta: 1 });
+			resolveGuess(
+				guess({
+					direction: 'down',
+				}),
+				99_999,
+				T0 + 60_000,
+			),
+		).toEqual({
+			resolved: true,
+			delta: 1,
+		});
 	});
 
 	it('resolves a down guess as wrong when the price rose', () => {
 		expect(
-			resolveGuess(guess({ direction: 'down' }), 100_001, T0 + 60_000),
-		).toEqual({ resolved: true, delta: -1 });
+			resolveGuess(
+				guess({
+					direction: 'down',
+				}),
+				100_001,
+				T0 + 60_000,
+			),
+		).toEqual({
+			resolved: true,
+			delta: -1,
+		});
 	});
 
 	it('does not resolve while the price is unchanged, however long it has been', () => {

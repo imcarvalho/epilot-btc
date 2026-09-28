@@ -45,10 +45,22 @@ export function candleReadout(c: Candle): Readout {
 	return {
 		title: `${time} · ${move}`,
 		rows: [
-			{ label: 'Open', value: formatUsd(c.open) },
-			{ label: 'High', value: formatUsd(c.high) },
-			{ label: 'Low', value: formatUsd(c.low) },
-			{ label: 'Close', value: formatUsd(c.close) },
+			{
+				label: 'Open',
+				value: formatUsd(c.open),
+			},
+			{
+				label: 'High',
+				value: formatUsd(c.high),
+			},
+			{
+				label: 'Low',
+				value: formatUsd(c.low),
+			},
+			{
+				label: 'Close',
+				value: formatUsd(c.close),
+			},
 		],
 		text: `${time}: opened at ${formatUsd(c.open)}, closed at ${formatUsd(c.close)}, ${move}. High ${formatUsd(c.high)}, low ${formatUsd(c.low)}.`,
 	};
@@ -64,7 +76,12 @@ export function sampleReadout(
 	if (seconds === 0) {
 		return {
 			title: 'At your guess',
-			rows: [{ label: 'Locked', value: price }],
+			rows: [
+				{
+					label: 'Locked',
+					value: price,
+				},
+			],
 			text: `At your guess: locked at ${price}.`,
 		};
 	}
@@ -74,8 +91,14 @@ export function sampleReadout(
 	return {
 		title: `+${seconds}s`,
 		rows: [
-			{ label: 'Price', value: price },
-			{ label: 'Guess', value: where },
+			{
+				label: 'Price',
+				value: price,
+			},
+			{
+				label: 'Guess',
+				value: where,
+			},
 		],
 		text: `${seconds} ${seconds === 1 ? 'second' : 'seconds'} after your guess: ${price}, ${where}, provisional.`,
 	};

@@ -30,7 +30,9 @@ const CANDLE_REFRESH_MS = 10_000;
  * minutes, which would freeze the chart.
  */
 export function useCandles(): CandlesState {
-	const [state, setState] = useState<CandlesState>({ kind: 'loading' });
+	const [state, setState] = useState<CandlesState>({
+		kind: 'loading',
+	});
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
 	useEffect(() => {
@@ -40,19 +42,31 @@ export function useCandles(): CandlesState {
 			clearTimeout(timer.current);
 			const now = Date.now();
 			try {
-				const res = await fetch(candlesUrl(now), { cache: 'no-store' });
+				const res = await fetch(candlesUrl(now), {
+					cache: 'no-store',
+				});
 				if (!res.ok) {
 					throw new Error(`candles ${res.status}`);
 				}
 				const candles = parseCandles(await res.json());
 				if (!cancelled) {
-					setState({ kind: 'ready', candles, windowEnd: now });
+					setState({
+						kind: 'ready',
+						candles,
+						windowEnd: now,
+					});
 				}
 			} catch {
 				// Keep the last good chart on a failed refresh; only an empty one
 				// becomes an error.
 				if (!cancelled) {
-					setState((s) => (s.kind === 'ready' ? s : { kind: 'error' }));
+					setState((s) =>
+						s.kind === 'ready'
+							? s
+							: {
+									kind: 'error',
+								},
+					);
 				}
 			}
 			if (!cancelled && document.visibilityState === 'visible') {

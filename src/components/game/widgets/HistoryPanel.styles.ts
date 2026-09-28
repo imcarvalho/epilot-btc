@@ -45,8 +45,12 @@ export const styles = stylex.create({
 		display: 'inline-flex',
 		gap: 'var(--spacing-1)',
 	},
-	up: { color: palette.upFrom },
-	down: { color: palette.downTo },
+	up: {
+		color: palette.upFrom,
+	},
+	down: {
+		color: palette.downTo,
+	},
 	prices: {
 		color: 'var(--color-text-primary)',
 		overflow: 'hidden',
@@ -60,7 +64,13 @@ export const styles = stylex.create({
 		fontWeight: 'var(--font-weight-semibold)',
 		textAlign: 'end',
 	},
-	win: { color: palette.upFrom },
-	loss: { color: 'var(--color-error)' },
-	waiting: { color: 'var(--color-text-secondary)' },
+	win: {
+		color: palette.upFrom,
+	},
+	loss: {
+		color: 'var(--color-error)',
+	},
+	waiting: {
+		color: 'var(--color-text-secondary)',
+	},
 });

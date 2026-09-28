@@ -50,7 +50,9 @@ const fail = (msg) => {
 };
 
 function requireJava() {
-	const java = spawnSync('java', ['-version'], { stdio: 'ignore' });
+	const java = spawnSync('java', ['-version'], {
+		stdio: 'ignore',
+	});
 	if (java.error || java.status !== 0) {
 		fail(
 			'DynamoDB Local needs Java 17 or newer on your PATH (https://adoptium.net).',
@@ -63,7 +65,9 @@ async function ensureJar() {
 		return;
 	}
 	log('Downloading DynamoDB Local (first run only)...');
-	mkdirSync(DIR, { recursive: true });
+	mkdirSync(DIR, {
+		recursive: true,
+	});
 	const res = await fetch(DOWNLOAD);
 	if (!res.ok) {
 		fail(`Download failed: ${res.status} ${res.statusText}`);
@@ -103,10 +107,17 @@ async function ensureTable() {
 	const client = new DynamoDBClient({
 		endpoint: env.DYNAMODB_ENDPOINT,
 		region: 'eu-central-1',
-		credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
+		credentials: {
+			accessKeyId: 'local',
+			secretAccessKey: 'local',
+		},
 	});
 	try {
-		await client.send(new DescribeTableCommand({ TableName: TABLE }));
+		await client.send(
+			new DescribeTableCommand({
+				TableName: TABLE,
+			}),
+		);
 		return;
 	} catch (error) {
 		if (error.name !== 'ResourceNotFoundException') {
@@ -118,20 +129,46 @@ async function ensureTable() {
 		new CreateTableCommand({
 			TableName: TABLE,
 			BillingMode: 'PAY_PER_REQUEST',
-			KeySchema: [{ AttributeName: 'playerId', KeyType: 'HASH' }],
+			KeySchema: [
+				{
+					AttributeName: 'playerId',
+					KeyType: 'HASH',
+				},
+			],
 			AttributeDefinitions: [
-				{ AttributeName: 'playerId', AttributeType: 'S' },
-				{ AttributeName: 'board', AttributeType: 'S' },
-				{ AttributeName: 'score', AttributeType: 'N' },
-				{ AttributeName: 'pendingBucket', AttributeType: 'S' },
-				{ AttributeName: 'pendingAt', AttributeType: 'N' },
+				{
+					AttributeName: 'playerId',
+					AttributeType: 'S',
+				},
+				{
+					AttributeName: 'board',
+					AttributeType: 'S',
+				},
+				{
+					AttributeName: 'score',
+					AttributeType: 'N',
+				},
+				{
+					AttributeName: 'pendingBucket',
+					AttributeType: 'S',
+				},
+				{
+					AttributeName: 'pendingAt',
+					AttributeType: 'N',
+				},
 			],
 			GlobalSecondaryIndexes: [
 				{
 					IndexName: 'byScore',
 					KeySchema: [
-						{ AttributeName: 'board', KeyType: 'HASH' },
-						{ AttributeName: 'score', KeyType: 'RANGE' },
+						{
+							AttributeName: 'board',
+							KeyType: 'HASH',
+						},
+						{
+							AttributeName: 'score',
+							KeyType: 'RANGE',
+						},
 					],
 					Projection: {
 						ProjectionType: 'INCLUDE',
@@ -141,10 +178,18 @@ async function ensureTable() {
 				{
 					IndexName: 'byPending',
 					KeySchema: [
-						{ AttributeName: 'pendingBucket', KeyType: 'HASH' },
-						{ AttributeName: 'pendingAt', KeyType: 'RANGE' },
+						{
+							AttributeName: 'pendingBucket',
+							KeyType: 'HASH',
+						},
+						{
+							AttributeName: 'pendingAt',
+							KeyType: 'RANGE',
+						},
 					],
-					Projection: { ProjectionType: 'ALL' },
+					Projection: {
+						ProjectionType: 'ALL',
+					},
 				},
 			],
 		}),
@@ -170,7 +215,9 @@ async function main() {
 	} else {
 		requireJava();
 		await ensureJar();
-		mkdirSync(DATA, { recursive: true });
+		mkdirSync(DATA, {
+			recursive: true,
+		});
 		log(`Starting DynamoDB Local on port ${PORT} (data in .dynamodb/data)...`);
 		const dynamo = spawn(
 			'java',
@@ -187,7 +234,10 @@ async function main() {
 				'-disableTelemetry',
 			],
 			// It writes a metadata file into its working directory: keep that out of the repo.
-			{ cwd: DIR, stdio: 'ignore' },
+			{
+				cwd: DIR,
+				stdio: 'ignore',
+			},
 		);
 		children.push(dynamo);
 		dynamo.once('exit', (code) => {
@@ -208,7 +258,9 @@ async function main() {
 	);
 
 	// The theme is generated, not committed: build it before Next reads it.
-	const theme = spawnSync('npm', ['run', 'theme'], { stdio: 'inherit' });
+	const theme = spawnSync('npm', ['run', 'theme'], {
+		stdio: 'inherit',
+	});
 	if (theme.status !== 0) {
 		console.error('[dev:local] npm run theme failed (it needs Node >= 22.13)');
 		process.exit(theme.status ?? 1);

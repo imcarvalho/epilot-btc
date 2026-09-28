@@ -22,5 +22,7 @@ export const styles = stylex.create({
 		backgroundImage: `linear-gradient(135deg, ${palette.upFrom}, ${palette.upTo})`,
 	},
 	// Pastel coral rather than Dracula's full red (product spec §6.4).
-	loss: { backgroundColor: 'var(--color-error)' },
+	loss: {
+		backgroundColor: 'var(--color-error)',
+	},
 });

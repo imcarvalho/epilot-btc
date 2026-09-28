@@ -32,12 +32,17 @@ export function useWidth<T extends HTMLElement>() {
 export function GridLines({ width }: { width: number }) {
 	return (
 		<g {...stylex.props(styles.grid)}>
-			{Array.from({ length: GRID_LINES }, (_, i) => {
-				const y =
-					CHART_PADDING +
-					(i * (CHART_HEIGHT - 2 * CHART_PADDING)) / (GRID_LINES - 1);
-				return <line key={i} x1={0} x2={width} y1={y} y2={y} />;
-			})}
+			{Array.from(
+				{
+					length: GRID_LINES,
+				},
+				(_, i) => {
+					const y =
+						CHART_PADDING +
+						(i * (CHART_HEIGHT - 2 * CHART_PADDING)) / (GRID_LINES - 1);
+					return <line key={i} x1={0} x2={width} y1={y} y2={y} />;
+				},
+			)}
 		</g>
 	);
 }

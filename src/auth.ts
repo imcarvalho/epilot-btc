@@ -51,11 +51,18 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const { handlers, auth, signIn, signOut } = NextAuth({
 	providers: [
 		Google({
-			authorization: { params: { scope: 'openid' } },
+			authorization: {
+				params: {
+					scope: 'openid',
+				},
+			},
 			checks: ['pkce', 'state'],
 		}),
 	],
-	session: { strategy: 'jwt', maxAge: SESSION_MAX_AGE_SECONDS },
+	session: {
+		strategy: 'jwt',
+		maxAge: SESSION_MAX_AGE_SECONDS,
+	},
 	// Amplify serves the app behind its own CloudFront distribution, so the
 	// host is the forwarded one.
 	trustHost: true,
@@ -76,12 +83,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 		// Only the player id goes into the token: nothing else from Google.
 		jwt({ token, profile }) {
 			if (profile?.sub) {
-				return { playerId: `google:${profile.sub}` };
+				return {
+					playerId: `google:${profile.sub}`,
+				};
 			}
 			return token;
 		},
 		session({ session, token }) {
-			return { expires: session.expires, playerId: token.playerId };
+			return {
+				expires: session.expires,
+				playerId: token.playerId,
+			};
 		},
 	},
 });

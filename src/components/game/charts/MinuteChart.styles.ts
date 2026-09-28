@@ -8,24 +8,48 @@ export const styles = stylex.create({
 	area: {
 		stroke: 'none',
 	},
-	aheadArea: { fill: 'rgba(125, 251, 170, 0.14)' },
-	behindArea: { fill: 'rgba(255, 138, 138, 0.14)' },
-	levelArea: { fill: 'rgba(241, 250, 140, 0.08)' },
-	offArea: { fill: 'rgba(255, 255, 255, 0.04)' },
+	aheadArea: {
+		fill: 'rgba(125, 251, 170, 0.14)',
+	},
+	behindArea: {
+		fill: 'rgba(255, 138, 138, 0.14)',
+	},
+	levelArea: {
+		fill: 'rgba(241, 250, 140, 0.08)',
+	},
+	offArea: {
+		fill: 'rgba(255, 255, 255, 0.04)',
+	},
 	line: {
 		fill: 'none',
 		strokeLinecap: 'round',
 		strokeLinejoin: 'round',
 		strokeWidth: 2,
 	},
-	aheadLine: { stroke: palette.upFrom },
-	behindLine: { stroke: 'var(--color-error)' },
-	levelLine: { stroke: palette.yellow },
-	offLine: { stroke: 'var(--color-text-disabled)' },
-	aheadDot: { fill: palette.upFrom },
-	behindDot: { fill: 'var(--color-error)' },
-	levelDot: { fill: palette.yellow },
-	offDot: { fill: 'var(--color-text-disabled)' },
+	aheadLine: {
+		stroke: palette.upFrom,
+	},
+	behindLine: {
+		stroke: 'var(--color-error)',
+	},
+	levelLine: {
+		stroke: palette.yellow,
+	},
+	offLine: {
+		stroke: 'var(--color-text-disabled)',
+	},
+	aheadDot: {
+		fill: palette.upFrom,
+	},
+	behindDot: {
+		fill: 'var(--color-error)',
+	},
+	levelDot: {
+		fill: palette.yellow,
+	},
+	offDot: {
+		fill: 'var(--color-text-disabled)',
+	},
 	note: {
 		color: 'var(--color-text-secondary)',
 		fontSize: 'var(--font-size-sm)',

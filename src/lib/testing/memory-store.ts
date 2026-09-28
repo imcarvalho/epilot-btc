@@ -115,7 +115,11 @@ export class MemoryStore implements GameStore {
 
 	async getCachedPrice() {
 		await tick();
-		return this.price ? { ...this.price } : null;
+		return this.price
+			? {
+					...this.price,
+				}
+			: null;
 	}
 
 	async putCachedPrice(price: CachedPrice) {
@@ -123,7 +127,9 @@ export class MemoryStore implements GameStore {
 		if (this.price && this.price.updatedAt >= price.updatedAt) {
 			return;
 		}
-		this.price = { ...price };
+		this.price = {
+			...price,
+		};
 	}
 
 	private board(): BoardEntry[] {

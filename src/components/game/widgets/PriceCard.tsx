@@ -17,7 +17,10 @@ import { styles } from './PriceCard.styles';
 
 export type ChartView = 'hour' | 'minute';
 
-const WORD = { up: 'Higher', down: 'Lower' } as const;
+const WORD = {
+	up: 'Higher',
+	down: 'Lower',
+} as const;
 
 /**
  * The price, always visible (rule R1), and the chart beneath it in one of
@@ -55,7 +58,10 @@ export function PriceCard({
 	// The hour chart carries the guess while it runs and while its result shows.
 	const marked = guess ?? (phase?.kind === 'result' ? phase.result : null);
 	const lock = marked
-		? { price: marked.priceAtGuess, at: marked.createdAt }
+		? {
+				price: marked.priceAtGuess,
+				at: marked.createdAt,
+			}
 		: null;
 
 	const age =

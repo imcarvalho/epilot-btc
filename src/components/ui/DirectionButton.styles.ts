@@ -9,7 +9,10 @@ export const styles = stylex.create({
 		borderStyle: 'solid',
 		borderWidth: 2,
 		color: palette.ink,
-		cursor: { default: 'pointer', ':disabled': 'default' },
+		cursor: {
+			default: 'pointer',
+			':disabled': 'default',
+		},
 		display: 'flex',
 		fontFamily: 'inherit',
 		gap: 'var(--spacing-5)',
@@ -20,7 +23,10 @@ export const styles = stylex.create({
 		},
 		outlineColor: 'var(--color-text-primary)',
 		outlineOffset: 4,
-		outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+		outlineStyle: {
+			default: 'none',
+			':focus-visible': 'solid',
+		},
 		outlineWidth: 2,
 		paddingInline: 'var(--spacing-6)',
 		position: 'relative',
@@ -34,7 +40,10 @@ export const styles = stylex.create({
 		transitionDuration: 'var(--duration-fast)',
 		transitionProperty: 'transform, box-shadow, filter, background-color',
 		transitionTimingFunction: 'var(--ease-standard)',
-		filter: { default: 'none', ':hover:not(:disabled)': 'brightness(1.04)' },
+		filter: {
+			default: 'none',
+			':hover:not(:disabled)': 'brightness(1.04)',
+		},
 		width: '100%',
 	},
 	up: {

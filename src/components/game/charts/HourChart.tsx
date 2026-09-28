@@ -152,11 +152,26 @@ export function HourChart({
 			</div>
 			<Axis
 				ticks={[
-					{ at: 0, label: width > 0 && width < NARROW ? '60m' : '60 min ago' },
-					{ at: 0.25, label: '45' },
-					{ at: 0.5, label: '30' },
-					{ at: 0.75, label: '15' },
-					{ at: 1, label: 'now' },
+					{
+						at: 0,
+						label: width > 0 && width < NARROW ? '60m' : '60 min ago',
+					},
+					{
+						at: 0.25,
+						label: '45',
+					},
+					{
+						at: 0.5,
+						label: '30',
+					},
+					{
+						at: 0.75,
+						label: '15',
+					},
+					{
+						at: 1,
+						label: 'now',
+					},
 				]}
 			/>
 		</div>

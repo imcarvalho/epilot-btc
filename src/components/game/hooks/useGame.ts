@@ -33,14 +33,20 @@ export type GuessError = 'price-unavailable' | 'failed' | null;
 let playerCreation: Promise<Response> | null = null;
 
 async function fetchState(): Promise<StateResponse> {
-	let res = await fetch('/api/state', { cache: 'no-store' });
+	let res = await fetch('/api/state', {
+		cache: 'no-store',
+	});
 	if (res.status === 401) {
-		playerCreation ??= fetch('/api/player', { method: 'POST' });
+		playerCreation ??= fetch('/api/player', {
+			method: 'POST',
+		});
 		const created = await playerCreation;
 		if (!created.ok) {
 			throw new Error(`player creation failed: ${created.status}`);
 		}
-		res = await fetch('/api/state', { cache: 'no-store' });
+		res = await fetch('/api/state', {
+			cache: 'no-store',
+		});
 	}
 	if (!res.ok) {
 		throw new Error(`state failed: ${res.status}`);
@@ -57,7 +63,9 @@ async function fetchState(): Promise<StateResponse> {
  * the countdown runs on the server's clock (§7.2).
  */
 export function useGame(ticker?: RefObject<TickerSnapshot>) {
-	const [status, setStatus] = useState<GameStatus>({ kind: 'loading' });
+	const [status, setStatus] = useState<GameStatus>({
+		kind: 'loading',
+	});
 	const [watchedGuessId, setWatchedGuessId] = useState<string | null>(null);
 	const [isPlacing, setIsPlacing] = useState(false);
 	const [guessError, setGuessError] = useState<GuessError>(null);
@@ -85,7 +93,11 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 			accept(await fetchState());
 		} catch {
 			setStatus((current) =>
-				current.kind === 'ready' ? current : { kind: 'error' },
+				current.kind === 'ready'
+					? current
+					: {
+							kind: 'error',
+						},
 			);
 		} finally {
 			inFlight.current = false;
@@ -99,8 +111,12 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 			try {
 				const res = await fetch('/api/guess', {
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ direction }),
+					headers: {
+						'content-type': 'application/json',
+					},
+					body: JSON.stringify({
+						direction,
+					}),
 				});
 				if (res.status === 201) {
 					const { pendingGuess, serverNow } =
@@ -110,7 +126,11 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 						current.kind === 'ready'
 							? {
 									kind: 'ready',
-									state: { ...current.state, pendingGuess, serverNow },
+									state: {
+										...current.state,
+										pendingGuess,
+										serverNow,
+									},
 									clockOffset: serverNow - Date.now(),
 								}
 							: current,
@@ -179,7 +199,14 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 		return () => clearInterval(id);
 	}, [refresh]);
 
-	return { status, refresh, placeGuess, isPlacing, guessError, watchedGuessId };
+	return {
+		status,
+		refresh,
+		placeGuess,
+		isPlacing,
+		guessError,
+		watchedGuessId,
+	};
 }
 
 /** The current time on the server's clock, re-rendering once a second. */

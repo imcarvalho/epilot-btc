@@ -27,7 +27,10 @@ export async function POST(request: NextRequest) {
 	switch (result.kind) {
 		case 'started':
 			return json<GuessResponse>(
-				{ pendingGuess: result.pendingGuess, serverNow: result.serverNow },
+				{
+					pendingGuess: result.pendingGuess,
+					serverNow: result.serverNow,
+				},
 				201,
 			);
 		case 'guess-pending':

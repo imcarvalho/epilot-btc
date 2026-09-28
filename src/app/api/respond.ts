@@ -7,7 +7,9 @@ import { PLAYER_COOKIE, playerIdFromCookie } from '@/lib/identity';
 export function json<T>(body: T, status = 200): NextResponse<T> {
 	return NextResponse.json(body, {
 		status,
-		headers: { 'cache-control': 'no-store' },
+		headers: {
+			'cache-control': 'no-store',
+		},
 	});
 }
 
@@ -15,7 +17,12 @@ export function error(
 	code: ApiErrorCode,
 	status: number,
 ): NextResponse<ApiError> {
-	return json({ error: code }, status);
+	return json(
+		{
+			error: code,
+		},
+		status,
+	);
 }
 
 /**

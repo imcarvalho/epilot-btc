@@ -33,14 +33,21 @@ export function resolveGuess(
 	now: number,
 ): Resolution {
 	if (now - guess.createdAt < GUESS_WINDOW_MS) {
-		return { resolved: false };
+		return {
+			resolved: false,
+		};
 	}
 	if (priceNow === guess.priceAtGuess) {
-		return { resolved: false };
+		return {
+			resolved: false,
+		};
 	}
 
 	const wentUp = priceNow > guess.priceAtGuess;
 	const correct = guess.direction === 'up' ? wentUp : !wentUp;
 
-	return { resolved: true, delta: correct ? 1 : -1 };
+	return {
+		resolved: true,
+		delta: correct ? 1 : -1,
+	};
 }

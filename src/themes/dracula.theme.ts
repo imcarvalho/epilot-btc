@@ -20,7 +20,10 @@ export const draculaTheme = defineTheme({
 	// Named explicitly: the build only carries an icon registry it can see as
 	// a named import, so an inherited one would be dropped from the output.
 	icons: neutralIconRegistry,
-	color: { accent: '#BD93F9', neutralStyle: 'cool' },
+	color: {
+		accent: '#BD93F9',
+		neutralStyle: 'cool',
+	},
 	tokens: {
 		// Ground and surfaces
 		'--color-background-body': '#17171F',
@@ -79,7 +82,10 @@ export const draculaTheme = defineTheme({
 		// Generated players have no photo, so the initials disc is what shows:
 		// pastel, from the "lower" end of the hero palette, with dark ink.
 		'avatar-fallback': {
-			base: { backgroundColor: '#EFA6E4', color: '#1A1726' },
+			base: {
+				backgroundColor: '#EFA6E4',
+				color: '#1A1726',
+			},
 		},
 		// Secondary actions are outlined on the dark ground rather than filled,
 		// so the two hero buttons stay the only solid colour on the screen.

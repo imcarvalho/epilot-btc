@@ -148,12 +148,20 @@ export const styles = stylex.create({
 		paddingBlock: 'var(--spacing-2)',
 		paddingInline: 'var(--spacing-5)',
 	},
-	scoreBoxWin: { borderColor: 'rgba(125, 251, 170, 0.4)' },
-	scoreBoxLoss: { borderColor: 'rgba(255, 138, 138, 0.4)' },
+	scoreBoxWin: {
+		borderColor: 'rgba(125, 251, 170, 0.4)',
+	},
+	scoreBoxLoss: {
+		borderColor: 'rgba(255, 138, 138, 0.4)',
+	},
 	delta: {
 		fontSize: 'var(--font-size-3xl)',
 		fontWeight: 'var(--font-weight-bold)',
 	},
-	deltaWin: { color: palette.upFrom },
-	deltaLoss: { color: 'var(--color-error)' },
+	deltaWin: {
+		color: palette.upFrom,
+	},
+	deltaLoss: {
+		color: 'var(--color-error)',
+	},
 });

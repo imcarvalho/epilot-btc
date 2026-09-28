@@ -5,7 +5,10 @@ import { EmptyMessage, Numeric, Panel, PanelHeader } from '@/components/ui';
 import { palette } from '@/components/ui/tokens.stylex';
 import { styles } from './HistoryPanel.styles';
 
-const WORD = { up: 'Higher', down: 'Lower' } as const;
+const WORD = {
+	up: 'Higher',
+	down: 'Lower',
+} as const;
 const plain = new Intl.NumberFormat('en-US', {
 	minimumFractionDigits: 2,
 	maximumFractionDigits: 2,

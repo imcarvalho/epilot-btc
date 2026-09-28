@@ -177,11 +177,26 @@ export function MinuteChart({
 			</div>
 			<Axis
 				ticks={[
-					{ at: 0, label: 'guess' },
-					{ at: 0.25, label: `+${Math.round(totalSeconds * 0.25)}s` },
-					{ at: 0.5, label: `+${Math.round(totalSeconds * 0.5)}s` },
-					{ at: 0.75, label: `+${Math.round(totalSeconds * 0.75)}s` },
-					{ at: 1, label: `+${totalSeconds}s` },
+					{
+						at: 0,
+						label: 'guess',
+					},
+					{
+						at: 0.25,
+						label: `+${Math.round(totalSeconds * 0.25)}s`,
+					},
+					{
+						at: 0.5,
+						label: `+${Math.round(totalSeconds * 0.5)}s`,
+					},
+					{
+						at: 0.75,
+						label: `+${Math.round(totalSeconds * 0.75)}s`,
+					},
+					{
+						at: 1,
+						label: `+${totalSeconds}s`,
+					},
 				]}
 			/>
 		</div>

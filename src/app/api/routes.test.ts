@@ -80,13 +80,21 @@ function request(
 }
 
 async function newPlayerCookie(): Promise<string> {
-	const res = await createPlayer(request('/api/player', { method: 'POST' }));
+	const res = await createPlayer(
+		request('/api/player', {
+			method: 'POST',
+		}),
+	);
 	return res.cookies.get('btc_player')!.value;
 }
 
 describe('POST /api/player', () => {
 	it('creates a player and sets an httpOnly, SameSite=Lax cookie', async () => {
-		const res = await createPlayer(request('/api/player', { method: 'POST' }));
+		const res = await createPlayer(
+			request('/api/player', {
+				method: 'POST',
+			}),
+		);
 		expect(res.status).toBe(201);
 		expect(await res.json()).toEqual({
 			publicName: expect.stringMatching(/^[A-Z][a-z]+[A-Z][a-z]+$/),
@@ -102,7 +110,10 @@ describe('POST /api/player', () => {
 	it('is idempotent for a browser that already has a player', async () => {
 		const cookie = await newPlayerCookie();
 		const res = await createPlayer(
-			request('/api/player', { method: 'POST', cookie }),
+			request('/api/player', {
+				method: 'POST',
+				cookie,
+			}),
 		);
 		expect(res.status).toBe(200);
 		expect(res.headers.get('set-cookie')).toBeNull();
@@ -127,19 +138,27 @@ describe('GET /api/state', () => {
 	it('is 401 without a player cookie', async () => {
 		const res = await getState(request('/api/state'));
 		expect(res.status).toBe(401);
-		expect(await res.json()).toEqual({ error: 'no-player' });
+		expect(await res.json()).toEqual({
+			error: 'no-player',
+		});
 	});
 
 	it('is 401 for a malformed cookie, without touching the store', async () => {
 		const res = await getState(
-			request('/api/state', { cookie: 'PRICE#BTCUSD' }),
+			request('/api/state', {
+				cookie: 'PRICE#BTCUSD',
+			}),
 		);
 		expect(res.status).toBe(401);
 	});
 
 	it('returns the state with server time, and is never cached', async () => {
 		const cookie = await newPlayerCookie();
-		const res = await getState(request('/api/state', { cookie }));
+		const res = await getState(
+			request('/api/state', {
+				cookie,
+			}),
+		);
 		expect(res.status).toBe(200);
 		expect(res.headers.get('cache-control')).toBe('no-store');
 		expect(await res.json()).toMatchObject({
@@ -158,12 +177,18 @@ describe('POST /api/guess', () => {
 			request('/api/guess', {
 				method: 'POST',
 				cookie,
-				body: { direction: 'up' },
+				body: {
+					direction: 'up',
+				},
 			}),
 		);
 		expect(res.status).toBe(201);
 		expect(await res.json()).toMatchObject({
-			pendingGuess: { direction: 'up', priceAtGuess: 100_000, createdAt: T0 },
+			pendingGuess: {
+				direction: 'up',
+				priceAtGuess: 100_000,
+				createdAt: T0,
+			},
 			serverNow: T0,
 		});
 	});
@@ -171,11 +196,21 @@ describe('POST /api/guess', () => {
 	it('rejects a body that tries to carry a price or a timestamp', async () => {
 		const cookie = await newPlayerCookie();
 		for (const body of [
-			{ direction: 'up', priceAtGuess: 1 },
-			{ direction: 'up', createdAt: 0 },
+			{
+				direction: 'up',
+				priceAtGuess: 1,
+			},
+			{
+				direction: 'up',
+				createdAt: 0,
+			},
 		]) {
 			const res = await guess(
-				request('/api/guess', { method: 'POST', cookie, body }),
+				request('/api/guess', {
+					method: 'POST',
+					cookie,
+					body,
+				}),
 			);
 			expect(res.status).toBe(400);
 		}
@@ -184,9 +219,19 @@ describe('POST /api/guess', () => {
 
 	it('rejects anything but up or down, and a body that is not JSON', async () => {
 		const cookie = await newPlayerCookie();
-		for (const body of [{ direction: 'sideways' }, {}, 'not json']) {
+		for (const body of [
+			{
+				direction: 'sideways',
+			},
+			{},
+			'not json',
+		]) {
 			const res = await guess(
-				request('/api/guess', { method: 'POST', cookie, body }),
+				request('/api/guess', {
+					method: 'POST',
+					cookie,
+					body,
+				}),
 			);
 			expect(res.status).toBe(400);
 		}
@@ -198,23 +243,34 @@ describe('POST /api/guess', () => {
 			request('/api/guess', {
 				method: 'POST',
 				cookie,
-				body: { direction: 'up' },
+				body: {
+					direction: 'up',
+				},
 			}),
 		);
 		const res = await guess(
 			request('/api/guess', {
 				method: 'POST',
 				cookie,
-				body: { direction: 'down' },
+				body: {
+					direction: 'down',
+				},
 			}),
 		);
 		expect(res.status).toBe(409);
-		expect(await res.json()).toEqual({ error: 'guess-pending' });
+		expect(await res.json()).toEqual({
+			error: 'guess-pending',
+		});
 	});
 
 	it('is 401 without a player', async () => {
 		const res = await guess(
-			request('/api/guess', { method: 'POST', body: { direction: 'up' } }),
+			request('/api/guess', {
+				method: 'POST',
+				body: {
+					direction: 'up',
+				},
+			}),
 		);
 		expect(res.status).toBe(401);
 	});
@@ -228,11 +284,15 @@ describe('POST /api/guess', () => {
 			request('/api/guess', {
 				method: 'POST',
 				cookie,
-				body: { direction: 'up' },
+				body: {
+					direction: 'up',
+				},
 			}),
 		);
 		expect(res.status).toBe(503);
-		expect(await res.json()).toEqual({ error: 'price-unavailable' });
+		expect(await res.json()).toEqual({
+			error: 'price-unavailable',
+		});
 	});
 });
 
@@ -241,7 +301,11 @@ describe('POST /api/cron/resolve', () => {
 
 	it('rejects a request without the shared secret', async () => {
 		vi.stubEnv('CRON_SECRET', 's3cret');
-		const res = await resolve(request('/api/cron/resolve', { method: 'POST' }));
+		const res = await resolve(
+			request('/api/cron/resolve', {
+				method: 'POST',
+			}),
+		);
 		expect(res.status).toBe(401);
 	});
 
@@ -250,7 +314,9 @@ describe('POST /api/cron/resolve', () => {
 		const res = await resolve(
 			request('/api/cron/resolve', {
 				method: 'POST',
-				headers: { 'x-cron-secret': 'guess' },
+				headers: {
+					'x-cron-secret': 'guess',
+				},
 			}),
 		);
 		expect(res.status).toBe(401);
@@ -261,7 +327,9 @@ describe('POST /api/cron/resolve', () => {
 		const res = await resolve(
 			request('/api/cron/resolve', {
 				method: 'POST',
-				headers: { 'x-cron-secret': '' },
+				headers: {
+					'x-cron-secret': '',
+				},
 			}),
 		);
 		expect(res.status).toBe(401);
@@ -272,7 +340,9 @@ describe('POST /api/cron/resolve', () => {
 		const res = await resolve(
 			request('/api/cron/resolve', {
 				method: 'POST',
-				headers: { 'x-cron-secret': 's3cret' },
+				headers: {
+					'x-cron-secret': 's3cret',
+				},
 			}),
 		);
 		expect(res.status).toBe(200);
@@ -299,8 +369,15 @@ describe('GET /api/leaderboard', () => {
 
 	it('tells an anonymous player they are not on the board', async () => {
 		const cookie = await newPlayerCookie();
-		const res = await leaderboard(request('/api/leaderboard', { cookie }));
-		expect(await res.json()).toMatchObject({ isEligible: false, you: null });
+		const res = await leaderboard(
+			request('/api/leaderboard', {
+				cookie,
+			}),
+		);
+		expect(await res.json()).toMatchObject({
+			isEligible: false,
+			you: null,
+		});
 	});
 });
 
@@ -318,26 +395,40 @@ describe('signed in', () => {
 			request('/api/guess', {
 				method: 'POST',
 				cookie,
-				body: { direction: 'up' },
+				body: {
+					direction: 'up',
+				},
 			}),
 		);
 		await signIn(deps(), 'sub-1', `anon:${cookie}`);
-		session = { playerId: 'google:sub-1' };
+		session = {
+			playerId: 'google:sub-1',
+		};
 
-		const res = await getState(request('/api/state', { cookie }));
+		const res = await getState(
+			request('/api/state', {
+				cookie,
+			}),
+		);
 		expect(res.status).toBe(200);
 		expect(await res.json()).toMatchObject({
 			signedIn: true,
-			pendingGuess: { direction: 'up' },
+			pendingGuess: {
+				direction: 'up',
+			},
 		});
 	});
 
 	it('reports what sign-in did once, then clears it', async () => {
 		await signIn(deps(), 'sub-1', null);
-		session = { playerId: 'google:sub-1' };
+		session = {
+			playerId: 'google:sub-1',
+		};
 
 		const first = await getState(
-			request('/api/state', { cookies: 'btc_sign_in=promoted' }),
+			request('/api/state', {
+				cookies: 'btc_sign_in=promoted',
+			}),
 		);
 		expect((await first.json()).signIn).toBe('promoted');
 		expect(first.headers.get('set-cookie')).toMatch(/^btc_sign_in=;/);
@@ -349,31 +440,54 @@ describe('signed in', () => {
 	it('ignores a sign-in report without a session, or one it does not know', async () => {
 		const cookie = await newPlayerCookie();
 		const anon = await getState(
-			request('/api/state', { cookie, cookies: 'btc_sign_in=promoted' }),
+			request('/api/state', {
+				cookie,
+				cookies: 'btc_sign_in=promoted',
+			}),
 		);
-		expect(await anon.json()).toMatchObject({ signedIn: false, signIn: null });
+		expect(await anon.json()).toMatchObject({
+			signedIn: false,
+			signIn: null,
+		});
 
 		await signIn(deps(), 'sub-1', null);
-		session = { playerId: 'google:sub-1' };
+		session = {
+			playerId: 'google:sub-1',
+		};
 		const odd = await getState(
-			request('/api/state', { cookies: 'btc_sign_in=admin' }),
+			request('/api/state', {
+				cookies: 'btc_sign_in=admin',
+			}),
 		);
 		expect((await odd.json()).signIn).toBeNull();
 	});
 
 	it('recreates a signed-in account whose record is missing, rather than going anonymous', async () => {
-		session = { playerId: 'google:sub-1' };
-		const res = await createPlayer(request('/api/player', { method: 'POST' }));
+		session = {
+			playerId: 'google:sub-1',
+		};
+		const res = await createPlayer(
+			request('/api/player', {
+				method: 'POST',
+			}),
+		);
 		expect(res.status).toBe(201);
 		expect(res.headers.get('set-cookie')).toBeNull();
-		expect(store.players.get('google:sub-1')).toMatchObject({ onBoard: true });
+		expect(store.players.get('google:sub-1')).toMatchObject({
+			onBoard: true,
+		});
 	});
 
 	it('puts the signed-in player on the leaderboard as you', async () => {
 		await signIn(deps(), 'sub-1', null);
-		session = { playerId: 'google:sub-1' };
+		session = {
+			playerId: 'google:sub-1',
+		};
 		const body = await (await leaderboard(request('/api/leaderboard'))).json();
-		expect(body).toMatchObject({ isEligible: true, total: 1 });
+		expect(body).toMatchObject({
+			isEligible: true,
+			total: 1,
+		});
 		expect(body.podium[0].isYou).toBe(true);
 		expect(JSON.stringify(body)).not.toContain('sub-1');
 	});

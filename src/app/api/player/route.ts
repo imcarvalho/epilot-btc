@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
 	const existingId = await playerIdFrom(request);
 	const existing = existingId ? await deps.store.getPlayer(existingId) : null;
 	if (existing) {
-		return json({ publicName: existing.publicName });
+		return json({
+			publicName: existing.publicName,
+		});
 	}
 
 	// A live session whose record is gone: recreate the account rather than
@@ -27,11 +29,21 @@ export async function POST(request: NextRequest) {
 	if (existingId?.startsWith('google:')) {
 		await signIn(deps, existingId.slice('google:'.length), null);
 		const player = await deps.store.getPlayer(existingId);
-		return json({ publicName: player!.publicName }, 201);
+		return json(
+			{
+				publicName: player!.publicName,
+			},
+			201,
+		);
 	}
 
 	const player = await createAnonymousPlayer(deps);
-	const response = json({ publicName: player.publicName }, 201);
+	const response = json(
+		{
+			publicName: player.publicName,
+		},
+		201,
+	);
 	response.cookies.set(
 		PLAYER_COOKIE,
 		cookieValueFor(player.playerId),

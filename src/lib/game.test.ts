@@ -173,7 +173,12 @@ describe('resolving on read', () => {
 		expect(state).toMatchObject({
 			score: 1,
 			pendingGuess: null,
-			stats: { wins: 1, losses: 0, currentStreak: 1, bestStreak: 1 },
+			stats: {
+				wins: 1,
+				losses: 0,
+				currentStreak: 1,
+				bestStreak: 1,
+			},
 			lastResult: {
 				direction: 'up',
 				priceAtGuess: 100_000,
@@ -194,7 +199,10 @@ describe('resolving on read', () => {
 		const state = await getState(deps, playerId);
 		expect(state).toMatchObject({
 			score: -1,
-			stats: { losses: 1, currentStreak: -1 },
+			stats: {
+				losses: 1,
+				currentStreak: -1,
+			},
 		});
 	});
 
@@ -232,7 +240,11 @@ describe('resolving on read', () => {
 		setFeed(false);
 		advance(60_000);
 		const state = await getState(deps, playerId);
-		expect(state).toMatchObject({ priceStale: true, price: 100_000, score: 0 });
+		expect(state).toMatchObject({
+			priceStale: true,
+			price: 100_000,
+			score: 0,
+		});
 		expect(state!.pendingGuess).not.toBeNull();
 
 		setFeed(true);
@@ -256,7 +268,10 @@ describe('resolving on read', () => {
 		);
 		expect(store.settleWrites).toBe(1);
 		for (const state of states) {
-			expect(state).toMatchObject({ score: 1, pendingGuess: null });
+			expect(state).toMatchObject({
+				score: 1,
+				pendingGuess: null,
+			});
 		}
 		expect(store.players.get(playerId)!.history).toHaveLength(1);
 	});
@@ -272,7 +287,9 @@ describe('resolving on read', () => {
 		const next = await placeGuess(deps, playerId, 'down');
 		expect(next).toMatchObject({
 			kind: 'started',
-			pendingGuess: { priceAtGuess: 100_010 },
+			pendingGuess: {
+				priceAtGuess: 100_010,
+			},
 		});
 	});
 });
@@ -309,7 +326,10 @@ describe('the sweep', () => {
 		const state = await getState(deps, playerId);
 		expect(state).toMatchObject({
 			score: 1,
-			lastResult: { direction: 'down', delta: 1 },
+			lastResult: {
+				direction: 'down',
+				delta: 1,
+			},
 		});
 	});
 
@@ -319,7 +339,10 @@ describe('the sweep', () => {
 		await placeGuess(deps, playerId, 'up');
 		advance(30_000);
 		setMarket(100_010);
-		await expect(sweep(deps)).resolves.toMatchObject({ due: 0, resolved: 0 });
+		await expect(sweep(deps)).resolves.toMatchObject({
+			due: 0,
+			resolved: 0,
+		});
 	});
 
 	it('resolves nothing on a stale feed', async () => {
@@ -347,9 +370,15 @@ describe('the sweep', () => {
 			getState(deps, playerId),
 		]);
 		expect(store.settleWrites).toBe(1);
-		expect(state).toMatchObject({ score: 1, pendingGuess: null });
+		expect(state).toMatchObject({
+			score: 1,
+			pendingGuess: null,
+		});
 		expect(swept.due).toBe(1);
-		expect(store.players.get(playerId)).toMatchObject({ score: 1, wins: 1 });
+		expect(store.players.get(playerId)).toMatchObject({
+			score: 1,
+			wins: 1,
+		});
 	});
 });
 
@@ -378,8 +407,12 @@ describe('signing in (§6.2)', () => {
 		expect(state).toMatchObject({
 			publicName: anon.publicName,
 			score: 1,
-			stats: { wins: 1 },
-			pendingGuess: { direction: 'down' },
+			stats: {
+				wins: 1,
+			},
+			pendingGuess: {
+				direction: 'down',
+			},
 		});
 		expect(state!.history).toHaveLength(1);
 		expect(t.store.players.has(anon.playerId)).toBe(false);
@@ -391,8 +424,14 @@ describe('signing in (§6.2)', () => {
 		await signIn(t.deps, 'sub-1', anon.playerId);
 
 		const board = await getLeaderboard(t.deps, 'google:sub-1');
-		expect(board).toMatchObject({ total: 1, isEligible: true });
-		expect(board.podium[0]).toMatchObject({ score: 1, isYou: true });
+		expect(board).toMatchObject({
+			total: 1,
+			isEligible: true,
+		});
+		expect(board.podium[0]).toMatchObject({
+			score: 1,
+			isYou: true,
+		});
 	});
 
 	it('still settles a guess that was pending when it moved across', async () => {
@@ -402,7 +441,9 @@ describe('signing in (§6.2)', () => {
 
 		t.advance(60_000);
 		t.setMarket(99_000);
-		await expect(sweep(t.deps)).resolves.toMatchObject({ resolved: 1 });
+		await expect(sweep(t.deps)).resolves.toMatchObject({
+			resolved: 1,
+		});
 		expect(t.store.players.get('google:sub-1')!.score).toBe(2);
 	});
 

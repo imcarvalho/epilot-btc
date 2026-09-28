@@ -42,19 +42,36 @@ const state = (over: Partial<StateResponse> = {}): StateResponse => ({
 
 describe('guessPhase', () => {
 	it('is a first visit with no history and nothing pending', () => {
-		expect(guessPhase(state(), T0, null)).toEqual({ kind: 'first-visit' });
+		expect(guessPhase(state(), T0, null)).toEqual({
+			kind: 'first-visit',
+		});
 	});
 
 	it('is idle between guesses once there is a history', () => {
 		const r = resolved();
 		expect(
-			guessPhase(state({ lastResult: r, history: [r] }), T0, null),
-		).toEqual({ kind: 'idle' });
+			guessPhase(
+				state({
+					lastResult: r,
+					history: [r],
+				}),
+				T0,
+				null,
+			),
+		).toEqual({
+			kind: 'idle',
+		});
 	});
 
 	it('counts down while the minute runs, rounding up to whole seconds', () => {
 		expect(
-			guessPhase(state({ pendingGuess: pending }), T0 + 12_500, 'g1'),
+			guessPhase(
+				state({
+					pendingGuess: pending,
+				}),
+				T0 + 12_500,
+				'g1',
+			),
 		).toEqual({
 			kind: 'locked',
 			guess: pending,
@@ -64,14 +81,32 @@ describe('guessPhase', () => {
 
 	it('never shows more than the minute, if the local clock estimate trails the server', () => {
 		expect(
-			guessPhase(state({ pendingGuess: pending }), T0 - 300, 'g1'),
-		).toMatchObject({ kind: 'locked', secondsLeft: 60 });
+			guessPhase(
+				state({
+					pendingGuess: pending,
+				}),
+				T0 - 300,
+				'g1',
+			),
+		).toMatchObject({
+			kind: 'locked',
+			secondsLeft: 60,
+		});
 	});
 
 	it('is time-up once the minute has passed and the guess is still pending', () => {
 		expect(
-			guessPhase(state({ pendingGuess: pending }), T0 + 60_000, 'g1'),
-		).toEqual({ kind: 'time-up', guess: pending });
+			guessPhase(
+				state({
+					pendingGuess: pending,
+				}),
+				T0 + 60_000,
+				'g1',
+			),
+		).toEqual({
+			kind: 'time-up',
+			guess: pending,
+		});
 	});
 
 	it('says the feed is delayed, rather than time-up, when the price is stale', () => {
@@ -85,13 +120,20 @@ describe('guessPhase', () => {
 				T0 + 65_000,
 				'g1',
 			),
-		).toEqual({ kind: 'stale', guess: pending, ageMs: 25_000 });
+		).toEqual({
+			kind: 'stale',
+			guess: pending,
+			ageMs: 25_000,
+		});
 	});
 
 	it('keeps counting down on a stale feed: the minute is not affected, only the resolution', () => {
 		expect(
 			guessPhase(
-				state({ pendingGuess: pending, priceStale: true }),
+				state({
+					pendingGuess: pending,
+					priceStale: true,
+				}),
 				T0 + 30_000,
 				'g1',
 			).kind,
@@ -102,7 +144,11 @@ describe('guessPhase', () => {
 		const r = resolved();
 		expect(
 			guessPhase(
-				state({ score: 1, lastResult: r, history: [r] }),
+				state({
+					score: 1,
+					lastResult: r,
+					history: [r],
+				}),
 				T0 + 70_000,
 				'g1',
 			),
@@ -117,7 +163,10 @@ describe('guessPhase', () => {
 		const r = resolved();
 		expect(
 			guessPhase(
-				state({ lastResult: r, history: [r] }),
+				state({
+					lastResult: r,
+					history: [r],
+				}),
 				T0 + 70_000,
 				'some-other-guess',
 			).kind,
@@ -134,14 +183,24 @@ describe('resultSentence', () => {
 
 	it('spells out a loss the same way', () => {
 		expect(
-			resultSentence(resolved({ priceAtResolve: 99_900, delta: -1 }), 1),
+			resultSentence(
+				resolved({
+					priceAtResolve: 99_900,
+					delta: -1,
+				}),
+				1,
+			),
 		).toBe('Not this time. The price went down. Score 1.');
 	});
 
 	it('describes a correct down guess by what the price did', () => {
 		expect(
 			resultSentence(
-				resolved({ direction: 'down', priceAtResolve: 99_900, delta: 1 }),
+				resolved({
+					direction: 'down',
+					priceAtResolve: 99_900,
+					delta: 1,
+				}),
 				2,
 			),
 		).toBe('Correct. The price went down. Score 2.');

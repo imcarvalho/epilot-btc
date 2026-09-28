@@ -38,10 +38,22 @@ describe('candleReadout', () => {
 
 	it('lists open, high, low and close', () => {
 		expect(candleReadout(candle).rows).toEqual([
-			{ label: 'Open', value: '$65,000.00' },
-			{ label: 'High', value: '$65,020.50' },
-			{ label: 'Low', value: '$64,990.00' },
-			{ label: 'Close', value: '$65,012.40' },
+			{
+				label: 'Open',
+				value: '$65,000.00',
+			},
+			{
+				label: 'High',
+				value: '$65,020.50',
+			},
+			{
+				label: 'Low',
+				value: '$64,990.00',
+			},
+			{
+				label: 'Close',
+				value: '$65,012.40',
+			},
 		]);
 	});
 
@@ -60,19 +72,44 @@ describe('sampleReadout', () => {
 	};
 
 	it('reads the seed point as the lock', () => {
-		expect(sampleReadout({ t: 1_000_000, price: 65_000 }, guess)).toEqual({
+		expect(
+			sampleReadout(
+				{
+					t: 1_000_000,
+					price: 65_000,
+				},
+				guess,
+			),
+		).toEqual({
 			title: 'At your guess',
-			rows: [{ label: 'Locked', value: '$65,000.00' }],
+			rows: [
+				{
+					label: 'Locked',
+					value: '$65,000.00',
+				},
+			],
 			text: 'At your guess: locked at $65,000.00.',
 		});
 	});
 
 	it('reads a second by its offset, price and standing', () => {
-		const r = sampleReadout({ t: 1_023_000, price: 65_004.1 }, guess);
+		const r = sampleReadout(
+			{
+				t: 1_023_000,
+				price: 65_004.1,
+			},
+			guess,
+		);
 		expect(r.title).toBe('+23s');
 		expect(r.rows).toEqual([
-			{ label: 'Price', value: '$65,004.10' },
-			{ label: 'Guess', value: 'ahead by $4.10' },
+			{
+				label: 'Price',
+				value: '$65,004.10',
+			},
+			{
+				label: 'Guess',
+				value: 'ahead by $4.10',
+			},
 		]);
 		expect(r.text).toBe(
 			'23 seconds after your guess: $65,004.10, ahead by $4.10, provisional.',
@@ -81,8 +118,14 @@ describe('sampleReadout', () => {
 
 	it('reads standing from the direction guessed', () => {
 		const r = sampleReadout(
-			{ t: 1_001_000, price: 65_004.1 },
-			{ ...guess, direction: 'down' },
+			{
+				t: 1_001_000,
+				price: 65_004.1,
+			},
+			{
+				...guess,
+				direction: 'down',
+			},
 		);
 		expect(r.rows[1].value).toBe('behind by $4.10');
 		expect(r.text.startsWith('1 second after')).toBe(true);

@@ -31,14 +31,36 @@ const candle = (
 describe('parseCandles', () => {
 	it("reads Coinbase's arrays into candles, oldest first, in milliseconds", () => {
 		expect(parseCandles(RAW)).toEqual([
-			{ time: T * 1000, low: 99, high: 102, open: 100, close: 101 },
-			{ time: (T + 60) * 1000, low: 98, high: 101, open: 101, close: 100 },
-			{ time: (T + 120) * 1000, low: 99, high: 104, open: 100, close: 103 },
+			{
+				time: T * 1000,
+				low: 99,
+				high: 102,
+				open: 100,
+				close: 101,
+			},
+			{
+				time: (T + 60) * 1000,
+				low: 98,
+				high: 101,
+				open: 101,
+				close: 100,
+			},
+			{
+				time: (T + 120) * 1000,
+				low: 99,
+				high: 104,
+				open: 100,
+				close: 103,
+			},
 		]);
 	});
 
 	it('rejects anything that is not a list of six-number rows', () => {
-		expect(() => parseCandles({ message: 'rate limited' })).toThrow();
+		expect(() =>
+			parseCandles({
+				message: 'rate limited',
+			}),
+		).toThrow();
 		expect(() => parseCandles([[T, 1, 2, 3]])).toThrow();
 	});
 });
@@ -55,7 +77,11 @@ describe('hourChange', () => {
 });
 
 describe('buildCandleChart', () => {
-	const size = { width: 600, height: 200, windowEnd: (T + 60 * 60) * 1000 };
+	const size = {
+		width: 600,
+		height: 200,
+		windowEnd: (T + 60 * 60) * 1000,
+	};
 
 	it('puts rising and falling candles in separate paths', () => {
 		const chart = buildCandleChart(

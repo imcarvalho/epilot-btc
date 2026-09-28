@@ -8,7 +8,9 @@ const SWEEP_URL = 'https://example.test/api/cron/resolve';
 function synth(): Template {
 	const app = new App();
 	const stack = new BtcGuessStack(app, 'TestStack', {
-		env: { region: 'eu-central-1' },
+		env: {
+			region: 'eu-central-1',
+		},
 		sweepUrl: SWEEP_URL,
 	});
 	return Template.fromStack(stack);
@@ -21,8 +23,16 @@ describe('BtcGuessStack', () => {
 		template.resourceCountIs('AWS::DynamoDB::Table', 1);
 		template.hasResourceProperties('AWS::DynamoDB::Table', {
 			BillingMode: 'PAY_PER_REQUEST',
-			KeySchema: [{ AttributeName: 'playerId', KeyType: 'HASH' }],
-			TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
+			KeySchema: [
+				{
+					AttributeName: 'playerId',
+					KeyType: 'HASH',
+				},
+			],
+			TimeToLiveSpecification: {
+				AttributeName: 'ttl',
+				Enabled: true,
+			},
 		});
 	});
 
@@ -46,8 +56,14 @@ describe('BtcGuessStack', () => {
 				Match.objectLike({
 					IndexName: 'byScore',
 					KeySchema: [
-						{ AttributeName: 'board', KeyType: 'HASH' },
-						{ AttributeName: 'score', KeyType: 'RANGE' },
+						{
+							AttributeName: 'board',
+							KeyType: 'HASH',
+						},
+						{
+							AttributeName: 'score',
+							KeyType: 'RANGE',
+						},
 					],
 					Projection: {
 						ProjectionType: 'INCLUDE',
@@ -66,10 +82,18 @@ describe('BtcGuessStack', () => {
 				Match.objectLike({
 					IndexName: 'byPending',
 					KeySchema: [
-						{ AttributeName: 'pendingBucket', KeyType: 'HASH' },
-						{ AttributeName: 'pendingAt', KeyType: 'RANGE' },
+						{
+							AttributeName: 'pendingBucket',
+							KeyType: 'HASH',
+						},
+						{
+							AttributeName: 'pendingAt',
+							KeyType: 'RANGE',
+						},
 					],
-					Projection: { ProjectionType: 'ALL' },
+					Projection: {
+						ProjectionType: 'ALL',
+					},
 				}),
 			]),
 		});
@@ -136,7 +160,10 @@ describe('BtcGuessStack', () => {
 			ScheduleExpression: 'rate(1 minute)',
 			State: 'ENABLED',
 			Target: Match.objectLike({
-				RetryPolicy: { MaximumRetryAttempts: 0, MaximumEventAgeInSeconds: 60 },
+				RetryPolicy: {
+					MaximumRetryAttempts: 0,
+					MaximumEventAgeInSeconds: 60,
+				},
 			}),
 		});
 	});
@@ -147,7 +174,10 @@ describe('BtcGuessStack', () => {
 		template.hasResourceProperties('AWS::Lambda::Function', {
 			Handler: 'index.handler',
 			Environment: {
-				Variables: { SWEEP_URL, CRON_SECRET_PARAMETER },
+				Variables: {
+					SWEEP_URL,
+					CRON_SECRET_PARAMETER,
+				},
 			},
 		});
 		expect(JSON.stringify(template.toJSON())).not.toMatch(/x-cron-secret/i);

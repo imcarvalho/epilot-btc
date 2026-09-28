@@ -12,7 +12,10 @@ import { styles } from './GuessStrip.styles';
 const usdSigned = (n: number) =>
 	`${n > 0 ? '+' : n < 0 ? '−' : ''}${formatUsd(Math.abs(n))}`;
 
-const WORD = { up: 'Higher', down: 'Lower' } as const;
+const WORD = {
+	up: 'Higher',
+	down: 'Lower',
+} as const;
 
 /**
  * The strip between the buttons and the panels: what is going on with the

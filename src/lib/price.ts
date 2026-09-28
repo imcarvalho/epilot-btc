@@ -97,12 +97,18 @@ export async function getGamePrice({
 
 	try {
 		const price = await fetchPrice();
-		const fresh = { price, updatedAt: now() };
+		const fresh = {
+			price,
+			updatedAt: now(),
+		};
 		await store.putCachedPrice(fresh);
 		return fresh;
 	} catch (error) {
 		console.error(
-			JSON.stringify({ event: 'price-fetch-failed', error: String(error) }),
+			JSON.stringify({
+				event: 'price-fetch-failed',
+				error: String(error),
+			}),
 		);
 		return cached;
 	}

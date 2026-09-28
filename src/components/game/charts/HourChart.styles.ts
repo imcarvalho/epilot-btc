@@ -15,10 +15,18 @@ export const styles = stylex.create({
 		strokeLinecap: 'round',
 		strokeWidth: 1.5,
 	},
-	upStroke: { stroke: palette.upFrom },
-	downStroke: { stroke: palette.downFrom },
-	upFill: { fill: palette.upFrom },
-	downFill: { fill: palette.downFrom },
+	upStroke: {
+		stroke: palette.upFrom,
+	},
+	downStroke: {
+		stroke: palette.downFrom,
+	},
+	upFill: {
+		fill: palette.upFrom,
+	},
+	downFill: {
+		fill: palette.downFrom,
+	},
 	note: {
 		alignItems: 'center',
 		color: 'var(--color-text-secondary)',

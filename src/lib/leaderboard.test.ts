@@ -39,13 +39,20 @@ function setup() {
 			onBoard,
 		});
 	};
-	return { store, deps, add, advance: (ms: number) => (clock += ms) };
+	return {
+		store,
+		deps,
+		add,
+		advance: (ms: number) => (clock += ms),
+	};
 }
 
 describe('getLeaderboard', () => {
 	it('is empty, with nobody eligible, before anyone is on the board', async () => {
 		const { deps, add } = setup();
-		add('anon:a', 5, { onBoard: false });
+		add('anon:a', 5, {
+			onBoard: false,
+		});
 		await expect(getLeaderboard(deps, 'anon:a')).resolves.toEqual({
 			podium: [],
 			you: null,
@@ -56,7 +63,9 @@ describe('getLeaderboard', () => {
 
 	it('never lists anonymous players, however well they score', async () => {
 		const { deps, add } = setup();
-		add('anon:a', 99, { onBoard: false });
+		add('anon:a', 99, {
+			onBoard: false,
+		});
 		add('google:b', 3);
 		const board = await getLeaderboard(deps, 'anon:a');
 		expect(board.podium.map((r) => r.publicName)).toEqual(['P_b']);
@@ -65,7 +74,10 @@ describe('getLeaderboard', () => {
 
 	it('orders the podium best first, negative scores below zero', async () => {
 		const { deps, add } = setup();
-		add('google:a', -6, { wins: 2, losses: 8 });
+		add('google:a', -6, {
+			wins: 2,
+			losses: 8,
+		});
 		add('google:b', 0);
 		add('google:c', 12);
 		add('google:d', 3);
@@ -86,7 +98,11 @@ describe('getLeaderboard', () => {
 		add('google:e', 10);
 		const board = await getLeaderboard(deps, 'google:e');
 		expect(board.podium.map((r) => r.rank)).toEqual([1, 2, 2]);
-		expect(board.you).toMatchObject({ rank: 5, score: 10, isYou: true });
+		expect(board.you).toMatchObject({
+			rank: 5,
+			score: 10,
+			isYou: true,
+		});
 	});
 
 	it('marks a podium player in place, with no duplicate row below', async () => {
@@ -95,7 +111,10 @@ describe('getLeaderboard', () => {
 		add('google:b', 38);
 		add('google:c', 1);
 		const board = await getLeaderboard(deps, 'google:b');
-		expect(board.podium[1]).toMatchObject({ rank: 2, isYou: true });
+		expect(board.podium[1]).toMatchObject({
+			rank: 2,
+			isYou: true,
+		});
 		expect(board.you).toBeNull();
 		expect(board.isEligible).toBe(true);
 	});
@@ -105,7 +124,10 @@ describe('getLeaderboard', () => {
 		for (let i = 0; i < 10; i++) {
 			add(`google:${i}`, 100 - i);
 		}
-		add('google:me', -2, { wins: 12, losses: 13 });
+		add('google:me', -2, {
+			wins: 12,
+			losses: 13,
+		});
 		const board = await getLeaderboard(deps, 'google:me');
 		expect(board.you).toEqual({
 			rank: 11,
@@ -151,7 +173,10 @@ describe('getLeaderboard', () => {
 		await getLeaderboard(deps, 'google:me');
 		store.players.get('google:me')!.score = 2;
 		const board = await getLeaderboard(deps, 'google:me');
-		expect(board.you).toMatchObject({ score: 2, rank: 6 });
+		expect(board.you).toMatchObject({
+			score: 2,
+			rank: 6,
+		});
 	});
 });
 

@@ -3,12 +3,18 @@ import { createHandler } from '../lambda/sweep-trigger/index.mjs';
 
 const URL = 'https://example.test/api/cron/resolve';
 const ok = (body: unknown) =>
-	new Response(JSON.stringify(body), { status: 200 });
+	new Response(JSON.stringify(body), {
+		status: 200,
+	});
 
 describe('sweep trigger', () => {
 	it('POSTs to the sweep route with the secret header, and returns its result', async () => {
 		const fetchImpl = vi.fn(async () =>
-			ok({ due: 1, resolved: 1, priceStale: false }),
+			ok({
+				due: 1,
+				resolved: 1,
+				priceStale: false,
+			}),
 		);
 		const handler = createHandler({
 			url: URL,
@@ -26,7 +32,9 @@ describe('sweep trigger', () => {
 			URL,
 			expect.objectContaining({
 				method: 'POST',
-				headers: { 'x-cron-secret': 's3cret' },
+				headers: {
+					'x-cron-secret': 's3cret',
+				},
 			}),
 		);
 	});
@@ -49,7 +57,10 @@ describe('sweep trigger', () => {
 		const handler = createHandler({
 			url: URL,
 			getSecret: async () => 's3cret',
-			fetchImpl: async () => new Response('boom', { status: 500 }),
+			fetchImpl: async () =>
+				new Response('boom', {
+					status: 500,
+				}),
 			log: () => {},
 		});
 		await expect(handler()).rejects.toThrow('sweep responded 500');
@@ -63,7 +74,9 @@ describe('sweep trigger', () => {
 		const fetchImpl = vi
 			.fn()
 			.mockResolvedValueOnce(
-				new Response('{"error":"unauthorized"}', { status: 401 }),
+				new Response('{"error":"unauthorized"}', {
+					status: 401,
+				}),
 			)
 			.mockResolvedValueOnce(ok({}));
 		const handler = createHandler({

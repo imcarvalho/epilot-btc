@@ -79,7 +79,7 @@ npm run dev:local  # http://localhost:3000 - the whole app, no AWS account neede
 npm test           # vitest: the rules, the store's conditions, the routes, every screen state
 npm run build      # next build; also proves the StyleX/Astryx atomic CSS compiles for production
 npm run format     # Prettier: tabs and single quotes
-npm run lint       # ESLint, one rule: braces on every if, else and loop
+npm run lint       # ESLint, two layout rules: braces on every if/else/loop, objects over lines
 ```
 
 `npm run dev:local` needs Java 17+. The first run downloads [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) into `.dynamodb/` (git-ignored); every run starts it, creates the table if missing, and starts `next dev` against it. Local players persist in `.dynamodb/data`; delete that folder to start over. Ctrl-C stops both. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.

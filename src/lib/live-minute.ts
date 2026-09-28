@@ -46,7 +46,10 @@ export function parseTicker(
 		}
 		const time = Date.parse(parsed.data.time);
 		return Number.isFinite(time)
-			? { price: Number(parsed.data.price), time }
+			? {
+					price: Number(parsed.data.price),
+					time,
+				}
 			: null;
 	} catch {
 		return null;
@@ -70,7 +73,13 @@ export function takeSample(
 	if (latest === null) {
 		return samples;
 	}
-	const next = [...samples.filter((s) => s.t >= since), { t, price: latest }];
+	const next = [
+		...samples.filter((s) => s.t >= since),
+		{
+			t,
+			price: latest,
+		},
+	];
 	return next.length > MAX_SAMPLES
 		? next.slice(next.length - MAX_SAMPLES)
 		: next;
@@ -83,7 +92,10 @@ export function standing(
 	current: number,
 ): { margin: number; ahead: boolean | null } {
 	const margin = direction === 'up' ? current - locked : locked - current;
-	return { margin, ahead: margin > 0 ? true : margin < 0 ? false : null };
+	return {
+		margin,
+		ahead: margin > 0 ? true : margin < 0 ? false : null,
+	};
 }
 
 export interface MinuteChartSize {
@@ -134,10 +146,19 @@ export function buildMinuteChart(
 
 	// The line starts where the guess did: at the locked price, at t = 0.
 	const points = [
-		{ x: 0, y: lockedY, t: start, price: lockedPrice },
+		{
+			x: 0,
+			y: lockedY,
+			t: start,
+			price: lockedPrice,
+		},
 		...samples
 			.filter((s) => s.t > start)
-			.map((s) => ({ x: r(xFor(s.t)), y: r(yFor(s.price)), ...s })),
+			.map((s) => ({
+				x: r(xFor(s.t)),
+				y: r(yFor(s.price)),
+				...s,
+			})),
 	];
 
 	const line = points

@@ -24,7 +24,9 @@ const RECORDED = {
 const json = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), {
 		status,
-		headers: { 'content-type': 'application/json' },
+		headers: {
+			'content-type': 'application/json',
+		},
 	});
 
 const noSleep = async () => {};
@@ -32,9 +34,12 @@ const noSleep = async () => {};
 describe('fetchTickerPrice', () => {
 	it('parses the recorded Coinbase response', async () => {
 		const fetchImpl = vi.fn(async () => json(RECORDED));
-		await expect(fetchTickerPrice({ fetchImpl, sleep: noSleep })).resolves.toBe(
-			84427.2,
-		);
+		await expect(
+			fetchTickerPrice({
+				fetchImpl,
+				sleep: noSleep,
+			}),
+		).resolves.toBe(84427.2);
 		expect(fetchImpl).toHaveBeenCalledWith(PRICE_URL, expect.anything());
 	});
 
@@ -44,7 +49,12 @@ describe('fetchTickerPrice', () => {
 			.fn()
 			.mockResolvedValueOnce(json({}, 429))
 			.mockResolvedValueOnce(json(RECORDED));
-		await expect(fetchTickerPrice({ fetchImpl, sleep })).resolves.toBe(84427.2);
+		await expect(
+			fetchTickerPrice({
+				fetchImpl,
+				sleep,
+			}),
+		).resolves.toBe(84427.2);
 		expect(sleep).toHaveBeenCalledWith(200);
 	});
 
@@ -54,16 +64,28 @@ describe('fetchTickerPrice', () => {
 			throw new DOMException('The operation timed out.', 'TimeoutError');
 		});
 		await expect(
-			fetchTickerPrice({ fetchImpl, sleep, retries: 2 }),
+			fetchTickerPrice({
+				fetchImpl,
+				sleep,
+				retries: 2,
+			}),
 		).rejects.toBeInstanceOf(PriceFetchError);
 		expect(fetchImpl).toHaveBeenCalledTimes(3);
 		expect(sleep.mock.calls).toEqual([[200], [400]]);
 	});
 
 	it('rejects a response that is not a ticker', async () => {
-		const fetchImpl = vi.fn(async () => json({ message: 'NotFound' }));
+		const fetchImpl = vi.fn(async () =>
+			json({
+				message: 'NotFound',
+			}),
+		);
 		await expect(
-			fetchTickerPrice({ fetchImpl, sleep: noSleep, retries: 0 }),
+			fetchTickerPrice({
+				fetchImpl,
+				sleep: noSleep,
+				retries: 0,
+			}),
 		).rejects.toBeInstanceOf(PriceFetchError);
 	});
 });
@@ -73,33 +95,51 @@ describe('getGamePrice', () => {
 
 	it('serves the cached price while it is fresh, without fetching', async () => {
 		const store = new MemoryStore();
-		store.price = { price: 100, updatedAt: T };
+		store.price = {
+			price: 100,
+			updatedAt: T,
+		};
 		const fetchPrice = vi.fn(async () => 200);
 		const price = await getGamePrice({
 			store,
 			fetchPrice,
 			now: () => T + PRICE_CACHE_MS - 1,
 		});
-		expect(price).toEqual({ price: 100, updatedAt: T });
+		expect(price).toEqual({
+			price: 100,
+			updatedAt: T,
+		});
 		expect(fetchPrice).not.toHaveBeenCalled();
 	});
 
 	it('refreshes and stores the price once the cache window has passed', async () => {
 		const store = new MemoryStore();
-		store.price = { price: 100, updatedAt: T };
+		store.price = {
+			price: 100,
+			updatedAt: T,
+		};
 		const now = T + PRICE_CACHE_MS;
 		const price = await getGamePrice({
 			store,
 			fetchPrice: async () => 200,
 			now: () => now,
 		});
-		expect(price).toEqual({ price: 200, updatedAt: now });
-		expect(store.price).toEqual({ price: 200, updatedAt: now });
+		expect(price).toEqual({
+			price: 200,
+			updatedAt: now,
+		});
+		expect(store.price).toEqual({
+			price: 200,
+			updatedAt: now,
+		});
 	});
 
 	it('falls back to the last known price, with its own timestamp, when the fetch fails', async () => {
 		const store = new MemoryStore();
-		store.price = { price: 100, updatedAt: T };
+		store.price = {
+			price: 100,
+			updatedAt: T,
+		};
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		const fetchPrice = async () => {
 			throw new PriceFetchError('down');
@@ -109,7 +149,10 @@ describe('getGamePrice', () => {
 			fetchPrice,
 			now: () => T + 30_000,
 		});
-		expect(price).toEqual({ price: 100, updatedAt: T });
+		expect(price).toEqual({
+			price: 100,
+			updatedAt: T,
+		});
 	});
 
 	it('returns null when there has never been a price and the fetch fails', async () => {
@@ -118,7 +161,11 @@ describe('getGamePrice', () => {
 			throw new PriceFetchError('down');
 		};
 		await expect(
-			getGamePrice({ store: new MemoryStore(), fetchPrice, now: () => T }),
+			getGamePrice({
+				store: new MemoryStore(),
+				fetchPrice,
+				now: () => T,
+			}),
 		).resolves.toBeNull();
 	});
 });
@@ -129,7 +176,23 @@ describe('isStale', () => {
 	});
 
 	it('is fresh up to and including the threshold, stale after it', () => {
-		expect(isStale({ price: 1, updatedAt: 0 }, PRICE_STALE_MS)).toBe(false);
-		expect(isStale({ price: 1, updatedAt: 0 }, PRICE_STALE_MS + 1)).toBe(true);
+		expect(
+			isStale(
+				{
+					price: 1,
+					updatedAt: 0,
+				},
+				PRICE_STALE_MS,
+			),
+		).toBe(false);
+		expect(
+			isStale(
+				{
+					price: 1,
+					updatedAt: 0,
+				},
+				PRICE_STALE_MS + 1,
+			),
+		).toBe(true);
 	});
 });

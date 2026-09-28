@@ -4,8 +4,14 @@ import type { Direction } from '@/lib/resolve-guess';
 import { styles } from './DirectionButton.styles';
 
 const COPY: Record<Direction, { word: string; Arrow: typeof ArrowUp }> = {
-	up: { word: 'Higher', Arrow: ArrowUp },
-	down: { word: 'Lower', Arrow: ArrowDown },
+	up: {
+		word: 'Higher',
+		Arrow: ArrowUp,
+	},
+	down: {
+		word: 'Lower',
+		Arrow: ArrowDown,
+	},
 };
 
 /**

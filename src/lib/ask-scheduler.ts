@@ -64,29 +64,44 @@ export function shouldAsk(input: CadenceInput): CadenceDecision {
 	// A hidden tab asks for nothing. It resyncs immediately on becoming visible,
 	// which is the `msSinceLastAsk === null` case below.
 	if (!input.visible) {
-		return { ask: false };
+		return {
+			ask: false,
+		};
 	}
 
 	// First contact, or the first tick after the tab came back.
 	if (input.msSinceLastAsk === null) {
-		return { ask: true, reason: 'mount' };
+		return {
+			ask: true,
+			reason: 'mount',
+		};
 	}
 
 	// Nothing pending: only the price can have changed. Refresh it slowly.
 	if (input.lockedPrice === null) {
 		return input.msSinceLastAsk >= IDLE_REFRESH_MS
-			? { ask: true, reason: 'idle-refresh' }
-			: { ask: false };
+			? {
+					ask: true,
+					reason: 'idle-refresh',
+				}
+			: {
+					ask: false,
+				};
 	}
 
 	// During the minute there is nothing to learn - the countdown is local.
 	if (!input.countdownEnded) {
-		return { ask: false };
+		return {
+			ask: false,
+		};
 	}
 
 	// The minute is up: ask once. Most of the time this resolves it.
 	if (!input.askedSinceCountdownEnded) {
-		return { ask: true, reason: 'countdown-ended' };
+		return {
+			ask: true,
+			reason: 'countdown-ended',
+		};
 	}
 
 	// Still pending, so the price had not moved. Wait for the ticker to say it
@@ -97,9 +112,14 @@ export function shouldAsk(input: CadenceInput): CadenceDecision {
 			input.lastTickerPrice !== input.lockedPrice &&
 			input.msSinceLastAsk >= PRICE_MOVED_MIN_GAP_MS
 		) {
-			return { ask: true, reason: 'price-moved' };
+			return {
+				ask: true,
+				reason: 'price-moved',
+			};
 		}
-		return { ask: false };
+		return {
+			ask: false,
+		};
 	}
 
 	// No ticker to lean on: this is the one case that polls.
@@ -109,6 +129,11 @@ export function shouldAsk(input: CadenceInput): CadenceDecision {
 			: FALLBACK_POLL_MS;
 
 	return input.msSinceLastAsk >= interval
-		? { ask: true, reason: 'fallback-poll' }
-		: { ask: false };
+		? {
+				ask: true,
+				reason: 'fallback-poll',
+			}
+		: {
+				ask: false,
+			};
 }

@@ -40,7 +40,11 @@ export function guessPhase(
 				GUESS_WINDOW_MS / 1000,
 				Math.ceil(msLeft / 1000),
 			);
-			return { kind: 'locked', guess, secondsLeft };
+			return {
+				kind: 'locked',
+				guess,
+				secondsLeft,
+			};
 		}
 		if (state.priceStale) {
 			return {
@@ -49,16 +53,27 @@ export function guessPhase(
 				ageMs: now - (state.priceUpdatedAt ?? now),
 			};
 		}
-		return { kind: 'time-up', guess };
+		return {
+			kind: 'time-up',
+			guess,
+		};
 	}
 
 	if (state.lastResult && state.lastResult.id === watchedGuessId) {
-		return { kind: 'result', result: state.lastResult, score: state.score };
+		return {
+			kind: 'result',
+			result: state.lastResult,
+			score: state.score,
+		};
 	}
 
 	return state.history.length === 0
-		? { kind: 'first-visit' }
-		: { kind: 'idle' };
+		? {
+				kind: 'first-visit',
+			}
+		: {
+				kind: 'idle',
+			};
 }
 
 /** "Correct. The price went up." - the banner's headline. */

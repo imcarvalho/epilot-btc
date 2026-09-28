@@ -117,7 +117,12 @@ export function buildCandleChart(
 	const yFor = (price: number) =>
 		span > 0 ? padding + ((hi - price) / span) * inner : height / 2;
 
-	const paths = { upBodies: '', downBodies: '', upWicks: '', downWicks: '' };
+	const paths = {
+		upBodies: '',
+		downBodies: '',
+		upWicks: '',
+		downWicks: '',
+	};
 	const placed: PlacedCandle[] = [];
 
 	for (const c of candles) {
@@ -139,7 +144,14 @@ export function buildCandleChart(
 			paths.downBodies += body;
 			paths.downWicks += wick;
 		}
-		placed.push({ x, up, bodyY, bodyHeight, highY, lowY });
+		placed.push({
+			x,
+			up,
+			bodyY,
+			bodyHeight,
+			highY,
+			lowY,
+		});
 	}
 
 	const last = candles[candles.length - 1];

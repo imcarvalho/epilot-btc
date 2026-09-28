@@ -32,7 +32,9 @@ export function createHandler({
 
 		const res = await fetchImpl(url, {
 			method: 'POST',
-			headers: { 'x-cron-secret': secret },
+			headers: {
+				'x-cron-secret': secret,
+			},
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		});
 		const body = await res.text();

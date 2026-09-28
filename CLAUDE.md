@@ -76,7 +76,9 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 ## Conventions
 
 - **Formatting: tabs and single quotes**, enforced by Prettier (`.prettierrc`). Run `npm run format` before committing; `npm run format:check` must pass.
-- **Braces on every `if`, `else` and loop body**, on their own lines - never `if (x) return y;`. Enforced by ESLint's `curly: all` (`eslint.config.mjs`, its only rule); `npm run lint` must pass, and `npm run lint -- --fix` applies it.
+- **Braces on every `if`, `else` and loop body**, on their own lines - never `if (x) return y;`. Enforced by ESLint's `curly: all`.
+- **Every non-empty object literal broken over lines**, never `{ ask: false }` on one line: the braces and each property get their own lines, arguments and test expectations included. Enforced by `@stylistic/object-curly-newline` (`minProperties: 1`); Prettier keeps an expanded object expanded, so the two agree.
+- ESLint (`eslint.config.mjs`) holds only these two layout rules; `npm run lint` must pass, and `npm run lint -- --fix` then `npm run format` applies them.
 - **TypeScript throughout.** Types are defined once and imported by both halves; request bodies are validated at the boundary with Zod and the inferred types are what the client uses.
 - **Pure functions where the logic lives.** `resolveGuess`, the name generator and the request scheduler are pure and fully unit-tested without infrastructure. Anything that can be pure should be.
 - **Route handlers on the Node runtime**, not the edge - they need the AWS SDK and the hosting role's credentials.
