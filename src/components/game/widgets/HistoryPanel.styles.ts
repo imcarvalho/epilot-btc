@@ -22,9 +22,24 @@ export const styles = stylex.create({
 		borderRadius: 'var(--radius-element)',
 		borderStyle: 'solid',
 		borderWidth: 1,
+		columnGap: 'var(--spacing-3)',
 		display: 'grid',
-		gap: 'var(--spacing-3)',
-		gridTemplateColumns: '6.5rem 1fr auto 2.5rem',
+		// On a phone the prices, which are what this panel is for (product spec
+		// §6.5), get a line of their own under the direction and the outcome,
+		// rather than a squeezed column that cuts them off (WCAG 1.4.10).
+		gridTemplateAreas: {
+			default: '"direction prices outcome points"',
+			'@media (max-width: 640px)':
+				'"direction outcome points" "prices prices prices"',
+		},
+		gridTemplateColumns: {
+			default: '6.5rem 1fr auto 2.5rem',
+			'@media (max-width: 640px)': '1fr auto 2.5rem',
+		},
+		rowGap: {
+			default: 'var(--spacing-3)',
+			'@media (max-width: 640px)': 'var(--spacing-1)',
+		},
 		paddingBlock: 'var(--spacing-2)',
 		paddingInline: 'var(--spacing-3)',
 	},
@@ -44,6 +59,7 @@ export const styles = stylex.create({
 		alignItems: 'center',
 		display: 'inline-flex',
 		gap: 'var(--spacing-1)',
+		gridArea: 'direction',
 	},
 	up: {
 		color: palette.upFrom,
@@ -53,15 +69,17 @@ export const styles = stylex.create({
 	},
 	prices: {
 		color: 'var(--color-text-primary)',
-		overflow: 'hidden',
-		textOverflow: 'ellipsis',
-		whiteSpace: 'nowrap',
+		gridArea: 'prices',
+		minWidth: 0,
+		overflowWrap: 'anywhere',
 	},
 	outcome: {
 		fontSize: 'var(--font-size-sm)',
+		gridArea: 'outcome',
 	},
 	points: {
 		fontWeight: 'var(--font-weight-semibold)',
+		gridArea: 'points',
 		textAlign: 'end',
 	},
 	win: {
