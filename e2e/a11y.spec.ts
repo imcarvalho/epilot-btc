@@ -207,6 +207,48 @@ test.describe('structure a screen reader navigates by', () => {
 		).toBeDisabled();
 	});
 
+	test('a guess made by keyboard keeps focus on its button, and the hint is still reachable', async ({
+		page,
+	}) => {
+		await openGame(page);
+		await page
+			.getByRole('button', {
+				name: 'Higher, in 60 seconds',
+			})
+			.focus();
+		await page.keyboard.press('Enter');
+		await expect(
+			page.getByRole('button', {
+				name: 'Higher, your guess is in play',
+			}),
+		).toBeFocused();
+		await page.keyboard.press('Tab');
+		await expect(
+			page.getByRole('button', {
+				name: 'Lower, one guess at a time',
+			}),
+		).toBeFocused();
+	});
+
+	test('when the control holding focus goes away at the result, focus lands on the result', async ({
+		page,
+	}) => {
+		await openGame(page);
+		await lockGuessAgo(await playerIdOf(page), 'up', 55_000);
+		await page.reload();
+		// The view toggle exists only while a guess is in play.
+		const toggle = page.getByRole('radio', {
+			name: 'This guess',
+		});
+		await toggle.focus();
+		await expect(toggle).toBeFocused();
+		await expect(page.getByText('Correct.').first()).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(toggle).toHaveCount(0);
+		await expect(page.locator(':focus')).toContainText('Correct.');
+	});
+
 	test('a guess that does not go through is announced, every time', async ({
 		page,
 	}) => {

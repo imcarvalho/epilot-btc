@@ -25,6 +25,7 @@ import {
 	TopBar,
 } from './widgets';
 import {
+	useFocusRescue,
 	useGame,
 	useServerNow,
 	type TickerSnapshot,
@@ -65,6 +66,12 @@ export function GameScreen() {
 			isAlive: live.isAlive,
 		};
 	}, [live]);
+
+	// When a re-render removes the focused control, focus lands on the strip -
+	// which, at the end of a round, is where the result is.
+	const mainRef = useRef<HTMLElement>(null);
+	const stripRef = useRef<HTMLDivElement>(null);
+	useFocusRescue(mainRef, stripRef);
 
 	// The chart follows the guess (product spec §6.1): to the minute when one
 	// starts, back to the hour once it resolves. The player can switch
@@ -112,7 +119,7 @@ export function GameScreen() {
 					}
 					source={isMinuteView ? 'ticker' : 'candles'}
 				/>
-				<main {...stylex.props(styles.main)}>
+				<main ref={mainRef} {...stylex.props(styles.main)}>
 					{status.kind === 'error' ? (
 						<Panel>
 							<EmptyMessage title={UNREACHABLE_TITLE} body={UNREACHABLE_BODY} />
@@ -135,16 +142,19 @@ export function GameScreen() {
 									dismissLabel="Dismiss"
 								/>
 							)}
-							<GuessStrip
-								phase={phase}
-								name={state?.publicName ?? null}
-								signedIn={state?.signedIn ?? false}
-								guessError={guessError}
-								priceBlocked={priceBlocked}
-								now={now}
-								live={live}
-								isMinuteView={isMinuteView}
-							/>
+							{/* Focusable only by script: where focus goes when its control disappears. */}
+							<div ref={stripRef} tabIndex={-1} {...stylex.props(styles.strip)}>
+								<GuessStrip
+									phase={phase}
+									name={state?.publicName ?? null}
+									signedIn={state?.signedIn ?? false}
+									guessError={guessError}
+									priceBlocked={priceBlocked}
+									now={now}
+									live={live}
+									isMinuteView={isMinuteView}
+								/>
+							</div>
 							<PriceCard
 								price={state?.price ?? null}
 								priceUpdatedAt={state?.priceUpdatedAt ?? null}

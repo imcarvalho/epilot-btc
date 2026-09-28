@@ -9,10 +9,7 @@ export const styles = stylex.create({
 		borderStyle: 'solid',
 		borderWidth: 2,
 		color: palette.ink,
-		cursor: {
-			default: 'pointer',
-			':disabled': 'default',
-		},
+		cursor: 'pointer',
 		display: 'flex',
 		fontFamily: 'inherit',
 		gap: 'var(--spacing-5)',
@@ -32,7 +29,7 @@ export const styles = stylex.create({
 		position: 'relative',
 		transform: {
 			default: 'none',
-			':hover:not(:disabled)': {
+			':hover': {
 				default: 'translateY(-2px)',
 				'@media (prefers-reduced-motion: reduce)': 'none',
 			},
@@ -42,9 +39,15 @@ export const styles = stylex.create({
 		transitionTimingFunction: 'var(--ease-standard)',
 		filter: {
 			default: 'none',
-			':hover:not(:disabled)': 'brightness(1.04)',
+			':hover': 'brightness(1.04)',
 		},
 		width: '100%',
+	},
+	/** `aria-disabled`: no pointer, no lift on hover. */
+	inactive: {
+		cursor: 'default',
+		filter: 'none',
+		transform: 'none',
 	},
 	up: {
 		backgroundImage: `linear-gradient(100deg, ${palette.upFrom}, ${palette.upTo})`,

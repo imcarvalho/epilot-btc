@@ -118,7 +118,7 @@ The screen (build order item 1, client half, first-visit state):
   - `widgets/` - the screen's self-contained blocks: `TopBar`, `PriceCard`, `GuessButtons`, `GuessStrip`, `LeaderboardPanel`, `HistoryPanel`
   - `charts/` - `HourChart`, `MinuteChart` and the `chart-parts` they share (inside `PriceCard`)
   - `feedback/` - `Announcer` (the one `aria-live` region) and `Confetti`
-  - `hooks/` - `useGame` (state from `GET /api/state` only, placing guesses, the cadence), `useCandles`, `useLiveMinute`
+  - `hooks/` - `useGame` (state from `GET /api/state` only, placing guesses, the cadence), `useCandles`, `useLiveMinute`, `useFocusRescue` (focus to the guess strip when a re-render removes the focused control)
   - `utils/` - formatting
   - Every component keeps its StyleX in a sibling `Name.styles.ts`
 - `src/lib/candles.ts` - the last-hour chart as pure functions (parse Coinbase's candles, the hour's change, SVG geometry); `HourChart` draws it and `useCandles` fetches it from Coinbase in the browser, every 10 s and just after each minute turns, while the tab is visible

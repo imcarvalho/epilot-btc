@@ -3,6 +3,7 @@
  * and the live minute's ticker.
  */
 export { useCandles, type CandlesState } from './useCandles';
+export { useFocusRescue } from './useFocusRescue';
 export {
 	useGame,
 	useServerNow,

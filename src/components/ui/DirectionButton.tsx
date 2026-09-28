@@ -18,6 +18,11 @@ const COPY: Record<Direction, { word: string; Arrow: typeof ArrowUp }> = {
  * - `ready`: the gradient, clickable.
  * - `chosen`: the guess in play - stays lit, ringed and marked "chosen".
  * - `muted`: the other direction while a guess runs - flat and disabled.
+ *
+ * Disabled means `aria-disabled`, not `disabled`: the button keeps focus when
+ * it is pressed and stays in the tab order, so a keyboard or screen reader
+ * user neither loses their place nor misses the hint that says why it is
+ * unavailable ("your guess is in play", "one guess at a time").
  */
 export type DirectionButtonMode = 'ready' | 'chosen' | 'muted';
 
@@ -43,6 +48,7 @@ export function DirectionButton({
 }) {
 	const { word, Arrow } = COPY[direction];
 	const lit = mode !== 'muted';
+	const inactive = isDisabled || mode !== 'ready';
 
 	return (
 		<button
@@ -51,10 +57,11 @@ export function DirectionButton({
 			// are separate blocks, which a name built from content splits oddly.
 			// It starts with the visible word, so voice control still finds it.
 			aria-label={`${word}, ${hint}`}
-			onClick={onClick}
-			disabled={isDisabled || mode !== 'ready'}
+			aria-disabled={inactive || undefined}
+			onClick={inactive ? undefined : onClick}
 			{...stylex.props(
 				styles.base,
+				inactive && styles.inactive,
 				lit && (direction === 'up' ? styles.up : styles.down),
 				mode === 'chosen' &&
 					(direction === 'up' ? styles.chosenUp : styles.chosenDown),

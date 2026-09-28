@@ -36,6 +36,16 @@ export const styles = stylex.create({
 			'@media (max-width: 860px)': '1fr',
 		},
 	},
+	strip: {
+		borderRadius: 'var(--radius-container)',
+		outlineColor: 'var(--color-text-primary)',
+		outlineOffset: 4,
+		outlineStyle: {
+			default: 'none',
+			':focus-visible': 'solid',
+		},
+		outlineWidth: 2,
+	},
 	retry: {
 		display: 'flex',
 		justifyContent: 'center',
