@@ -34,6 +34,8 @@ function setup(initialPrice = 100_000) {
 		},
 	];
 	let feedUp = true;
+	// How long a ticker read takes, on the server's clock.
+	let latency = 0;
 	let ids = 0;
 
 	const deps: GameDeps = {
@@ -42,10 +44,15 @@ function setup(initialPrice = 100_000) {
 		newId: () => `id-${++ids}`,
 		random: () => 0,
 		fetchPrice: async () => {
+			clock += latency;
 			if (!feedUp) {
 				throw new Error('feed down');
 			}
-			return market;
+			const last = tape[tape.length - 1];
+			return {
+				price: market,
+				time: last.time,
+			};
 		},
 		fetchTape: vi.fn(async (from: number) => {
 			if (!feedUp) {
@@ -69,6 +76,7 @@ function setup(initialPrice = 100_000) {
 			});
 		},
 		setFeed: (up: boolean) => (feedUp = up),
+		setLatency: (ms: number) => (latency = ms),
 	};
 }
 
@@ -169,6 +177,67 @@ describe('placing a guess', () => {
 		await expect(placeGuess(deps, playerId, 'up')).resolves.toEqual({
 			kind: 'price-unavailable',
 		});
+	});
+
+	it('locks in at the market now, not at a cached price the player could see', async () => {
+		const { deps, store, advance, setMarket } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		await getState(deps, playerId); // the screen shows 100,000
+		advance(4_000); // still inside the cache window
+		setMarket(100_050); // the market has visibly moved up since
+
+		const result = await placeGuess(deps, playerId, 'up');
+		expect(result).toMatchObject({
+			kind: 'started',
+			pendingGuess: {
+				priceAtGuess: 100_050,
+				createdAt: T0 + 4_000,
+			},
+		});
+		// And everyone else's screen gets the fresh price too.
+		expect(store.price).toEqual({
+			price: 100_050,
+			updatedAt: T0 + 4_000,
+		});
+	});
+
+	it('refuses a guess when the market cannot be read, even with a fresh cached price', async () => {
+		const { deps, advance, setFeed } = setup();
+		const { playerId } = await createAnonymousPlayer(deps);
+		await getState(deps, playerId); // primes the cache
+		advance(1_000);
+		setFeed(false);
+		await expect(placeGuess(deps, playerId, 'up')).resolves.toEqual({
+			kind: 'price-unavailable',
+		});
+	});
+
+	it('starts the minute when the locked price stood, not when the read came back', async () => {
+		const { deps, setLatency } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		setLatency(800);
+
+		// The last trade is from before the request, so it still stood at T0.
+		const result = await placeGuess(deps, playerId, 'up');
+		expect(result).toMatchObject({
+			kind: 'started',
+			serverNow: T0 + 800,
+			pendingGuess: {
+				createdAt: T0,
+			},
+		});
+	});
+
+	it('does not read the market for a guess it would refuse anyway', async () => {
+		const { deps } = setup();
+		const fetchPrice = vi.spyOn(deps, 'fetchPrice');
+		const { playerId } = await createAnonymousPlayer(deps);
+		await placeGuess(deps, playerId, 'up');
+		expect(fetchPrice).toHaveBeenCalledTimes(1);
+
+		await placeGuess(deps, playerId, 'down');
+		await placeGuess(deps, 'anon:nobody', 'down');
+		expect(fetchPrice).toHaveBeenCalledTimes(1);
 	});
 });
 

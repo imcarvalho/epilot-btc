@@ -10,6 +10,10 @@
  * nothing"). On failure the last known price is served with its own
  * timestamp: the game degrades - it reports the feed as delayed - rather than
  * breaking.
+ *
+ * Locking a guess in never reads the cache: `fetchFreshPrice` reads the
+ * market at the moment of the request (§5, "The locked price"), so a player
+ * cannot pick a direction from a move the locked price has not caught up with.
  */
 
 import { z } from 'zod';
@@ -27,8 +31,15 @@ export const PRICE_STALE_MS = 15_000;
 /** The last trade on the BTC-USD book: `{ price, time, bid, ask, ... }`. */
 const TickerResponseSchema = z.object({
 	price: z.string().regex(/^\d+(\.\d+)?$/),
-	time: z.string(),
+	time: z.string().refine((t) => Number.isFinite(Date.parse(t))),
 });
+
+/** One read of the ticker: the last trade, and when it traded. */
+export interface PriceQuote {
+	price: number;
+	/** Epoch ms, Coinbase's clock: the time of the last trade. */
+	time: number;
+}
 
 export class PriceFetchError extends Error {}
 
@@ -47,7 +58,7 @@ export async function fetchTickerPrice({
 	sleep = realSleep,
 	retries = 2,
 	timeoutMs = 2_000,
-}: FetchPriceOptions = {}): Promise<number> {
+}: FetchPriceOptions = {}): Promise<PriceQuote> {
 	let lastError: unknown;
 
 	for (let attempt = 0; attempt <= retries; attempt++) {
@@ -63,7 +74,10 @@ export async function fetchTickerPrice({
 				throw new PriceFetchError(`Coinbase responded ${res.status}`);
 			}
 			const body = TickerResponseSchema.parse(await res.json());
-			return Number(body.price);
+			return {
+				price: Number(body.price),
+				time: Date.parse(body.time),
+			};
 		} catch (error) {
 			lastError = error;
 		}
@@ -76,30 +90,42 @@ export async function fetchTickerPrice({
 
 export interface PriceDeps {
 	store: GameStore;
-	fetchPrice: () => Promise<number>;
+	fetchPrice: () => Promise<PriceQuote>;
 	now: () => number;
 }
 
 /**
- * The current game price: the cached one while it is fresh, otherwise a new
- * fetch. Returns the last known price if the fetch fails, and null only if
- * there has never been one.
+ * When a fetched price stood, on the server's clock. The ticker's last trade
+ * is the price from its trade time until the response was written, so it
+ * held at any moment in that span that falls inside the request. The trade
+ * time, then, unless it came before the request began (a quiet market: the
+ * price still stood when the request was made) or after it returned (clock
+ * skew between Coinbase and the server).
  */
-export async function getGamePrice({
+export function observedAt(
+	tradeTime: number,
+	startedAt: number,
+	returnedAt: number,
+): number {
+	return Math.min(Math.max(tradeTime, startedAt), returnedAt);
+}
+
+/**
+ * A price read from the market now, never from the cache, and written to the
+ * cache so everyone else's screen benefits. `updatedAt` is when that price
+ * stood (`observedAt`). Null if the read fails: there is no fallback here.
+ */
+export async function fetchFreshPrice({
 	store,
 	fetchPrice,
 	now,
 }: PriceDeps): Promise<CachedPrice | null> {
-	const cached = await store.getCachedPrice();
-	if (cached && now() - cached.updatedAt < PRICE_CACHE_MS) {
-		return cached;
-	}
-
+	const startedAt = now();
 	try {
-		const price = await fetchPrice();
+		const quote = await fetchPrice();
 		const fresh = {
-			price,
-			updatedAt: now(),
+			price: quote.price,
+			updatedAt: observedAt(quote.time, startedAt, now()),
 		};
 		await store.putCachedPrice(fresh);
 		return fresh;
@@ -110,8 +136,23 @@ export async function getGamePrice({
 				error: String(error),
 			}),
 		);
+		return null;
+	}
+}
+
+/**
+ * The current game price for the screen: the cached one while it is fresh,
+ * otherwise a new fetch. Returns the last known price if the fetch fails, and
+ * null only if there has never been one.
+ */
+export async function getGamePrice(
+	deps: PriceDeps,
+): Promise<CachedPrice | null> {
+	const cached = await deps.store.getCachedPrice();
+	if (cached && deps.now() - cached.updatedAt < PRICE_CACHE_MS) {
 		return cached;
 	}
+	return (await fetchFreshPrice(deps)) ?? cached;
 }
 
 export function isStale(price: CachedPrice | null, now: number): boolean {

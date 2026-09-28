@@ -34,7 +34,10 @@ vi.mock('@/lib/deps', () => ({
 			if (!feedUp) {
 				throw new Error('feed down');
 			}
-			return 100_000;
+			return {
+				price: 100_000,
+				time: clock,
+			};
 		},
 		fetchTape: async () => {
 			if (!feedUp) {
@@ -397,7 +400,10 @@ describe('signed in', () => {
 		store,
 		now: () => clock,
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
-		fetchPrice: async () => 100_000,
+		fetchPrice: async () => ({
+			price: 100_000,
+			time: clock,
+		}),
 		fetchTape: async () => [],
 	});
 

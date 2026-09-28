@@ -1,6 +1,8 @@
 import {
+	fetchFreshPrice,
 	fetchTickerPrice,
 	getGamePrice,
+	observedAt,
 	isStale,
 	PRICE_CACHE_MS,
 	PRICE_STALE_MS,
@@ -31,6 +33,11 @@ const json = (body: unknown, status = 200) =>
 
 const noSleep = async () => {};
 
+const QUOTE = {
+	price: 84427.2,
+	time: Date.parse('2026-09-27T16:35:55.472Z'),
+};
+
 describe('fetchTickerPrice', () => {
 	it('parses the recorded Coinbase response', async () => {
 		const fetchImpl = vi.fn(async () => json(RECORDED));
@@ -39,7 +46,7 @@ describe('fetchTickerPrice', () => {
 				fetchImpl,
 				sleep: noSleep,
 			}),
-		).resolves.toBe(84427.2);
+		).resolves.toEqual(QUOTE);
 		expect(fetchImpl).toHaveBeenCalledWith(PRICE_URL, expect.anything());
 	});
 
@@ -54,7 +61,7 @@ describe('fetchTickerPrice', () => {
 				fetchImpl,
 				sleep,
 			}),
-		).resolves.toBe(84427.2);
+		).resolves.toEqual(QUOTE);
 		expect(sleep).toHaveBeenCalledWith(200);
 	});
 
@@ -72,6 +79,22 @@ describe('fetchTickerPrice', () => {
 		).rejects.toBeInstanceOf(PriceFetchError);
 		expect(fetchImpl).toHaveBeenCalledTimes(3);
 		expect(sleep.mock.calls).toEqual([[200], [400]]);
+	});
+
+	it('rejects a ticker without a readable trade time', async () => {
+		const fetchImpl = vi.fn(async () =>
+			json({
+				...RECORDED,
+				time: 'not a time',
+			}),
+		);
+		await expect(
+			fetchTickerPrice({
+				fetchImpl,
+				sleep: noSleep,
+				retries: 0,
+			}),
+		).rejects.toBeInstanceOf(PriceFetchError);
 	});
 
 	it('rejects a response that is not a ticker', async () => {
@@ -99,7 +122,10 @@ describe('getGamePrice', () => {
 			price: 100,
 			updatedAt: T,
 		};
-		const fetchPrice = vi.fn(async () => 200);
+		const fetchPrice = vi.fn(async () => ({
+			price: 200,
+			time: T,
+		}));
 		const price = await getGamePrice({
 			store,
 			fetchPrice,
@@ -121,7 +147,10 @@ describe('getGamePrice', () => {
 		const now = T + PRICE_CACHE_MS;
 		const price = await getGamePrice({
 			store,
-			fetchPrice: async () => 200,
+			fetchPrice: async () => ({
+				price: 200,
+				time: now,
+			}),
 			now: () => now,
 		});
 		expect(price).toEqual({
@@ -165,6 +194,84 @@ describe('getGamePrice', () => {
 				store: new MemoryStore(),
 				fetchPrice,
 				now: () => T,
+			}),
+		).resolves.toBeNull();
+	});
+});
+
+describe('observedAt', () => {
+	it('is the trade time when the trade landed during the request', () => {
+		expect(observedAt(1_500, 1_000, 2_000)).toBe(1_500);
+	});
+
+	it('is the start of the request when the last trade came before it', () => {
+		expect(observedAt(400, 1_000, 2_000)).toBe(1_000);
+	});
+
+	it("is never later than the response, whatever Coinbase's clock says", () => {
+		expect(observedAt(2_300, 1_000, 2_000)).toBe(2_000);
+	});
+});
+
+describe('fetchFreshPrice', () => {
+	const T = 1_700_000_000_000;
+
+	it('reads the market even while the cached price is fresh, and caches the result', async () => {
+		const store = new MemoryStore();
+		store.price = {
+			price: 100,
+			updatedAt: T,
+		};
+		const fetchPrice = vi.fn(async () => ({
+			price: 200,
+			time: T + 1_000,
+		}));
+		const price = await fetchFreshPrice({
+			store,
+			fetchPrice,
+			now: () => T + 1_000,
+		});
+		expect(fetchPrice).toHaveBeenCalledTimes(1);
+		expect(price).toEqual({
+			price: 200,
+			updatedAt: T + 1_000,
+		});
+		expect(store.price).toEqual(price);
+	});
+
+	it('dates the price by when it stood, not by when the read came back', async () => {
+		let clock = T;
+		const price = await fetchFreshPrice({
+			store: new MemoryStore(),
+			fetchPrice: async () => {
+				clock += 700;
+				return {
+					price: 200,
+					time: T - 5_000,
+				};
+			},
+			now: () => clock,
+		});
+		expect(price).toEqual({
+			price: 200,
+			updatedAt: T,
+		});
+	});
+
+	it('returns null when the read fails, not the cached price', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const store = new MemoryStore();
+		store.price = {
+			price: 100,
+			updatedAt: T,
+		};
+		await expect(
+			fetchFreshPrice({
+				store,
+				fetchPrice: async () => {
+					throw new PriceFetchError('down');
+				},
+				now: () => T + 1_000,
 			}),
 		).resolves.toBeNull();
 	});

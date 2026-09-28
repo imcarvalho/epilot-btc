@@ -3,7 +3,8 @@
  *
  * Engineering spec §3 and §4. Three operations - read state, place a guess,
  * sweep - and one resolution path they share. Nothing here takes a price or a
- * time from the caller: a guess locks in at the server's cached price (§5),
+ * time from the caller: a guess locks in at a price the server reads from the
+ * market as the request arrives (§5),
  * settles against the market at its deadline (§3), and the clock is the
  * server's own - all injected so tests can drive them.
  *
@@ -14,14 +15,20 @@ import type { Direction } from './resolve-guess';
 import { GUESS_WINDOW_MS } from './resolve-guess';
 import type { PendingGuess, SignInOutcome, StateResponse } from './contracts';
 import { generateName } from './names';
-import { getGamePrice, isStale } from './price';
+import {
+	fetchFreshPrice,
+	getGamePrice,
+	isStale,
+	type PriceQuote,
+} from './price';
 import { applyResolution } from './scoring';
 import { deadlineOf, settleAgainstTape, type PricePoint } from './settlement';
 import type { CachedPrice, GameStore, PlayerRecord } from './store';
 
 export interface GameDeps {
 	store: GameStore;
-	fetchPrice: () => Promise<number>;
+	/** One read of the ticker (price.ts). */
+	fetchPrice: () => Promise<PriceQuote>;
 	/** The market from a moment to now, in time order (settlement.ts). */
 	fetchTape: (from: number) => Promise<PricePoint[]>;
 	now: () => number;
@@ -272,27 +279,44 @@ export type PlaceGuessResult =
  * `POST /api/guess`. The caller supplies a direction and nothing else; the
  * price it is locked at and the time it starts are both the server's.
  *
- * A stale price refuses the guess outright: locking in at an old number
- * would be as unfair as resolving against one.
+ * The price is read from the market for this request, never from the cache,
+ * and a failed read refuses the guess rather than falling back: a price even
+ * a few seconds old is one the player may already have seen the market move
+ * away from (§5, "The locked price"). `createdAt` is when that price stood,
+ * so the deadline is exactly a minute after the locked trade.
  */
 export async function placeGuess(
 	deps: GameDeps,
 	playerId: string,
 	direction: Direction,
 ): Promise<PlaceGuessResult> {
-	const price = await getGamePrice(deps);
-	const now = deps.now();
-	if (!price || isStale(price, now)) {
+	// A cheap read first, so a player who cannot guess costs no Coinbase call.
+	// It decides nothing: the conditional write below is what enforces R3.
+	const player = await deps.store.getPlayer(playerId);
+	if (!player) {
+		return {
+			kind: 'no-player',
+		};
+	}
+	if (player.pendingGuess) {
+		return {
+			kind: 'guess-pending',
+		};
+	}
+
+	const price = await fetchFreshPrice(deps);
+	if (!price) {
 		return {
 			kind: 'price-unavailable',
 		};
 	}
+	const now = deps.now();
 
 	const pendingGuess: PendingGuess = {
 		id: deps.newId(),
 		direction,
 		priceAtGuess: price.price,
-		createdAt: now,
+		createdAt: price.updatedAt,
 	};
 
 	const result = await deps.store.startGuess(playerId, pendingGuess, now);

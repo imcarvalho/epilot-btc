@@ -180,6 +180,8 @@ No network, no clock, no database. Trivial to test, and the first place a review
 
 The trades are read after the deadline from Coinbase's public trade history (`/products/BTC-USD/trades`, newest first, paged back with `after`), the same book as the ticker, the chart and the live minute (section 5). `settleAgainstTape` in `src/lib/settlement.ts` is the rule over that tape, pure; `resolveGuess` is still the comparison it applies. Every trigger - the player's read, another tab, the sweep - reads the same history and so reaches the same outcome, however late it arrives, and a player can check the settling trade against Coinbase themselves.
 
+The other end of the minute follows the same rule. The locked price is the ticker's last trade read fresh when the guess is placed, and `createdAt` is when that trade stood (section 5, "The locked price") - so the locked price is the last trade at or before `createdAt`, and the deadline is a minute after it on the same tape.
+
 Normal play needs one page of trades: the browser asks at t+60 s, and a page covers a few minutes. A late sweep pages further back; past five pages, one-minute candles stand in (each minute read as its open and its close), which only happens when recovering from an outage. The deadline is on the server's clock and the trades on Coinbase's; both are NTP-synchronised, and the skew is far below the gaps between price changes that matter.
 
 ### Two triggers, one guard
@@ -191,7 +193,7 @@ Both take the same conditional write, so a guess resolves exactly once even when
 
 ### A stale price resolves nothing
 
-If the trade history cannot be read, no resolution happens and the guess stays pending; the next ask tries again. On screen this is the delayed-feed state: the cached ticker price older than the freshness threshold (15 s) is what the API reports as delayed, and it also refuses new guesses (section 5). Resolving against a guessed-at price would be unfair, and it is an obvious thing for a reviewer to probe.
+If the trade history cannot be read, no resolution happens and the guess stays pending; the next ask tries again. On screen this is the delayed-feed state: the cached ticker price older than the freshness threshold (15 s) is what the API reports as delayed, and the screen stops offering guesses; a guess is refused on its own terms whenever the fresh read it locks in at fails (section 5). Resolving against a guessed-at price would be unfair, and it is an obvious thing for a reviewer to probe.
 
 ### 3.1 How the browser learns the outcome
 
@@ -245,7 +247,8 @@ It also bounds the failure mode. If the scheduler stops, work accumulates visibl
 
 | Use | Source | Why |
 |---|---|---|
-| **Game price** (locking a guess in, and on screen) | Server, shared cache | Fairness; from the client it would be forgeable |
+| **Locked price** (placing a guess) | Server, read fresh from the ticker for that request | Fairness; a cached price could be one the player has already seen the market leave |
+| **Game price** (on screen) | Server, shared cache | From the client it would be forgeable; the cache keeps it to one Coinbase call per window |
 | **Settlement price** (resolution) | Server, trade history at the deadline (3) | Fixed by the clock, so the timing of a request cannot choose it |
 | **Chart** (history and ticker) | Comes from the client | Cosmetic; saves server invocations and cuts latency |
 
@@ -264,9 +267,13 @@ None of this touches the game price, which is read server-side whether or not th
 
 **One market for everything.** The game price is the Exchange ticker's last trade, the same book the chart's candles and the live minute's WebSocket read. It was first specified as Coinbase's retail spot price (`api.coinbase.com/v2/prices/BTC-USD/spot`), which runs $20-30 away from the Exchange price: the live minute then opened "ahead by $29" before the market had moved at all. Settling on the same market the player watches keeps the provisional line honest; the game is exactly as fair either way, since one source decides every outcome.
 
-**Caching:** the latest price lives in its own DynamoDB item with a timestamp and a few seconds of TTL, so one Coinbase call per window serves every player. Per-request calls would hit rate limits with two players and an open tab.
+**Caching:** the latest price lives in its own DynamoDB item with a timestamp and a few seconds of TTL, so one Coinbase call per window serves every player's screen. Per-request calls would hit rate limits with two players and an open tab.
 
-**Failure:** retry with exponential backoff, then serve the last known price with its timestamp. The game degrades, it does not break. On screen: the last price stays up, marked delayed; once it is past the 15 s guard the guess buttons go quiet and the strip says why, so a guess is refused before it is tried (`priceBlocksGuess`); a game that has never had a price says so rather than showing a loading placeholder forever. The chart fails on its own, with its own note, and recovers on its next refresh.
+**The locked price is never the cached one.** The cached price can be up to 5 s old, and up to 15 s while Coinbase is failing, and it is the number on the player's screen. Locking a guess at it would let a player who can see the market has already moved (on the chart, which reads Coinbase directly) guess with that knowledge: better than a coin flip. So `placeGuess` reads the ticker for that request (`fetchFreshPrice`), and if the read fails the guess is refused (`price-unavailable`), with no fallback to the cache. The fresh price is still written to the cache, so everyone's screen gets it. Before reading, one read of the player item turns away a player who cannot guess (none, or a guess already pending) without calling Coinbase, so the extra calls are bounded by about one per player per minute; the conditional write still decides R3.
+
+`createdAt` is when the locked price stood, not when the read came back. The ticker's last trade is the price from its trade time until the response, so it held at the trade time if that falls inside the request, and at the start of the request if the trade came before it (a quiet market); a trade time after the response (clock skew) is held to the response (`observedAt`). The locked price is therefore the last trade at or before `createdAt`, the same rule settlement applies at `createdAt + 60 s` (section 3). Reading the lock from the trade history instead would give the same price with a second endpoint and paging; the ticker already names its trade and its time, so it is the simpler of two equivalent reads.
+
+**Failure:** retry with exponential backoff, then serve the last known price with its timestamp (for the screen; a guess is refused instead, above). The game degrades, it does not break. On screen: the last price stays up, marked delayed; once it is past the 15 s guard the guess buttons go quiet and the strip says why, so a guess is refused before it is tried (`priceBlocksGuess`); a game that has never had a price says so rather than showing a loading placeholder forever. The chart fails on its own, with its own note, and recovers on its next refresh.
 
 ### 5.1 The live minute: a browser-side ticker
 
