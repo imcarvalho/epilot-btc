@@ -71,6 +71,19 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 	const [isPlacing, setIsPlacing] = useState(false);
 	const [guessError, setGuessError] = useState<GuessError>(null);
 	const inFlight = useRef(false);
+	// When the last GET /api/state was started, on the local clock, and how
+	// many in a row have failed: the cadence spaces asks by attempts, not by
+	// answers, so a failing server is not asked once a second (§3.1).
+	const lastAskAt = useRef<number | null>(null);
+	const consecutiveFailures = useRef(0);
+	// Fallback polls made for the guess named here, for the 5 s -> 10 s back-off.
+	const fallback = useRef<{
+		guessId: string | null;
+		polls: number;
+	}>({
+		guessId: null,
+		polls: 0,
+	});
 
 	const accept = useCallback((state: StateResponse) => {
 		setStatus({
@@ -90,9 +103,12 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 			return;
 		}
 		inFlight.current = true;
+		lastAskAt.current = Date.now();
 		try {
 			accept(await fetchState());
+			consecutiveFailures.current = 0;
 		} catch {
+			consecutiveFailures.current += 1;
 			setStatus((current) =>
 				current.kind === 'ready'
 					? current
@@ -174,13 +190,40 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 	useEffect(() => {
 		const id = setInterval(() => {
 			const current = latest.current;
-			if (current.kind !== 'ready') {
+			if (current.kind === 'loading') {
+				return;
+			}
+			const msSinceLastAsk =
+				lastAskAt.current === null ? null : Date.now() - lastAskAt.current;
+			if (current.kind === 'error') {
+				// First contact failed: retry as an idle refresh, under the back-off.
+				const decision = shouldAsk({
+					countdownEnded: false,
+					lockedPrice: null,
+					lastTickerPrice: null,
+					socketAlive: false,
+					visible: document.visibilityState !== 'hidden',
+					msSinceLastAsk,
+					askedSinceCountdownEnded: false,
+					consecutiveFailures: consecutiveFailures.current,
+					fallbackPolls: 0,
+				});
+				if (decision.ask) {
+					void refresh();
+				}
 				return;
 			}
 			const { state, clockOffset } = current;
 			const guess = state.pendingGuess;
 			const now = Date.now() + clockOffset;
 			const resolvableAt = guess ? guess.createdAt + GUESS_WINDOW_MS : Infinity;
+			const guessId = guess?.id ?? null;
+			if (fallback.current.guessId !== guessId) {
+				fallback.current = {
+					guessId,
+					polls: 0,
+				};
+			}
 
 			const decision = shouldAsk({
 				countdownEnded: now >= resolvableAt,
@@ -190,10 +233,15 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 				lastTickerPrice: ticker?.current?.price ?? null,
 				socketAlive: ticker?.current?.isAlive ?? false,
 				visible: document.visibilityState !== 'hidden',
-				msSinceLastAsk: now - state.serverNow,
+				msSinceLastAsk,
 				askedSinceCountdownEnded: state.serverNow >= resolvableAt,
+				consecutiveFailures: consecutiveFailures.current,
+				fallbackPolls: fallback.current.polls,
 			});
 			if (decision.ask) {
+				if (decision.reason === 'fallback-poll') {
+					fallback.current.polls += 1;
+				}
 				void refresh();
 			}
 		}, 1_000);

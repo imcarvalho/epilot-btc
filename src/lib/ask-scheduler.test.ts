@@ -7,7 +7,16 @@
  * No socket and no clock needed - the whole cadence is a function over facts.
  */
 
-import { IDLE_REFRESH_MS, shouldAsk, type CadenceInput } from './ask-scheduler';
+import {
+	ERROR_BACKOFF_MAX_MS,
+	errorBackoffMs,
+	FALLBACK_POLL_BACKOFF_MS,
+	FALLBACK_POLL_MS,
+	FALLBACK_POLLS_BEFORE_BACKOFF,
+	IDLE_REFRESH_MS,
+	shouldAsk,
+	type CadenceInput,
+} from './ask-scheduler';
 
 const base = (over: Partial<CadenceInput> = {}): CadenceInput => ({
 	countdownEnded: false,
@@ -17,6 +26,8 @@ const base = (over: Partial<CadenceInput> = {}): CadenceInput => ({
 	visible: true,
 	msSinceLastAsk: 1_000,
 	askedSinceCountdownEnded: false,
+	consecutiveFailures: 0,
+	fallbackPolls: 0,
 	...over,
 });
 
@@ -225,6 +236,146 @@ describe('shouldAsk', () => {
 		).toEqual({
 			ask: false,
 		});
+	});
+
+	it('backs the fallback poll off from 5 s to 10 s after half a minute of it', () => {
+		const stuck = {
+			countdownEnded: true,
+			askedSinceCountdownEnded: true,
+			socketAlive: false,
+			lastTickerPrice: null,
+		};
+		expect(
+			shouldAsk(
+				base({
+					...stuck,
+					fallbackPolls: FALLBACK_POLLS_BEFORE_BACKOFF - 1,
+					msSinceLastAsk: FALLBACK_POLL_MS,
+				}),
+			),
+		).toEqual({
+			ask: true,
+			reason: 'fallback-poll',
+		});
+		expect(
+			shouldAsk(
+				base({
+					...stuck,
+					fallbackPolls: FALLBACK_POLLS_BEFORE_BACKOFF,
+					msSinceLastAsk: FALLBACK_POLL_MS,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
+		expect(
+			shouldAsk(
+				base({
+					...stuck,
+					fallbackPolls: FALLBACK_POLLS_BEFORE_BACKOFF,
+					msSinceLastAsk: FALLBACK_POLL_BACKOFF_MS,
+				}),
+			),
+		).toEqual({
+			ask: true,
+			reason: 'fallback-poll',
+		});
+	});
+
+	it('doubles the gap after each failed ask, up to a minute', () => {
+		expect(
+			[0, 1, 2, 3, 4, 5, 20].map((failures) => errorBackoffMs(failures)),
+		).toEqual([0, 5_000, 10_000, 20_000, 40_000, 60_000, ERROR_BACKOFF_MAX_MS]);
+	});
+
+	it('does not re-ask a failing server on every tick once the minute is up', () => {
+		const failing = {
+			countdownEnded: true,
+			askedSinceCountdownEnded: false,
+			consecutiveFailures: 3,
+		};
+		expect(
+			shouldAsk(
+				base({
+					...failing,
+					msSinceLastAsk: 1_000,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
+		expect(
+			shouldAsk(
+				base({
+					...failing,
+					msSinceLastAsk: 19_999,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
+		expect(
+			shouldAsk(
+				base({
+					...failing,
+					msSinceLastAsk: 20_000,
+				}),
+			),
+		).toEqual({
+			ask: true,
+			reason: 'countdown-ended',
+		});
+	});
+
+	it('spaces idle refreshes and fallback polls by the error back-off too', () => {
+		expect(
+			shouldAsk(
+				base({
+					lockedPrice: null,
+					consecutiveFailures: 4,
+					msSinceLastAsk: IDLE_REFRESH_MS,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
+		expect(
+			shouldAsk(
+				base({
+					countdownEnded: true,
+					askedSinceCountdownEnded: true,
+					socketAlive: false,
+					lastTickerPrice: null,
+					consecutiveFailures: 2,
+					msSinceLastAsk: FALLBACK_POLL_MS,
+				}),
+			),
+		).toEqual({
+			ask: false,
+		});
+	});
+
+	it('asks at most a handful of times in a minute while the server keeps failing', () => {
+		// One tick a second for a minute after the countdown ends, every ask
+		// failing, with msSinceLastAsk counted from the last attempt.
+		let lastAskAt: number | null = 0;
+		let failures = 1;
+		const asks: number[] = [];
+		for (let t = 1_000; t <= 60_000; t += 1_000) {
+			const d = shouldAsk(
+				base({
+					countdownEnded: true,
+					consecutiveFailures: failures,
+					msSinceLastAsk: lastAskAt === null ? null : t - lastAskAt,
+				}),
+			);
+			if (d.ask) {
+				asks.push(t);
+				lastAskAt = t;
+				failures += 1;
+			}
+		}
+		expect(asks).toEqual([5_000, 15_000, 35_000]);
 	});
 
 	it('costs two requests for an ordinary guess', () => {

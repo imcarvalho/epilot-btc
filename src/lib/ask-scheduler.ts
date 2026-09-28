@@ -22,10 +22,18 @@ export interface CadenceInput {
 	socketAlive: boolean;
 	/** document.visibilityState !== "hidden" */
 	visible: boolean;
-	/** Milliseconds since the last GET /api/state, or null if none yet. */
+	/**
+	 * Milliseconds since the last GET /api/state was started, whatever came of
+	 * it, or null if none yet. Counting attempts rather than answers is what
+	 * keeps a failing endpoint from being asked on every tick.
+	 */
 	msSinceLastAsk: number | null;
-	/** Has the client already asked once since the countdown ended? */
+	/** Has the client already had an answer since the countdown ended? */
 	askedSinceCountdownEnded: boolean;
+	/** Asks in a row that failed (network error or non-2xx); 0 after a success. */
+	consecutiveFailures: number;
+	/** Fallback polls already made for the pending guess. */
+	fallbackPolls: number;
 }
 
 export type CadenceDecision =
@@ -50,6 +58,27 @@ export const IDLE_REFRESH_MS = 10_000;
 /** Fallback polling only, for when the ticker cannot tell us anything. */
 export const FALLBACK_POLL_MS = 5_000;
 export const FALLBACK_POLL_BACKOFF_MS = 10_000;
+/** Fallback polls at the short interval before backing off: 30 s of them. */
+export const FALLBACK_POLLS_BEFORE_BACKOFF = 6;
+
+/**
+ * After a failed ask, the next one waits at least this long, doubling with
+ * each further failure up to the cap: 5 s, 10 s, 20 s, 40 s, 60 s. A server
+ * that is down is not helped by every open tab asking once a second.
+ */
+export const ERROR_BACKOFF_BASE_MS = 5_000;
+export const ERROR_BACKOFF_MAX_MS = 60_000;
+
+/** The least gap before the next ask after `failures` failed ones in a row. */
+export function errorBackoffMs(failures: number): number {
+	if (failures <= 0) {
+		return 0;
+	}
+	return Math.min(
+		ERROR_BACKOFF_BASE_MS * 2 ** (failures - 1),
+		ERROR_BACKOFF_MAX_MS,
+	);
+}
 
 /**
  * The server's price is cached for a few seconds, so the browser's ticker
@@ -74,6 +103,14 @@ export function shouldAsk(input: CadenceInput): CadenceDecision {
 		return {
 			ask: true,
 			reason: 'mount',
+		};
+	}
+
+	// The last ask failed: whatever the moment calls for, wait out the back-off
+	// first. The moment is still judged below once it has passed.
+	if (input.msSinceLastAsk < errorBackoffMs(input.consecutiveFailures)) {
+		return {
+			ask: false,
 		};
 	}
 
@@ -122,9 +159,10 @@ export function shouldAsk(input: CadenceInput): CadenceDecision {
 		};
 	}
 
-	// No ticker to lean on: this is the one case that polls.
+	// No ticker to lean on: this is the one case that polls. Every 5 s at
+	// first, every 10 s once half a minute of that has not settled it.
 	const interval =
-		input.msSinceLastAsk >= FALLBACK_POLL_BACKOFF_MS
+		input.fallbackPolls >= FALLBACK_POLLS_BEFORE_BACKOFF
 			? FALLBACK_POLL_BACKOFF_MS
 			: FALLBACK_POLL_MS;
 
