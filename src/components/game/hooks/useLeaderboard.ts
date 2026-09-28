@@ -17,7 +17,9 @@ export function useLeaderboard(
 	const load = useCallback(async () => {
 		try {
 			const res = await fetch('/api/leaderboard', { cache: 'no-store' });
-			if (res.ok) setBoard(await res.json());
+			if (res.ok) {
+				setBoard(await res.json());
+			}
 		} catch {
 			// Keep what is on screen.
 		}
@@ -29,7 +31,9 @@ export function useLeaderboard(
 
 	useEffect(() => {
 		const onVisible = () => {
-			if (document.visibilityState === 'visible') void load();
+			if (document.visibilityState === 'visible') {
+				void load();
+			}
 		};
 		document.addEventListener('visibilitychange', onVisible);
 		return () => document.removeEventListener('visibilitychange', onVisible);

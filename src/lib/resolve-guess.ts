@@ -32,8 +32,12 @@ export function resolveGuess(
 	priceNow: number,
 	now: number,
 ): Resolution {
-	if (now - guess.createdAt < GUESS_WINDOW_MS) return { resolved: false };
-	if (priceNow === guess.priceAtGuess) return { resolved: false };
+	if (now - guess.createdAt < GUESS_WINDOW_MS) {
+		return { resolved: false };
+	}
+	if (priceNow === guess.priceAtGuess) {
+		return { resolved: false };
+	}
 
 	const wentUp = priceNow > guess.priceAtGuess;
 	const correct = guess.direction === 'up' ? wentUp : !wentUp;

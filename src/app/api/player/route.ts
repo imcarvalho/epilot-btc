@@ -18,7 +18,9 @@ export async function POST(request: NextRequest) {
 
 	const existingId = await playerIdFrom(request);
 	const existing = existingId ? await deps.store.getPlayer(existingId) : null;
-	if (existing) return json({ publicName: existing.publicName });
+	if (existing) {
+		return json({ publicName: existing.publicName });
+	}
 
 	// A live session whose record is gone: recreate the account rather than
 	// fall back to an anonymous player the session would never read.

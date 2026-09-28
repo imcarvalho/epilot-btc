@@ -33,7 +33,9 @@ function setup(initialPrice = 100_000) {
 		newId: () => `id-${++ids}`,
 		random: () => 0,
 		fetchPrice: async () => {
-			if (!feedUp) throw new Error('feed down');
+			if (!feedUp) {
+				throw new Error('feed down');
+			}
 			return market;
 		},
 	};
@@ -253,8 +255,9 @@ describe('resolving on read', () => {
 			[1, 2, 3].map(() => getState(deps, playerId)),
 		);
 		expect(store.settleWrites).toBe(1);
-		for (const state of states)
+		for (const state of states) {
 			expect(state).toMatchObject({ score: 1, pendingGuess: null });
+		}
 		expect(store.players.get(playerId)!.history).toHaveLength(1);
 	});
 

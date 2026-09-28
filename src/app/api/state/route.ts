@@ -15,16 +15,21 @@ import { error, json, playerIdFrom } from '../respond';
  */
 export async function GET(request: NextRequest) {
 	const playerId = await playerIdFrom(request);
-	if (!playerId) return error('no-player', 401);
+	if (!playerId) {
+		return error('no-player', 401);
+	}
 
 	const state = await getState(getDeps(), playerId);
-	if (!state) return error('no-player', 401);
+	if (!state) {
+		return error('no-player', 401);
+	}
 
 	const signIn = state.signedIn
 		? signInOutcomeFromCookie(request.cookies.get(SIGN_IN_COOKIE)?.value)
 		: null;
 	const response = json({ ...state, signIn });
-	if (request.cookies.has(SIGN_IN_COOKIE))
+	if (request.cookies.has(SIGN_IN_COOKIE)) {
 		response.cookies.delete(SIGN_IN_COOKIE);
+	}
 	return response;
 }

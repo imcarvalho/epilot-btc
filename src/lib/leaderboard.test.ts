@@ -102,7 +102,9 @@ describe('getLeaderboard', () => {
 
 	it('gives the caller their own ranked row when outside the podium', async () => {
 		const { deps, add } = setup();
-		for (let i = 0; i < 10; i++) add(`google:${i}`, 100 - i);
+		for (let i = 0; i < 10; i++) {
+			add(`google:${i}`, 100 - i);
+		}
 		add('google:me', -2, { wins: 12, losses: 13 });
 		const board = await getLeaderboard(deps, 'google:me');
 		expect(board.you).toEqual({
@@ -142,7 +144,9 @@ describe('getLeaderboard', () => {
 
 	it("reads the caller's own row live, even when the podium is cached", async () => {
 		const { deps, add, store } = setup();
-		for (let i = 0; i < 5; i++) add(`google:${i}`, 100 - i);
+		for (let i = 0; i < 5; i++) {
+			add(`google:${i}`, 100 - i);
+		}
 		add('google:me', 1);
 		await getLeaderboard(deps, 'google:me');
 		store.players.get('google:me')!.score = 2;

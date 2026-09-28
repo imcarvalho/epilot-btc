@@ -42,12 +42,13 @@ export function guessPhase(
 			);
 			return { kind: 'locked', guess, secondsLeft };
 		}
-		if (state.priceStale)
+		if (state.priceStale) {
 			return {
 				kind: 'stale',
 				guess,
 				ageMs: now - (state.priceUpdatedAt ?? now),
 			};
+		}
 		return { kind: 'time-up', guess };
 	}
 

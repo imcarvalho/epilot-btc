@@ -17,7 +17,9 @@ export function useWidth<T extends HTMLElement>() {
 	const [width, setWidth] = useState(0);
 	useEffect(() => {
 		const el = ref.current;
-		if (!el) return;
+		if (!el) {
+			return;
+		}
 		const observer = new ResizeObserver(([entry]) =>
 			setWidth(entry.contentRect.width),
 		);
@@ -163,7 +165,9 @@ export function Inspector({
 	const pick = (e: PointerEvent<HTMLDivElement>) => {
 		const rect = e.currentTarget.getBoundingClientRect();
 		const next = nearestIndex(xs, e.clientX - rect.left);
-		if (next !== index) onIndex(next);
+		if (next !== index) {
+			onIndex(next);
+		}
 	};
 	return (
 		<div
@@ -179,15 +183,21 @@ export function Inspector({
 			// Kept while focused: a tap focuses it, and the reading stays until
 			// the player looks away.
 			onPointerLeave={(e) => {
-				if (document.activeElement !== e.currentTarget) onIndex(null);
+				if (document.activeElement !== e.currentTarget) {
+					onIndex(null);
+				}
 			}}
 			onFocus={() => {
-				if (index === null && last >= 0) onIndex(last);
+				if (index === null && last >= 0) {
+					onIndex(last);
+				}
 			}}
 			onBlur={() => onIndex(null)}
 			onKeyDown={(e) => {
 				const next = stepIndex(index, e.key, xs.length);
-				if (next === undefined) return;
+				if (next === undefined) {
+					return;
+				}
 				e.preventDefault();
 				onIndex(next);
 			}}

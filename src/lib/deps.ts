@@ -18,10 +18,14 @@ import { fetchTickerPrice } from './price';
 let deps: GameDeps | undefined;
 
 export function getDeps(): GameDeps {
-	if (deps) return deps;
+	if (deps) {
+		return deps;
+	}
 
 	const tableName = process.env.PLAYERS_TABLE_NAME;
-	if (!tableName) throw new Error('PLAYERS_TABLE_NAME is not set');
+	if (!tableName) {
+		throw new Error('PLAYERS_TABLE_NAME is not set');
+	}
 
 	const client = DynamoDBDocumentClient.from(
 		new DynamoDBClient({

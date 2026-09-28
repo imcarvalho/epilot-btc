@@ -96,8 +96,9 @@ export function PriceCard({
 		}
 	} else if (!guess && candles.kind === 'ready') {
 		const change = hourChange(candles.candles);
-		if (change !== null)
+		if (change !== null) {
 			badge = <ChangeBadge change={change} period="in the last hour" />;
+		}
 	}
 
 	return (

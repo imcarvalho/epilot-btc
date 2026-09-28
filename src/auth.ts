@@ -61,7 +61,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 	trustHost: true,
 	callbacks: {
 		async signIn({ account, profile }) {
-			if (account?.provider !== 'google' || !profile?.sub) return false;
+			if (account?.provider !== 'google' || !profile?.sub) {
+				return false;
+			}
 			const jar = await cookies();
 			const outcome = await signInPlayer(
 				getDeps(),
@@ -73,7 +75,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 		},
 		// Only the player id goes into the token: nothing else from Google.
 		jwt({ token, profile }) {
-			if (profile?.sub) return { playerId: `google:${profile.sub}` };
+			if (profile?.sub) {
+				return { playerId: `google:${profile.sub}` };
+			}
 			return token;
 		},
 		session({ session, token }) {
@@ -88,6 +92,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
  * anonymously rather than every request failing on a missing secret.
  */
 export async function sessionPlayerId(): Promise<string | null> {
-	if (!process.env.AUTH_SECRET) return null;
+	if (!process.env.AUTH_SECRET) {
+		return null;
+	}
 	return (await auth())?.playerId ?? null;
 }

@@ -51,14 +51,17 @@ export async function fetchTickerPrice({
 	let lastError: unknown;
 
 	for (let attempt = 0; attempt <= retries; attempt++) {
-		if (attempt > 0) await sleep(200 * 2 ** (attempt - 1));
+		if (attempt > 0) {
+			await sleep(200 * 2 ** (attempt - 1));
+		}
 		try {
 			const res = await fetchImpl(PRICE_URL, {
 				signal: AbortSignal.timeout(timeoutMs),
 				cache: 'no-store',
 			});
-			if (!res.ok)
+			if (!res.ok) {
 				throw new PriceFetchError(`Coinbase responded ${res.status}`);
+			}
 			const body = TickerResponseSchema.parse(await res.json());
 			return Number(body.price);
 		} catch (error) {
@@ -88,7 +91,9 @@ export async function getGamePrice({
 	now,
 }: PriceDeps): Promise<CachedPrice | null> {
 	const cached = await store.getCachedPrice();
-	if (cached && now() - cached.updatedAt < PRICE_CACHE_MS) return cached;
+	if (cached && now() - cached.updatedAt < PRICE_CACHE_MS) {
+		return cached;
+	}
 
 	try {
 		const price = await fetchPrice();

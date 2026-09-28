@@ -12,13 +12,18 @@ export const PAGE_STEP = 10;
 
 /** The tick nearest `x`, from x positions in ascending order; null if there are none. */
 export function nearestIndex(xs: number[], x: number): number | null {
-	if (xs.length === 0) return null;
+	if (xs.length === 0) {
+		return null;
+	}
 	let lo = 0;
 	let hi = xs.length - 1;
 	while (lo < hi) {
 		const mid = (lo + hi) >> 1;
-		if (xs[mid] < x) lo = mid + 1;
-		else hi = mid;
+		if (xs[mid] < x) {
+			lo = mid + 1;
+		} else {
+			hi = mid;
+		}
 	}
 	// `lo` is the first tick at or right of x; the one before may be nearer.
 	return lo > 0 && x - xs[lo - 1] <= xs[lo] - x ? lo - 1 : lo;
@@ -36,7 +41,9 @@ export function stepIndex(
 	key: string,
 	count: number,
 ): number | null | undefined {
-	if (count === 0) return undefined;
+	if (count === 0) {
+		return undefined;
+	}
 	const last = count - 1;
 	const clamp = (i: number) => Math.min(last, Math.max(0, i));
 	const from = index === null ? null : clamp(index);

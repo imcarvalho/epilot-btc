@@ -37,7 +37,9 @@ export class MemoryStore implements GameStore {
 
 	async createPlayer(player: PlayerRecord) {
 		await tick();
-		if (this.players.has(player.playerId)) return false;
+		if (this.players.has(player.playerId)) {
+			return false;
+		}
 		this.players.set(player.playerId, structuredClone(player));
 		return true;
 	}
@@ -47,15 +49,18 @@ export class MemoryStore implements GameStore {
 		replacing: PlayerRecord | null,
 	) {
 		await tick();
-		if (this.players.has(player.playerId)) return false;
+		if (this.players.has(player.playerId)) {
+			return false;
+		}
 		if (replacing) {
 			const current = this.players.get(replacing.playerId);
 			if (
 				!current ||
 				current.updatedAt !== replacing.updatedAt ||
 				current.pendingGuess?.id !== replacing.pendingGuess?.id
-			)
+			) {
 				return false;
+			}
 			this.players.delete(replacing.playerId);
 		}
 		this.players.set(player.playerId, structuredClone(player));
@@ -69,8 +74,12 @@ export class MemoryStore implements GameStore {
 	): Promise<StartGuessResult> {
 		await tick();
 		const player = this.players.get(playerId);
-		if (!player) return 'no-player';
-		if (player.pendingGuess) return 'guess-pending';
+		if (!player) {
+			return 'no-player';
+		}
+		if (player.pendingGuess) {
+			return 'guess-pending';
+		}
 		player.pendingGuess = structuredClone(guess);
 		player.updatedAt = now;
 		return 'started';
@@ -84,7 +93,9 @@ export class MemoryStore implements GameStore {
 	) {
 		await tick();
 		const player = this.players.get(playerId);
-		if (!player || player.pendingGuess?.id !== guessId) return false;
+		if (!player || player.pendingGuess?.id !== guessId) {
+			return false;
+		}
 		Object.assign(player, structuredClone(board), {
 			pendingGuess: null,
 			updatedAt: now,
@@ -109,7 +120,9 @@ export class MemoryStore implements GameStore {
 
 	async putCachedPrice(price: CachedPrice) {
 		await tick();
-		if (this.price && this.price.updatedAt >= price.updatedAt) return;
+		if (this.price && this.price.updatedAt >= price.updatedAt) {
+			return;
+		}
 		this.price = { ...price };
 	}
 

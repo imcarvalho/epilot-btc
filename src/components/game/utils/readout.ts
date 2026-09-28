@@ -24,13 +24,17 @@ export const clockTime = (ms: number) => clock.format(ms);
 
 /** "up $12.40", "down $3.10", "flat". */
 export function movePhrase(delta: number): string {
-	if (delta === 0) return 'flat';
+	if (delta === 0) {
+		return 'flat';
+	}
 	return `${delta > 0 ? 'up' : 'down'} ${formatUsd(Math.abs(delta))}`;
 }
 
 /** "ahead by $118.20", "behind by $4.10", "level". */
 export function standingPhrase(margin: number): string {
-	if (margin === 0) return 'level';
+	if (margin === 0) {
+		return 'level';
+	}
 	return `${margin > 0 ? 'ahead' : 'behind'} by ${formatUsd(Math.abs(margin))}`;
 }
 
@@ -57,12 +61,13 @@ export function sampleReadout(
 ): Readout {
 	const seconds = Math.max(0, Math.round((point.t - guess.createdAt) / 1000));
 	const price = formatUsd(point.price);
-	if (seconds === 0)
+	if (seconds === 0) {
 		return {
 			title: 'At your guess',
 			rows: [{ label: 'Locked', value: price }],
 			text: `At your guess: locked at ${price}.`,
 		};
+	}
 	const where = standingPhrase(
 		standing(guess.direction, guess.priceAtGuess, point.price).margin,
 	);

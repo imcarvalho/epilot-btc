@@ -59,19 +59,24 @@ function requireJava() {
 }
 
 async function ensureJar() {
-	if (existsSync(JAR)) return;
+	if (existsSync(JAR)) {
+		return;
+	}
 	log('Downloading DynamoDB Local (first run only)...');
 	mkdirSync(DIR, { recursive: true });
 	const res = await fetch(DOWNLOAD);
-	if (!res.ok) fail(`Download failed: ${res.status} ${res.statusText}`);
+	if (!res.ok) {
+		fail(`Download failed: ${res.status} ${res.statusText}`);
+	}
 	const archive = join(DIR, 'dynamodb_local.tar.gz');
 	writeFileSync(archive, Buffer.from(await res.arrayBuffer()));
 	const tar = spawnSync('tar', ['-xzf', archive, '-C', DIR], {
 		stdio: 'inherit',
 	});
 	rmSync(archive);
-	if (tar.status !== 0 || !existsSync(JAR))
+	if (tar.status !== 0 || !existsSync(JAR)) {
 		fail('Could not unpack DynamoDB Local.');
+	}
 }
 
 function portOpen(port) {
@@ -85,7 +90,9 @@ function portOpen(port) {
 async function waitForPort(port, ms = 15_000) {
 	const deadline = Date.now() + ms;
 	while (Date.now() < deadline) {
-		if (await portOpen(port)) return;
+		if (await portOpen(port)) {
+			return;
+		}
 		await new Promise((r) => setTimeout(r, 200));
 	}
 	fail(`DynamoDB Local did not start on port ${port}.`);
@@ -102,7 +109,9 @@ async function ensureTable() {
 		await client.send(new DescribeTableCommand({ TableName: TABLE }));
 		return;
 	} catch (error) {
-		if (error.name !== 'ResourceNotFoundException') throw error;
+		if (error.name !== 'ResourceNotFoundException') {
+			throw error;
+		}
 	}
 	log(`Creating table ${TABLE}...`);
 	await client.send(
@@ -145,8 +154,11 @@ async function ensureTable() {
 async function main() {
 	const children = [];
 	const stopAll = () => {
-		for (const child of children)
-			if (child.exitCode === null) child.kill('SIGTERM');
+		for (const child of children) {
+			if (child.exitCode === null) {
+				child.kill('SIGTERM');
+			}
+		}
 	};
 	process.on('SIGINT', stopAll);
 	process.on('SIGTERM', stopAll);
@@ -179,8 +191,9 @@ async function main() {
 		);
 		children.push(dynamo);
 		dynamo.once('exit', (code) => {
-			if (code)
+			if (code) {
 				console.error(`[dev:local] DynamoDB Local exited with code ${code}`);
+			}
 		});
 		await waitForPort(PORT);
 	}

@@ -31,7 +31,9 @@ vi.mock('@/lib/deps', () => ({
 		now: () => clock,
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
 		fetchPrice: async () => {
-			if (!feedUp) throw new Error('feed down');
+			if (!feedUp) {
+				throw new Error('feed down');
+			}
 			return 100_000;
 		},
 	}),
@@ -62,7 +64,9 @@ function request(
 		init.cookie ? `btc_player=${init.cookie}` : null,
 		init.cookies ?? null,
 	].filter(Boolean);
-	if (cookies.length) headers.set('cookie', cookies.join('; '));
+	if (cookies.length) {
+		headers.set('cookie', cookies.join('; '));
+	}
 	return new NextRequest(`http://localhost${path}`, {
 		method: init.method ?? 'GET',
 		headers,

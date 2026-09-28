@@ -73,8 +73,9 @@ describe('takeSample', () => {
 
 	it('keeps a bounded number of points when the minute runs long', () => {
 		let samples: Sample[] = [];
-		for (let i = 1; i <= 400; i++)
+		for (let i = 1; i <= 400; i++) {
 			samples = takeSample(samples, 100 + i, T0 + i * 1_000, T0);
+		}
 		expect(samples.length).toBeLessThanOrEqual(300);
 		expect(samples[samples.length - 1].price).toBe(500);
 	});
@@ -165,6 +166,8 @@ describe('buildMinuteChart', () => {
 			...size,
 			now: T0 + 5_000,
 		});
-		for (const p of chart.points) expect(Number.isFinite(p.y)).toBe(true);
+		for (const p of chart.points) {
+			expect(Number.isFinite(p.y)).toBe(true);
+		}
 	});
 });

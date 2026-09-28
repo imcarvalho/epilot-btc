@@ -25,7 +25,9 @@ const NARROW = 480;
 
 /** What a screen reader gets instead of the picture. */
 function describe(candles: Candle[]): string {
-	if (candles.length === 0) return 'No price data for the last hour.';
+	if (candles.length === 0) {
+		return 'No price data for the last hour.';
+	}
 	const first = candles[0].open;
 	const last = candles[candles.length - 1].close;
 	const high = Math.max(...candles.map((c) => c.high));

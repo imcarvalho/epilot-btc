@@ -12,12 +12,16 @@ import { error, json, playerIdFrom } from '../respond';
  */
 export async function POST(request: NextRequest) {
 	const playerId = await playerIdFrom(request);
-	if (!playerId) return error('no-player', 401);
+	if (!playerId) {
+		return error('no-player', 401);
+	}
 
 	const body = GuessRequestSchema.safeParse(
 		await request.json().catch(() => null),
 	);
-	if (!body.success) return error('invalid-request', 400);
+	if (!body.success) {
+		return error('invalid-request', 400);
+	}
 
 	const result = await placeGuess(getDeps(), playerId, body.data.direction);
 	switch (result.kind) {

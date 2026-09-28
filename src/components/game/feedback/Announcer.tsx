@@ -42,15 +42,21 @@ export function Announcer({
 			: `${phase.kind}:${'guess' in phase ? phase.guess.id : phase.kind === 'result' ? phase.result.id : ''}`;
 
 	useEffect(() => {
-		if (phase === null) return;
+		if (phase === null) {
+			return;
+		}
 		const text = announcementFor(phase);
-		if (text) setMessage(text);
+		if (text) {
+			setMessage(text);
+		}
 		// Keyed on the phase and its guess, not on the phase object: the
 		// countdown ticking every second is not news.
 	}, [key]);
 
 	useEffect(() => {
-		if (notice) setMessage(notice);
+		if (notice) {
+			setMessage(notice);
+		}
 	}, [notice]);
 
 	return (

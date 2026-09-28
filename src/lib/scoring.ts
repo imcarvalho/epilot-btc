@@ -17,7 +17,9 @@ export interface Scoreboard extends Stats {
 }
 
 export function nextStreak(current: number, delta: 1 | -1): number {
-	if (delta === 1) return current > 0 ? current + 1 : 1;
+	if (delta === 1) {
+		return current > 0 ? current + 1 : 1;
+	}
 	return current < 0 ? current - 1 : -1;
 }
 

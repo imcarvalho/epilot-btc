@@ -192,7 +192,9 @@ export class DynamoStore implements GameStore {
 			);
 			return true;
 		} catch (error) {
-			if (isConditionFailure(error)) return false;
+			if (isConditionFailure(error)) {
+				return false;
+			}
 			throw error;
 		}
 	}
@@ -254,7 +256,9 @@ export class DynamoStore implements GameStore {
 			);
 			return true;
 		} catch (error) {
-			if (isTransactionConflict(error)) return false;
+			if (isTransactionConflict(error)) {
+				return false;
+			}
 			throw error;
 		}
 	}
@@ -298,8 +302,9 @@ export class DynamoStore implements GameStore {
 			);
 			return 'started';
 		} catch (error) {
-			if (isConditionFailure(error))
+			if (isConditionFailure(error)) {
 				return error.Item ? 'guess-pending' : 'no-player';
+			}
 			throw error;
 		}
 	}
@@ -342,7 +347,9 @@ export class DynamoStore implements GameStore {
 			);
 			return true;
 		} catch (error) {
-			if (isConditionFailure(error)) return false;
+			if (isConditionFailure(error)) {
+				return false;
+			}
 			throw error;
 		}
 	}
@@ -398,7 +405,9 @@ export class DynamoStore implements GameStore {
 			);
 		} catch (error) {
 			// Another instance cached a newer price first. Theirs stands.
-			if (!isConditionFailure(error)) throw error;
+			if (!isConditionFailure(error)) {
+				throw error;
+			}
 		}
 	}
 

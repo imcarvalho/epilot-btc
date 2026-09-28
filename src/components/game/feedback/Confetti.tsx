@@ -30,12 +30,16 @@ export function Confetti() {
 	const [done, setDone] = useState(pieces.length === 0);
 
 	useEffect(() => {
-		if (done) return;
+		if (done) {
+			return;
+		}
 		const id = setTimeout(() => setDone(true), LIFETIME_MS);
 		return () => clearTimeout(id);
 	}, [done]);
 
-	if (done) return null;
+	if (done) {
+		return null;
+	}
 
 	return (
 		<div aria-hidden {...stylex.props(styles.layer)}>

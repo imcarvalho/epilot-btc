@@ -11,7 +11,9 @@ function secretMatches(
 	given: string | null,
 	expected: string | undefined,
 ): boolean {
-	if (!given || !expected) return false;
+	if (!given || !expected) {
+		return false;
+	}
 	const digest = (s: string) => createHash('sha256').update(s).digest();
 	return timingSafeEqual(digest(given), digest(expected));
 }

@@ -27,8 +27,9 @@ export function playerIdFromCookie(value: string | undefined): string | null {
 }
 
 export function cookieValueFor(playerId: string): string {
-	if (!playerId.startsWith(ANON_PREFIX))
+	if (!playerId.startsWith(ANON_PREFIX)) {
 		throw new Error(`not an anonymous player: ${playerId}`);
+	}
 	return playerId.slice(ANON_PREFIX.length);
 }
 

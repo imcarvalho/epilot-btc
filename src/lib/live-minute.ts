@@ -41,7 +41,9 @@ export function parseTicker(
 ): { price: number; time: number } | null {
 	try {
 		const parsed = TickerSchema.safeParse(JSON.parse(data));
-		if (!parsed.success) return null;
+		if (!parsed.success) {
+			return null;
+		}
 		const time = Date.parse(parsed.data.time);
 		return Number.isFinite(time)
 			? { price: Number(parsed.data.price), time }
@@ -65,7 +67,9 @@ export function takeSample(
 	t: number,
 	since: number,
 ): Sample[] {
-	if (latest === null) return samples;
+	if (latest === null) {
+		return samples;
+	}
 	const next = [...samples.filter((s) => s.t >= since), { t, price: latest }];
 	return next.length > MAX_SAMPLES
 		? next.slice(next.length - MAX_SAMPLES)

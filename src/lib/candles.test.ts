@@ -103,7 +103,9 @@ describe('buildCandleChart', () => {
 			[candle(0, 100, 100), candle(1, 100, 100)],
 			size,
 		);
-		for (const c of chart.candles) expect(Number.isFinite(c.bodyY)).toBe(true);
+		for (const c of chart.candles) {
+			expect(Number.isFinite(c.bodyY)).toBe(true);
+		}
 	});
 
 	it("stretches the range to include a locked price outside the hour's candles", () => {

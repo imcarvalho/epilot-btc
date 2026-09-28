@@ -58,7 +58,9 @@ export function parseCandles(raw: unknown): Candle[] {
 
 /** "+$1,244.80 in the last hour": last close against the first open. */
 export function hourChange(candles: Candle[]): number | null {
-	if (candles.length === 0) return null;
+	if (candles.length === 0) {
+		return null;
+	}
 	return candles[candles.length - 1].close - candles[0].open;
 }
 

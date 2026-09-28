@@ -40,9 +40,15 @@ export function streakLabel({
 	currentStreak: number;
 	previousStreak: number;
 }): string | null {
-	if (wins + losses === 0) return null;
-	if (currentStreak >= 2) return `${currentStreak} wins in a row`;
-	if (currentStreak === 1) return 'last guess won';
+	if (wins + losses === 0) {
+		return null;
+	}
+	if (currentStreak >= 2) {
+		return `${currentStreak} wins in a row`;
+	}
+	if (currentStreak === 1) {
+		return 'last guess won';
+	}
 	if (currentStreak === -1) {
 		return previousStreak >= 2
 			? `streak ended at ${previousStreak}`
@@ -53,6 +59,8 @@ export function streakLabel({
 
 /** The longest winning run, or null if there has not been a win. */
 export function bestStreakLabel(bestStreak: number): string | null {
-	if (bestStreak <= 0) return null;
+	if (bestStreak <= 0) {
+		return null;
+	}
 	return bestStreak === 1 ? 'Best: 1 win' : `Best: ${bestStreak} wins in a row`;
 }

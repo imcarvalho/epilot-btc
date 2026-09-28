@@ -38,12 +38,15 @@ export function createHandler({
 		const body = await res.text();
 
 		// A rotated secret: forget the cached one so the next run re-reads it.
-		if (res.status === 401) secret = undefined;
+		if (res.status === 401) {
+			secret = undefined;
+		}
 
 		// Thrown, not logged, so a failing sweep shows up in the function's
 		// error metric rather than looking like a quiet success.
-		if (!res.ok)
+		if (!res.ok) {
 			throw new Error(`sweep responded ${res.status}: ${body.slice(0, 200)}`);
+		}
 
 		log(
 			JSON.stringify({
@@ -67,7 +70,9 @@ export const handler = createHandler({
 				WithDecryption: true,
 			}),
 		);
-		if (!Parameter?.Value) throw new Error('cron secret parameter is empty');
+		if (!Parameter?.Value) {
+			throw new Error('cron secret parameter is empty');
+		}
 		return Parameter.Value;
 	},
 });

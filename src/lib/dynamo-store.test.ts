@@ -198,10 +198,11 @@ describe('DynamoStore', () => {
 			ddb.on(UpdateCommand).resolves({});
 			await store.startGuess('anon:a', guess, T);
 			await store.settleGuess('anon:a', 'g1', board, T);
-			for (const call of ddb.commandCalls(UpdateCommand))
+			for (const call of ddb.commandCalls(UpdateCommand)) {
 				expect(call.args[0].input.ExpressionAttributeValues![':ttl']).toBe(
 					Math.floor(T / 1000) + 30 * 24 * 60 * 60,
 				);
+			}
 		});
 	});
 

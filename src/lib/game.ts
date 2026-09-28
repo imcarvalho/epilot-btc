@@ -61,8 +61,9 @@ export async function createAnonymousPlayer(
 	);
 	// A uuid collision is not a case worth a retry loop, but a silent overwrite
 	// of someone else's record would be: the write is conditional regardless.
-	if (!(await deps.store.createPlayer(player)))
+	if (!(await deps.store.createPlayer(player))) {
 		throw new Error('player id collision');
+	}
 	return player;
 }
 
@@ -131,11 +132,14 @@ async function settleIfDue(
 	price: CachedPrice | null,
 ): Promise<{ player: PlayerRecord; settled: boolean }> {
 	const pending = player.pendingGuess;
-	if (!pending || !price || isStale(price, deps.now()))
+	if (!pending || !price || isStale(price, deps.now())) {
 		return { player, settled: false };
+	}
 
 	const outcome = resolveGuess(pending, price.price, price.updatedAt);
-	if (!outcome.resolved) return { player, settled: false };
+	if (!outcome.resolved) {
+		return { player, settled: false };
+	}
 
 	const board = applyResolution(
 		player,
@@ -201,7 +205,9 @@ export async function getState(
 	playerId: string,
 ): Promise<StateResponse | null> {
 	const found = await deps.store.getPlayer(playerId);
-	if (!found) return null;
+	if (!found) {
+		return null;
+	}
 
 	const price = await getGamePrice(deps);
 	const { player } = await settleIfDue(deps, found, price);
@@ -228,7 +234,9 @@ export async function placeGuess(
 ): Promise<PlaceGuessResult> {
 	const price = await getGamePrice(deps);
 	const now = deps.now();
-	if (!price || isStale(price, now)) return { kind: 'price-unavailable' };
+	if (!price || isStale(price, now)) {
+		return { kind: 'price-unavailable' };
+	}
 
 	const pendingGuess: PendingGuess = {
 		id: deps.newId(),
@@ -238,7 +246,9 @@ export async function placeGuess(
 	};
 
 	const result = await deps.store.startGuess(playerId, pendingGuess, now);
-	if (result !== 'started') return { kind: result };
+	if (result !== 'started') {
+		return { kind: result };
+	}
 	return { kind: 'started', pendingGuess, serverNow: now };
 }
 
@@ -256,8 +266,9 @@ export interface SweepResult {
  */
 export async function sweep(deps: GameDeps): Promise<SweepResult> {
 	const price = await getGamePrice(deps);
-	if (!price || isStale(price, deps.now()))
+	if (!price || isStale(price, deps.now())) {
 		return { due: 0, resolved: 0, priceStale: true };
+	}
 
 	// Only guesses the current price can actually settle: created at least a
 	// minute before that price was observed.

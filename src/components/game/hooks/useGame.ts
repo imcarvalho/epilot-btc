@@ -37,11 +37,14 @@ async function fetchState(): Promise<StateResponse> {
 	if (res.status === 401) {
 		playerCreation ??= fetch('/api/player', { method: 'POST' });
 		const created = await playerCreation;
-		if (!created.ok)
+		if (!created.ok) {
 			throw new Error(`player creation failed: ${created.status}`);
+		}
 		res = await fetch('/api/state', { cache: 'no-store' });
 	}
-	if (!res.ok) throw new Error(`state failed: ${res.status}`);
+	if (!res.ok) {
+		throw new Error(`state failed: ${res.status}`);
+	}
 	return res.json();
 }
 
@@ -68,11 +71,15 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 		});
 		// A guess seen pending is one this session watches: its result is a
 		// moment on screen, even if the page was reloaded mid-minute.
-		if (state.pendingGuess) setWatchedGuessId(state.pendingGuess.id);
+		if (state.pendingGuess) {
+			setWatchedGuessId(state.pendingGuess.id);
+		}
 	}, []);
 
 	const refresh = useCallback(async () => {
-		if (inFlight.current) return;
+		if (inFlight.current) {
+			return;
+		}
 		inFlight.current = true;
 		try {
 			accept(await fetchState());
@@ -130,7 +137,9 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 	useEffect(() => {
 		void refresh();
 		const onVisible = () => {
-			if (document.visibilityState === 'visible') void refresh();
+			if (document.visibilityState === 'visible') {
+				void refresh();
+			}
 		};
 		document.addEventListener('visibilitychange', onVisible);
 		return () => document.removeEventListener('visibilitychange', onVisible);
@@ -144,7 +153,9 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 	useEffect(() => {
 		const id = setInterval(() => {
 			const current = latest.current;
-			if (current.kind !== 'ready') return;
+			if (current.kind !== 'ready') {
+				return;
+			}
 			const { state, clockOffset } = current;
 			const guess = state.pendingGuess;
 			const now = Date.now() + clockOffset;
@@ -161,7 +172,9 @@ export function useGame(ticker?: RefObject<TickerSnapshot>) {
 				msSinceLastAsk: now - state.serverNow,
 				askedSinceCountdownEnded: state.serverNow >= resolvableAt,
 			});
-			if (decision.ask) void refresh();
+			if (decision.ask) {
+				void refresh();
+			}
 		}, 1_000);
 		return () => clearInterval(id);
 	}, [refresh]);

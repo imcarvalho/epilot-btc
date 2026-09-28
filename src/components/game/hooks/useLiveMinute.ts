@@ -78,13 +78,17 @@ export function useLiveMinute(
 			socket.onmessage = (event) => {
 				const tick =
 					typeof event.data === 'string' ? parseTicker(event.data) : null;
-				if (!tick) return;
+				if (!tick) {
+					return;
+				}
 				latest.price = tick.price;
 				latest.at = Date.now();
 				latest.ticks += 1;
 			};
 			socket.onclose = () => {
-				if (closed) return;
+				if (closed) {
+					return;
+				}
 				const backoff = Math.min(MAX_BACKOFF_MS, 1_000 * 2 ** attempt);
 				attempt += 1;
 				reconnectTimer = setTimeout(

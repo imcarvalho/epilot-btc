@@ -38,8 +38,9 @@ function toRow(
 
 async function podiumEntries({ store, now }: GameDeps): Promise<BoardEntry[]> {
 	const cached = await store.getCachedPodium();
-	if (cached && now() - cached.updatedAt < PODIUM_CACHE_MS)
+	if (cached && now() - cached.updatedAt < PODIUM_CACHE_MS) {
 		return cached.entries;
+	}
 	const entries = await store.listTopOfBoard(PODIUM_SIZE);
 	await store.putCachedPodium({ entries, updatedAt: now() });
 	return entries;
@@ -85,7 +86,8 @@ const PODIUM_WORDS = ['First', 'Second', 'Third'];
 
 /** Product spec §7: "Second place. Nice." on the podium, "138th of 1,204." off it. */
 export function placeSentence(rank: number, total: number): string {
-	if (rank <= PODIUM_WORDS.length)
+	if (rank <= PODIUM_WORDS.length) {
 		return `${PODIUM_WORDS[rank - 1]} place. Nice.`;
+	}
 	return `${ordinal(rank)} of ${total.toLocaleString('en-US')}.`;
 }
