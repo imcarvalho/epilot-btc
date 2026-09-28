@@ -2,8 +2,11 @@
 
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
+import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
+import type { SignInOutcome } from '@/lib/contracts';
 import { guessPhase } from '@/lib/guess-phase';
+import { signInSentence } from '@/lib/sign-in';
 import { EmptyMessage, Panel } from '@/components/ui';
 import { Announcer, Confetti } from './feedback';
 import {
@@ -60,6 +63,15 @@ export function GameScreen() {
 	}
 	const isMinuteView = view === 'minute' && pending !== null;
 
+	// What a sign-in did is reported by one state read only; hold it until
+	// the player dismisses it.
+	const [signInSeen, setSignInSeen] = useState<SignInOutcome | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
+	if (state?.signIn && state.signIn !== signInSeen) {
+		setSignInSeen(state.signIn);
+		setNotice(signInSentence(state.signIn));
+	}
+
 	return (
 		<div {...stylex.props(styles.page)}>
 			<main {...stylex.props(styles.column)}>
@@ -69,6 +81,7 @@ export function GameScreen() {
 							name: state.publicName,
 							score: state.score,
 							stats: state.stats,
+							signedIn: state.signedIn,
 						}
 					}
 					isLive={
@@ -93,9 +106,19 @@ export function GameScreen() {
 					</Panel>
 				) : (
 					<>
+						{notice && (
+							<Banner
+								status={signInSeen === 'kept-existing' ? 'info' : 'success'}
+								title={notice}
+								isDismissable
+								onDismiss={() => setNotice(null)}
+								dismissLabel="Dismiss"
+							/>
+						)}
 						<GuessStrip
 							phase={phase}
 							name={state?.publicName ?? null}
+							signedIn={state?.signedIn ?? false}
 							guessError={guessError}
 							now={now}
 							live={live}
@@ -130,7 +153,7 @@ export function GameScreen() {
 						</div>
 					</>
 				)}
-				<Announcer phase={phase} />
+				<Announcer phase={phase} notice={notice} />
 				{phase?.kind === 'result' && phase.result.delta === 1 && (
 					<Confetti key={phase.result.id} />
 				)}

@@ -9,5 +9,5 @@ import { json, playerIdFrom } from '../respond';
  * row of theirs - and it carries generated names only, never an id.
  */
 export async function GET(request: NextRequest) {
-	return json(await getLeaderboard(getDeps(), playerIdFrom(request)));
+	return json(await getLeaderboard(getDeps(), await playerIdFrom(request)));
 }

@@ -45,6 +45,8 @@ The API's environment:
 | `PLAYERS_TABLE_REGION` | The table's region. Defaults to `eu-central-1`; set explicitly rather than taken from the runtime, which may run elsewhere |
 | `CRON_SECRET` | Shared secret the scheduler sends as `x-cron-secret`. Unset, the sweep route rejects everything |
 | `DYNAMODB_ENDPOINT` | Local development only: point at DynamoDB Local instead of AWS. `dev:local` sets it, with the other three |
+| `AUTH_SECRET` | Encrypts the Auth.js session cookie (`openssl rand -base64 32`). Unset, sign-in is off and the game runs anonymously |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | The Google OAuth client. Redirect URI: `<origin>/api/auth/callback/google` |
 
 On Amplify these are app environment variables, which reach the build but not the SSR runtime. `amplify.yml` copies exactly these names into `.env.production` during the build, which Next loads at runtime.
 

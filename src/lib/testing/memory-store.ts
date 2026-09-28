@@ -42,6 +42,26 @@ export class MemoryStore implements GameStore {
 		return true;
 	}
 
+	async createSignedInPlayer(
+		player: PlayerRecord,
+		replacing: PlayerRecord | null,
+	) {
+		await tick();
+		if (this.players.has(player.playerId)) return false;
+		if (replacing) {
+			const current = this.players.get(replacing.playerId);
+			if (
+				!current ||
+				current.updatedAt !== replacing.updatedAt ||
+				current.pendingGuess?.id !== replacing.pendingGuess?.id
+			)
+				return false;
+			this.players.delete(replacing.playerId);
+		}
+		this.players.set(player.playerId, structuredClone(player));
+		return true;
+	}
+
 	async startGuess(
 		playerId: string,
 		guess: PendingGuess,

@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { getDeps } from '@/lib/deps';
-import { createAnonymousPlayer } from '@/lib/game';
+import { createAnonymousPlayer, signIn } from '@/lib/game';
 import {
 	cookieValueFor,
 	PLAYER_COOKIE,
@@ -16,9 +16,17 @@ import { json, playerIdFrom } from '../respond';
 export async function POST(request: NextRequest) {
 	const deps = getDeps();
 
-	const existingId = playerIdFrom(request);
+	const existingId = await playerIdFrom(request);
 	const existing = existingId ? await deps.store.getPlayer(existingId) : null;
 	if (existing) return json({ publicName: existing.publicName });
+
+	// A live session whose record is gone: recreate the account rather than
+	// fall back to an anonymous player the session would never read.
+	if (existingId?.startsWith('google:')) {
+		await signIn(deps, existingId.slice('google:'.length), null);
+		const player = await deps.store.getPlayer(existingId);
+		return json({ publicName: player!.publicName }, 201);
+	}
 
 	const player = await createAnonymousPlayer(deps);
 	const response = json({ publicName: player.publicName }, 201);

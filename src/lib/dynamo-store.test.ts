@@ -14,6 +14,7 @@ import {
 	GetCommand,
 	PutCommand,
 	QueryCommand,
+	TransactWriteCommand,
 	UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -176,6 +177,126 @@ describe('DynamoStore', () => {
 		it('rethrows anything that is not a condition failure', async () => {
 			ddb.on(UpdateCommand).rejects(new Error('throttled'));
 			await expect(store.startGuess('anon:a', guess, T)).rejects.toThrow(
+				'throttled',
+			);
+		});
+	});
+
+	describe('ttl', () => {
+		it('never gives a signed-in player an expiry, since the board counts them', async () => {
+			ddb.on(UpdateCommand).resolves({});
+			await store.startGuess('google:b', guess, T);
+			await store.settleGuess('google:b', 'g1', board, T);
+			for (const call of ddb.commandCalls(UpdateCommand)) {
+				const input = call.args[0].input;
+				expect(input.UpdateExpression).not.toContain('#ttl');
+				expectPlaceholdersToMatch(input);
+			}
+		});
+
+		it('refreshes an anonymous player on every write', async () => {
+			ddb.on(UpdateCommand).resolves({});
+			await store.startGuess('anon:a', guess, T);
+			await store.settleGuess('anon:a', 'g1', board, T);
+			for (const call of ddb.commandCalls(UpdateCommand))
+				expect(call.args[0].input.ExpressionAttributeValues![':ttl']).toBe(
+					Math.floor(T / 1000) + 30 * 24 * 60 * 60,
+				);
+		});
+	});
+
+	describe('createSignedInPlayer', () => {
+		const anon = {
+			...newPlayerRecord('anon:a', 'BriskOtter', T),
+			score: 2,
+			pendingGuess: guess,
+		};
+		const account = {
+			...anon,
+			playerId: 'google:b',
+			onBoard: true,
+			updatedAt: T + 5,
+		};
+
+		it('moves the record, deletes the old one and counts the board, in one transaction', async () => {
+			ddb.on(TransactWriteCommand).resolves({});
+			await expect(store.createSignedInPlayer(account, anon)).resolves.toBe(
+				true,
+			);
+
+			const [put, del, count] =
+				ddb.commandCalls(TransactWriteCommand)[0].args[0].input.TransactItems!;
+			expect(put.Put).toMatchObject({
+				ConditionExpression: 'attribute_not_exists(#playerId)',
+				Item: {
+					playerId: 'google:b',
+					score: 2,
+					board: BOARD,
+					pendingGuess: guess,
+					pendingAt: T,
+					pendingBucket: PENDING_BUCKET,
+				},
+			});
+			expect(put.Put!.Item).not.toHaveProperty('ttl');
+			expect(put.Put!.Item).not.toHaveProperty('onBoard');
+
+			expect(del.Delete).toMatchObject({
+				Key: { playerId: 'anon:a' },
+				ConditionExpression:
+					'#updatedAt = :updatedAt AND #pendingGuess.#id = :guessId',
+				ExpressionAttributeValues: { ':updatedAt': T, ':guessId': 'g1' },
+			});
+			expectPlaceholdersToMatch(del.Delete!);
+
+			expect(count.Update).toMatchObject({
+				Key: { playerId: BOARD_TOTAL_KEY },
+				UpdateExpression: 'ADD #total :one',
+			});
+		});
+
+		it('conditions the delete on no guess pending when none was', async () => {
+			ddb.on(TransactWriteCommand).resolves({});
+			const idle = { ...anon, pendingGuess: null };
+			await store.createSignedInPlayer(
+				{ ...account, pendingGuess: null },
+				idle,
+			);
+			const del =
+				ddb.commandCalls(TransactWriteCommand)[0].args[0].input
+					.TransactItems![1].Delete!;
+			expect(del.ConditionExpression).toBe(
+				'#updatedAt = :updatedAt AND attribute_not_exists(#pendingGuess)',
+			);
+			expectPlaceholdersToMatch(del);
+		});
+
+		it('creates a fresh account with no delete at all', async () => {
+			ddb.on(TransactWriteCommand).resolves({});
+			await store.createSignedInPlayer(
+				{ ...newPlayerRecord('google:b', 'SolemnOtter', T), onBoard: true },
+				null,
+			);
+			const items =
+				ddb.commandCalls(TransactWriteCommand)[0].args[0].input.TransactItems!;
+			expect(items.map((i) => Object.keys(i)[0])).toEqual(['Put', 'Update']);
+		});
+
+		it('returns false when a condition cancels the transaction, and rethrows anything else', async () => {
+			ddb.on(TransactWriteCommand).rejects(
+				Object.assign(new Error('cancelled'), {
+					name: 'TransactionCanceledException',
+					CancellationReasons: [
+						{ Code: 'None' },
+						{ Code: 'ConditionalCheckFailed' },
+					],
+				}),
+			);
+			await expect(store.createSignedInPlayer(account, anon)).resolves.toBe(
+				false,
+			);
+
+			ddb.on(TransactWriteCommand).rejects(new Error('throttled'));
+			await expect(store.createSignedInPlayer(account, anon)).rejects.toThrow(
 				'throttled',
 			);
 		});

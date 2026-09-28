@@ -6,6 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import type { GameDeps } from '@/lib/game';
+import { signIn } from '@/lib/game';
 import { MemoryStore } from '@/lib/testing/memory-store';
 import { POST as createPlayer } from './player/route';
 import { GET as getState } from './state/route';
@@ -18,6 +19,11 @@ let clock = T0;
 let ids = 0;
 let feedUp = true;
 let store: MemoryStore;
+let session: { playerId?: string } | null = null;
+
+vi.mock('@/auth', () => ({
+	sessionPlayerId: async () => session?.playerId ?? null,
+}));
 
 vi.mock('@/lib/deps', () => ({
 	getDeps: (): GameDeps => ({
@@ -36,6 +42,7 @@ beforeEach(() => {
 	clock = T0;
 	ids = 0;
 	feedUp = true;
+	session = null;
 	vi.spyOn(console, 'log').mockImplementation(() => {});
 });
 
@@ -44,12 +51,18 @@ function request(
 	init: {
 		method?: string;
 		cookie?: string;
+		/** Extra cookies, as `name=value; name=value`. */
+		cookies?: string;
 		body?: unknown;
 		headers?: Record<string, string>;
 	} = {},
 ) {
 	const headers = new Headers(init.headers);
-	if (init.cookie) headers.set('cookie', `btc_player=${init.cookie}`);
+	const cookies = [
+		init.cookie ? `btc_player=${init.cookie}` : null,
+		init.cookies ?? null,
+	].filter(Boolean);
+	if (cookies.length) headers.set('cookie', cookies.join('; '));
 	return new NextRequest(`http://localhost${path}`, {
 		method: init.method ?? 'GET',
 		headers,
@@ -284,5 +297,80 @@ describe('GET /api/leaderboard', () => {
 		const cookie = await newPlayerCookie();
 		const res = await leaderboard(request('/api/leaderboard', { cookie }));
 		expect(await res.json()).toMatchObject({ isEligible: false, you: null });
+	});
+});
+
+describe('signed in', () => {
+	const deps = (): GameDeps => ({
+		store,
+		now: () => clock,
+		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
+		fetchPrice: async () => 100_000,
+	});
+
+	it('reads the session before the anonymous cookie', async () => {
+		const cookie = await newPlayerCookie();
+		await guess(
+			request('/api/guess', {
+				method: 'POST',
+				cookie,
+				body: { direction: 'up' },
+			}),
+		);
+		await signIn(deps(), 'sub-1', `anon:${cookie}`);
+		session = { playerId: 'google:sub-1' };
+
+		const res = await getState(request('/api/state', { cookie }));
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({
+			signedIn: true,
+			pendingGuess: { direction: 'up' },
+		});
+	});
+
+	it('reports what sign-in did once, then clears it', async () => {
+		await signIn(deps(), 'sub-1', null);
+		session = { playerId: 'google:sub-1' };
+
+		const first = await getState(
+			request('/api/state', { cookies: 'btc_sign_in=promoted' }),
+		);
+		expect((await first.json()).signIn).toBe('promoted');
+		expect(first.headers.get('set-cookie')).toMatch(/^btc_sign_in=;/);
+
+		const next = await getState(request('/api/state'));
+		expect((await next.json()).signIn).toBeNull();
+	});
+
+	it('ignores a sign-in report without a session, or one it does not know', async () => {
+		const cookie = await newPlayerCookie();
+		const anon = await getState(
+			request('/api/state', { cookie, cookies: 'btc_sign_in=promoted' }),
+		);
+		expect(await anon.json()).toMatchObject({ signedIn: false, signIn: null });
+
+		await signIn(deps(), 'sub-1', null);
+		session = { playerId: 'google:sub-1' };
+		const odd = await getState(
+			request('/api/state', { cookies: 'btc_sign_in=admin' }),
+		);
+		expect((await odd.json()).signIn).toBeNull();
+	});
+
+	it('recreates a signed-in account whose record is missing, rather than going anonymous', async () => {
+		session = { playerId: 'google:sub-1' };
+		const res = await createPlayer(request('/api/player', { method: 'POST' }));
+		expect(res.status).toBe(201);
+		expect(res.headers.get('set-cookie')).toBeNull();
+		expect(store.players.get('google:sub-1')).toMatchObject({ onBoard: true });
+	});
+
+	it('puts the signed-in player on the leaderboard as you', async () => {
+		await signIn(deps(), 'sub-1', null);
+		session = { playerId: 'google:sub-1' };
+		const body = await (await leaderboard(request('/api/leaderboard'))).json();
+		expect(body).toMatchObject({ isEligible: true, total: 1 });
+		expect(body.podium[0].isYou).toBe(true);
+		expect(JSON.stringify(body)).not.toContain('sub-1');
 	});
 });

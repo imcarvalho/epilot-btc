@@ -60,7 +60,26 @@ export interface StateResponse {
 	/** The most recent resolution, newest first in `history` too. */
 	lastResult: ResolvedGuess | null;
 	history: ResolvedGuess[];
+	/** Signed in with Google, so on the board and kept across devices. */
+	signedIn: boolean;
+	/** What a sign-in that has just happened did; reported once, then null. */
+	signIn: SignInOutcome | null;
 }
+
+/**
+ * What first sign-in did with the browser's anonymous player (§6.2):
+ *
+ * - `promoted`: no account yet, so the anonymous record became it - score,
+ *   counters, history and any pending guess - and the anonymous item is gone;
+ * - `kept-existing`: the account already existed, so it wins and the
+ *   anonymous record is left as it was (never summed: that would let anyone
+ *   farm points in incognito windows and merge them in). The UI says so;
+ * - `returning`: the account already existed and this browser had played
+ *   nothing, so there is nothing to mention;
+ * - `created`: no account and no anonymous player; a fresh one.
+ */
+export type SignInOutcome =
+	'promoted' | 'kept-existing' | 'returning' | 'created';
 
 /**
  * One row of the board (product spec §6.7): the same numbers as the player's

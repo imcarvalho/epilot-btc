@@ -51,6 +51,19 @@ export interface GameStore {
 	/** Conditional on the id being unused. False if it already exists. */
 	createPlayer(player: PlayerRecord): Promise<boolean>;
 
+	/**
+	 * First sign-in (§6.2): writes a signed-in player onto the board and
+	 * counts them in the board total, in one transaction. With `replacing`,
+	 * the same transaction deletes the anonymous record it was promoted from,
+	 * conditioned on that record being unchanged since it was read - so a
+	 * double click cannot merge twice, and a guess settling mid-merge is not
+	 * lost. False, with nothing written, if any condition fails.
+	 */
+	createSignedInPlayer(
+		player: PlayerRecord,
+		replacing: PlayerRecord | null,
+	): Promise<boolean>;
+
 	/** Conditional on the player existing with no guess pending (rule R3). */
 	startGuess(
 		playerId: string,

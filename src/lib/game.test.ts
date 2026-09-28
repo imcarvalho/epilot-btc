@@ -3,15 +3,18 @@
  * conditional semantics - a double guess is refused, resolution is
  * idempotent, a stale price blocks it, and the sweep picks up a guess left
  * by a closed browser exactly once, even when it races the player's own read.
+ * And §6.2: first sign-in carries the anonymous player over exactly once.
  */
 
 import {
 	createAnonymousPlayer,
 	getState,
 	placeGuess,
+	signIn,
 	sweep,
 	type GameDeps,
 } from './game';
+import { getLeaderboard } from './leaderboard';
 import { PRICE_STALE_MS } from './price';
 import { MemoryStore } from './testing/memory-store';
 
@@ -344,5 +347,131 @@ describe('the sweep', () => {
 		expect(state).toMatchObject({ score: 1, pendingGuess: null });
 		expect(swept.due).toBe(1);
 		expect(store.players.get(playerId)).toMatchObject({ score: 1, wins: 1 });
+	});
+});
+
+describe('signing in (§6.2)', () => {
+	/** An anonymous player with one resolved win and a guess in play. */
+	let rising = 100_000;
+	async function anonWithHistory(t: ReturnType<typeof setup>) {
+		const anon = await createAnonymousPlayer(t.deps);
+		await placeGuess(t.deps, anon.playerId, 'up');
+		t.advance(60_000);
+		t.setMarket((rising += 10));
+		await getState(t.deps, anon.playerId);
+		await placeGuess(t.deps, anon.playerId, 'down');
+		return anon;
+	}
+
+	it('promotes the anonymous player: score, history and the pending guess move across', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+
+		await expect(signIn(t.deps, 'sub-1', anon.playerId)).resolves.toBe(
+			'promoted',
+		);
+
+		const state = await getState(t.deps, 'google:sub-1');
+		expect(state).toMatchObject({
+			publicName: anon.publicName,
+			score: 1,
+			stats: { wins: 1 },
+			pendingGuess: { direction: 'down' },
+		});
+		expect(state!.history).toHaveLength(1);
+		expect(t.store.players.has(anon.playerId)).toBe(false);
+	});
+
+	it('puts the signed-in player on the board, counted once', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		await signIn(t.deps, 'sub-1', anon.playerId);
+
+		const board = await getLeaderboard(t.deps, 'google:sub-1');
+		expect(board).toMatchObject({ total: 1, isEligible: true });
+		expect(board.podium[0]).toMatchObject({ score: 1, isYou: true });
+	});
+
+	it('still settles a guess that was pending when it moved across', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		await signIn(t.deps, 'sub-1', anon.playerId);
+
+		t.advance(60_000);
+		t.setMarket(99_000);
+		await expect(sweep(t.deps)).resolves.toMatchObject({ resolved: 1 });
+		expect(t.store.players.get('google:sub-1')!.score).toBe(2);
+	});
+
+	it('keeps an existing account as it is, and leaves the anonymous record alone', async () => {
+		const t = setup();
+		const first = await anonWithHistory(t);
+		await signIn(t.deps, 'sub-1', first.playerId);
+
+		// A second browser, with its own anonymous progress.
+		const second = await anonWithHistory(t);
+		await expect(signIn(t.deps, 'sub-1', second.playerId)).resolves.toBe(
+			'kept-existing',
+		);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get(second.playerId)!.score).toBe(1);
+	});
+
+	it('says nothing extra when the browser had not played', async () => {
+		const t = setup();
+		await signIn(t.deps, 'sub-1', null);
+		const fresh = await createAnonymousPlayer(t.deps);
+		await expect(signIn(t.deps, 'sub-1', fresh.playerId)).resolves.toBe(
+			'returning',
+		);
+	});
+
+	it('creates a fresh account, on the board at 0, for a browser with no player', async () => {
+		const t = setup();
+		await expect(signIn(t.deps, 'sub-1', null)).resolves.toBe('created');
+		expect(t.store.players.get('google:sub-1')).toMatchObject({
+			score: 0,
+			onBoard: true,
+			publicName: 'AudaciousBadger',
+		});
+	});
+
+	it('merges exactly once when two sign-ins race', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		const outcomes = await Promise.all([
+			signIn(t.deps, 'sub-1', anon.playerId),
+			signIn(t.deps, 'sub-1', anon.playerId),
+		]);
+		expect(outcomes.sort()).toEqual(['promoted', 'returning']);
+		const board = await getLeaderboard(t.deps, 'google:sub-1');
+		expect(board.total).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+	});
+
+	it('retries when the anonymous record changes mid-merge, losing nothing', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		t.advance(60_000);
+		t.setMarket(99_000);
+
+		// The sweep settles the pending guess while sign-in is reading.
+		const [outcome] = await Promise.all([
+			signIn(t.deps, 'sub-1', anon.playerId),
+			sweep(t.deps),
+		]);
+		expect(outcome).toBe('promoted');
+		const account = t.store.players.get('google:sub-1')!;
+		expect(account.wins + account.losses).toBe(2);
+		expect(account.pendingGuess).toBeNull();
+	});
+
+	it('ignores an id that is not anonymous', async () => {
+		const t = setup();
+		await signIn(t.deps, 'victim', null);
+		await expect(signIn(t.deps, 'sub-1', 'google:victim')).resolves.toBe(
+			'created',
+		);
+		expect(t.store.players.has('google:victim')).toBe(true);
 	});
 });

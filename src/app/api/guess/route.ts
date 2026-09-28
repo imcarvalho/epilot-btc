@@ -11,7 +11,7 @@ import { error, json, playerIdFrom } from '../respond';
  * click, a second tab or a retry gets a 409 whatever the UI did.
  */
 export async function POST(request: NextRequest) {
-	const playerId = playerIdFrom(request);
+	const playerId = await playerIdFrom(request);
 	if (!playerId) return error('no-player', 401);
 
 	const body = GuessRequestSchema.safeParse(

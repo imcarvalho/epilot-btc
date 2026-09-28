@@ -35,6 +35,8 @@ const state = (over: Partial<StateResponse> = {}): StateResponse => ({
 	pendingGuess: null,
 	lastResult: null,
 	history: [],
+	signedIn: false,
+	signIn: null,
 	...over,
 });
 

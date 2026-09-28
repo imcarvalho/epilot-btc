@@ -132,7 +132,7 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/lib/leaderboard.ts` - the board: podium from the sparse `byScore` index (cached 10 s), the caller's rank by a COUNT query (equal scores share a rank), the total from a counter item; `GET /api/leaderboard`; no ids or real names in any response. Only players with the `board` attribute are on it, and nothing writes that attribute until sign-in - so the board is empty until then
 
-Not built yet: sign-in (which must add a player to the board: write `board`, increment the `BOARD#GLOBAL` counter).
+- `src/auth.ts` - Google sign-in via Auth.js (scope `openid`, JWT session carrying only `google:<sub>`); its `signIn` callback runs `signIn` in `src/lib/game.ts`, the one-time anonymous merge: one transaction that writes the account onto the board, deletes the anonymous item if unchanged, and increments `BOARD#GLOBAL`. Signed-in players have no TTL. Route handlers read identity through `playerIdFrom` (session first, then the anonymous cookie); without `AUTH_SECRET` sign-in is off. `src/lib/sign-in.ts` holds what the screen says afterwards
 
 ## Scaffolding note
 

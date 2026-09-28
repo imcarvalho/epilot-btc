@@ -314,6 +314,14 @@ What still has to be written, because no library knows about this game:
 - **The `signIn` callback runs the anonymous merge** described above, reading the anonymous cookie and promoting that record once, under the same conditional write.
 - **Cookie settings** stay explicit: `httpOnly`, `Secure`, `SameSite=Lax`, with `AUTH_SECRET` held in SSM and injected at build or run time, never committed.
 
+As built (`src/auth.ts`, `signIn` in `src/lib/game.ts`):
+
+- **Scope `openid` only.** The UI never shows the Google name, so it is not asked for; the JWT carries `playerId` and nothing else from Google. Checks are `pkce` and `state`, JWT sessions (no adapter), sliding 30 days.
+- **The merge is one `TransactWriteItems`:** put `google:<sub>` with `board` set (condition: does not exist), delete the anonymous item (condition: `updatedAt` and the pending guess unchanged since read - the only writes to an anonymous item start or settle a guess, and both change them), and `ADD 1` to the board counter. A conflict re-reads and retries, so a guess settling mid-merge is carried over rather than lost, and a double click merges once. This is the only place a player joins the board.
+- **Outcomes:** `promoted`, `kept-existing` (the account wins; the anonymous item is left alone, and comes back on sign-out), `returning` (account exists, browser had not played) and `created`. The callback leaves the outcome in a short-lived `httpOnly` cookie; the next `GET /api/state` reports it once as `signIn` and clears it, and the screen says what happened (product §7).
+- **Identity is read in one place** (`playerIdFrom`): the session's `google:<sub>` first, the anonymous cookie otherwise. Without `AUTH_SECRET`, sign-in is off and the game runs anonymously.
+- **Sign-in and sign-out are server actions** behind plain forms, so they carry Auth.js's CSRF protection and work before hydration.
+
 Two alternatives, named in the README rather than built: **Cognito with Google federated**, the more AWS-native answer that also gives anonymous-to-account promotion out of the box; and **Google Identity Services**, where the browser obtains an ID token and posts it once to an endpoint of ours that verifies it by hand against the JWKS - which is what 6.2 describes when there is no framework to lean on, and the shape this would take in the Vite variant of 2.1. Using a library here is a deliberate choice: the risk in authentication is in the details it already handles, and the time saved goes into the parts of the game that are actually ours.
 
 ---
@@ -363,7 +371,7 @@ What it pulls in, and must be set up first:
 - **Security:** same-origin by construction, since the API is part of the app - no CORS configuration to get wrong. The cron route rejects anything without the shared secret.
 - **Abuse, and what actually bounds it:** the conditional write on `POST /api/guess` already limits a player to one guess until it resolves, which is at most one per minute - a tighter bound than any rate limiter would have set, enforced by the data rather than by a counter. A counter would also need shared state to mean anything, since each runtime instance has its own memory. What that leaves exposed is minting fresh anonymous players and read volume on `GET /api/state`; the first is the limitation already stated in 6.1, and the second is what the cadence in 3.1 keeps small. Named rather than solved.
 - **Observability:** structured JSON logs with a request id and `playerId`, metrics for price-fetch failures and resolved guesses, one CloudWatch alarm on the failure metric.
-- **Retention:** TTL on inactive player items, for example 30 days.
+- **Retention:** TTL on inactive anonymous player items, 30 days, refreshed on every write. Signed-in players carry no TTL: they are on the board and counted in its total, and an expiry would delete them while the counter still counted them.
 - **Cost:** DynamoDB on-demand and Amplify's build and hosting stay inside the free tier at this volume; the SSR runtime is the one line item a static bundle would not have had.
 
 ---

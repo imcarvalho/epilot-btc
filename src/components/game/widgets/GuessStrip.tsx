@@ -22,6 +22,7 @@ const WORD = { up: 'Higher', down: 'Lower' } as const;
 export function GuessStrip({
 	phase,
 	name,
+	signedIn,
 	guessError,
 	now,
 	live,
@@ -29,6 +30,7 @@ export function GuessStrip({
 }: {
 	phase: GuessPhase | null;
 	name: string | null;
+	signedIn: boolean;
 	guessError: GuessError;
 	now: number;
 	live: LiveMinute;
@@ -56,6 +58,7 @@ export function GuessStrip({
 		<Prompt
 			firstVisit={phase?.kind !== 'idle'}
 			name={name}
+			signedIn={signedIn}
 			guessError={guessError}
 		/>
 	);
@@ -64,10 +67,12 @@ export function GuessStrip({
 function Prompt({
 	firstVisit,
 	name,
+	signedIn,
 	guessError,
 }: {
 	firstVisit: boolean;
 	name: string | null;
+	signedIn: boolean;
 	guessError: GuessError;
 }) {
 	return (
@@ -92,8 +97,9 @@ function Prompt({
 						firstVisit &&
 						name && (
 							<p {...stylex.props(styles.sub)}>
-								You are {name}. Your score is kept on this browser until you
-								sign in.
+								{signedIn
+									? `You are ${name}. Your score is kept with your account.`
+									: `You are ${name}. Your score is kept on this browser until you sign in.`}
 							</p>
 						)
 					)}

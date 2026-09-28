@@ -25,9 +25,16 @@ function announcementFor(phase: GuessPhase): string | null {
 /**
  * The one `aria-live="polite"` region (engineering spec §7.2): each change
  * of phase is announced once, as the full sentence from product spec §7 -
- * not every tick of the countdown.
+ * not every tick of the countdown. A one-off `notice` (what a sign-in did)
+ * goes through the same region, so there is still only one.
  */
-export function Announcer({ phase }: { phase: GuessPhase | null }) {
+export function Announcer({
+	phase,
+	notice = null,
+}: {
+	phase: GuessPhase | null;
+	notice?: string | null;
+}) {
 	const [message, setMessage] = useState('');
 	const key =
 		phase === null
@@ -41,6 +48,10 @@ export function Announcer({ phase }: { phase: GuessPhase | null }) {
 		// Keyed on the phase and its guess, not on the phase object: the
 		// countdown ticking every second is not news.
 	}, [key]);
+
+	useEffect(() => {
+		if (notice) setMessage(notice);
+	}, [notice]);
 
 	return (
 		<div

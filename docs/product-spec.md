@@ -235,6 +235,9 @@ Decisions worth stating:
 - Loss: *"Not this time. The price went down. Score 1."*
 - Returning to a settled guess: *"While you were away: your up guess was correct. +1."*
 - Sign-in prompt: *"Keep your score across devices."*
+- Signed in, score carried over (or a fresh account): *"Signed in. Your score now follows you to any device."*
+- Signed in to an account that already had a score: *"Signed in. This is the score saved to your account. The one played on this browser is kept apart, and comes back if you sign out."*
+- First visit, signed in: *"You are AudaciousRaccoon. Your score is kept with your account."*
 - Leaderboard, empty: *"No one on the board yet."* with *"Sign in and the first correct guess puts you at the top of it."*
 - Leaderboard, not signed in: *"Sign in to take your place on the board."*
 - Leaderboard, outside the podium: *"138th of 1,204."*

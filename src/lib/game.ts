@@ -11,7 +11,7 @@
 
 import type { Direction } from './resolve-guess';
 import { GUESS_WINDOW_MS, resolveGuess } from './resolve-guess';
-import type { PendingGuess, StateResponse } from './contracts';
+import type { PendingGuess, SignInOutcome, StateResponse } from './contracts';
 import { generateName } from './names';
 import { getGamePrice, isStale } from './price';
 import { applyResolution } from './scoring';
@@ -64,6 +64,56 @@ export async function createAnonymousPlayer(
 	if (!(await deps.store.createPlayer(player)))
 		throw new Error('player id collision');
 	return player;
+}
+
+/** Conflicts are retried this many times: a guess settling mid-merge, a double click. */
+const SIGN_IN_ATTEMPTS = 3;
+
+/**
+ * Signs a Google account in, carrying this browser's anonymous player over
+ * once. Every path ends in a conditional write, so two sign-ins racing each
+ * other (a double click, two tabs) merge once and the loser re-reads.
+ *
+ * Joining the board happens here and only here: the signed-in record is
+ * written with the `board` attribute and counted in the total in the same
+ * transaction.
+ */
+export async function signIn(
+	deps: GameDeps,
+	googleSub: string,
+	anonId: string | null,
+): Promise<SignInOutcome> {
+	const playerId = `google:${googleSub}`;
+	for (let attempt = 0; attempt < SIGN_IN_ATTEMPTS; attempt++) {
+		const [account, anon] = await Promise.all([
+			deps.store.getPlayer(playerId),
+			anonId?.startsWith('anon:') ? deps.store.getPlayer(anonId) : null,
+		]);
+
+		if (account) {
+			const played = anon && (anon.wins + anon.losses > 0 || anon.pendingGuess);
+			return played ? 'kept-existing' : 'returning';
+		}
+
+		const now = deps.now();
+		const player: PlayerRecord = anon
+			? { ...anon, playerId, onBoard: true, updatedAt: now }
+			: {
+					...newPlayerRecord(playerId, generateName(deps.random), now),
+					onBoard: true,
+				};
+		if (await deps.store.createSignedInPlayer(player, anon)) {
+			console.log(
+				JSON.stringify({
+					event: 'signed-in',
+					outcome: anon ? 'promoted' : 'created',
+				}),
+			);
+			return anon ? 'promoted' : 'created';
+		}
+		// Something moved between the read and the write; read again.
+	}
+	throw new Error('sign-in kept conflicting');
 }
 
 /**
@@ -140,6 +190,8 @@ export function toStateResponse(
 		pendingGuess: player.pendingGuess,
 		lastResult: player.history[0] ?? null,
 		history: player.history,
+		signedIn: player.onBoard,
+		signIn: null,
 	};
 }
 

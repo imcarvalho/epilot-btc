@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import type { SignInOutcome } from './contracts';
 
 export const PLAYER_COOKIE = 'btc_player';
 
@@ -29,6 +30,33 @@ export function cookieValueFor(playerId: string): string {
 	if (!playerId.startsWith(ANON_PREFIX))
 		throw new Error(`not an anonymous player: ${playerId}`);
 	return playerId.slice(ANON_PREFIX.length);
+}
+
+/**
+ * What first sign-in did (`SignInOutcome` in game.ts), handed from the
+ * Auth.js callback to the next `GET /api/state`, which reports it once and
+ * clears it. `httpOnly` like the rest: the page learns it from the API.
+ */
+export const SIGN_IN_COOKIE = 'btc_sign_in';
+
+const SignInOutcomeSchema = z.enum([
+	'promoted',
+	'kept-existing',
+	'returning',
+	'created',
+] satisfies SignInOutcome[]);
+
+export function signInOutcomeFromCookie(
+	value: string | undefined,
+): SignInOutcome | null {
+	const parsed = SignInOutcomeSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
+
+export function signInCookieOptions(
+	production = process.env.NODE_ENV === 'production',
+) {
+	return { ...playerCookieOptions(production), maxAge: 5 * 60 };
 }
 
 export function playerCookieOptions(

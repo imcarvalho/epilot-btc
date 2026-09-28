@@ -49,8 +49,8 @@ Do this as soon as there is something buildable - Amplify needs a `package.json`
 Needed before section 6 of the engineering spec, not before that.
 
 - [ ] Google Cloud project created
-- [ ] OAuth consent screen configured, scopes `openid` and `profile` only
-- [ ] **App published, not left in Testing.** In Testing mode only listed test users can sign in, so a reviewer would be locked out with no explanation. Both scopes are non-sensitive, so publishing needs no verification review.
+- [ ] OAuth consent screen configured, scope `openid` only (the UI never shows the Google name, so `profile` is not asked for - eng §6.2)
+- [ ] **App published, not left in Testing.** In Testing mode only listed test users can sign in, so a reviewer would be locked out with no explanation. The scope is non-sensitive, so publishing needs no verification review.
 - [ ] OAuth client created; client ID and secret stored
 - [ ] Redirect URI `http://localhost:3000/api/auth/callback/google`
 - [ ] Redirect URI `https://main.dalnijp0oanzq.amplifyapp.com/api/auth/callback/google`
