@@ -245,11 +245,10 @@ export function toStateResponse(
 		lastResult: player.history[0] ?? null,
 		history: player.history,
 		signedIn: player.onBoard,
-		signIn: null,
 	};
 }
 
-/** `GET /api/state`: the lazy resolution path (§3). Null if the player does not exist. */
+/** A player's state, read by the game stream every second: the lazy resolution path (§3). Null if the player does not exist. */
 export async function getState(
 	deps: GameDeps,
 	playerId: string,
@@ -345,7 +344,7 @@ export interface SweepResult {
  * `POST /api/cron/resolve` (§3.2): resolves guesses left behind by closed
  * browsers. One index query, one read of the market back to the oldest
  * deadline, then the same conditional resolution each guess would get from
- * `GET /api/state` - so a sweep racing a player's own request still settles
+ * the game stream's state read - so a sweep racing a player's own request still settles
  * the guess exactly once, and against the same price.
  */
 export async function sweep(deps: GameDeps): Promise<SweepResult> {

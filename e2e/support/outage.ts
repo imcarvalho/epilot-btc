@@ -23,6 +23,9 @@ export async function startOutageServer(): Promise<() => void> {
 				AWS_SECRET_ACCESS_KEY: 'local',
 				CRON_SECRET: 'local-secret',
 				E2E_PRICE_FEED_DOWN: '1',
+				LOCAL_STREAM: '1',
+				STREAM_SECRET: 'local-stream-secret',
+				STREAM_URL: `${OUTAGE_URL}/api/stream`,
 			},
 			stdio: 'ignore',
 			// Its own process group, so stopping it stops what npx started too.

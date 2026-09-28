@@ -49,7 +49,6 @@ const state = (over: Partial<StateResponse> = {}): StateResponse => ({
 	lastResult: null,
 	history: [],
 	signedIn: false,
-	signIn: null,
 	...over,
 });
 

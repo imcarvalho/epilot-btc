@@ -1,7 +1,7 @@
 'use client';
 
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import type { SignInOutcome } from '@/lib/contracts';
@@ -24,38 +24,30 @@ import {
 	type ChartView,
 	TopBar,
 } from './widgets';
-import {
-	useFocusRescue,
-	useGame,
-	useServerNow,
-	type TickerSnapshot,
-	useLeaderboard,
-	useLiveMinute,
-} from './hooks';
+import { useFocusRescue, useGame, useServerNow, useLiveMinute } from './hooks';
 import { styles } from './GameScreen.styles';
 
 /**
- * The one screen (product spec §5). Every value on it comes from the server
- * (`GET /api/state`, `POST /api/guess`); nothing is rendered on the server
+ * The one screen (product spec §5). Every value on it comes from the server:
+ * pushed on the game stream, or returned by `POST /api/guess`, the one call
+ * the player makes (engineering spec §3.1). Nothing is rendered on the server
  * but the shell (engineering spec §2.1). What the strip and the buttons show
  * is one pure function of that state and the server's clock (`guessPhase`).
  */
 export function GameScreen() {
-	// The browser's ticker tells the cadence when the price has moved, so
-	// the client can ask then rather than poll (engineering spec §3.1).
-	const ticker = useRef<TickerSnapshot>({
-		price: null,
-		isAlive: false,
-	});
 	const {
 		status,
-		refresh,
+		candles,
+		board,
+		isLive,
+		signIn,
+		retry,
 		placeGuess,
 		isPlacing,
 		guessError,
 		watchedGuessId,
 		seenResultId,
-	} = useGame(ticker);
+	} = useGame();
 	const ready = status.kind === 'ready' ? status : null;
 	const now = useServerNow(ready?.clockOffset ?? 0);
 	const state = ready?.state ?? null;
@@ -66,15 +58,7 @@ export function GameScreen() {
 	const pending = state?.pendingGuess ?? null;
 	// Nothing in play and no fresh price: nothing can be locked in.
 	const priceBlocked = state !== null && priceBlocksGuess(state);
-	// The board moves only when a result does.
-	const board = useLeaderboard(state?.lastResult?.id ?? null);
-	const live = useLiveMinute(pending, ready?.clockOffset ?? 0);
-	useEffect(() => {
-		ticker.current = {
-			price: live.price,
-			isAlive: live.isAlive,
-		};
-	}, [live]);
+	const live = useLiveMinute(pending, state, isLive);
 
 	// When a re-render removes the focused control, focus lands on the strip -
 	// which, at the end of a round, is where the result is.
@@ -93,13 +77,13 @@ export function GameScreen() {
 	}
 	const isMinuteView = view === 'minute' && pending !== null;
 
-	// What a sign-in did is reported by one state read only; hold it until
-	// the player dismisses it.
+	// What a sign-in did is reported once, by the stream's ticket; hold it
+	// until the player dismisses it.
 	const [signInSeen, setSignInSeen] = useState<SignInOutcome | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	if (state?.signIn && state.signIn !== signInSeen) {
-		setSignInSeen(state.signIn);
-		setNotice(signInSentence(state.signIn));
+	if (signIn && signIn !== signInSeen) {
+		setSignInSeen(signIn);
+		setNotice(signInSentence(signIn));
 	}
 
 	// Failures are shown on screen, and heard: through the same announcer.
@@ -124,7 +108,11 @@ export function GameScreen() {
 						}
 					}
 					isLive={
-						isMinuteView ? live.isAlive : state ? !state.priceStale : true
+						isMinuteView
+							? live.isAlive
+							: state
+								? isLive && !state.priceStale
+								: true
 					}
 					source={isMinuteView ? 'ticker' : 'candles'}
 				/>
@@ -136,7 +124,7 @@ export function GameScreen() {
 								<Button
 									label="Try again"
 									variant="primary"
-									clickAction={refresh}
+									clickAction={retry}
 								/>
 							</div>
 						</Panel>
@@ -171,6 +159,7 @@ export function GameScreen() {
 								now={ready ? now : null}
 								phase={phase}
 								live={live}
+								candles={candles}
 								view={view}
 								onViewChange={setView}
 							/>

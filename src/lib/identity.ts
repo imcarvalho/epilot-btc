@@ -34,9 +34,9 @@ export function cookieValueFor(playerId: string): string {
 }
 
 /**
- * What first sign-in did (`SignInOutcome` in game.ts), handed from the
- * Auth.js callback to the next `GET /api/state`, which reports it once and
- * clears it. `httpOnly` like the rest: the page learns it from the API.
+ * What first sign-in did (`SignInOutcome` in contracts.ts), handed from the
+ * Auth.js callback to the next `GET /api/stream-token`, which reports it once
+ * and clears it. `httpOnly` like the rest: the page learns it from the API.
  */
 export const SIGN_IN_COOKIE = 'btc_sign_in';
 

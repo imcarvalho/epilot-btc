@@ -13,7 +13,7 @@
  * touch the players you play with.
  *
  * The sweep is not scheduled locally: a guess you watch resolves on its own
- * (GET /api/state), and the route can be called by hand with the local
+ * (the game stream reads state every second), and the route can be called by hand with the local
  * secret printed below.
  */
 
@@ -275,6 +275,12 @@ async function main() {
 			process.exit(theme.status ?? 1);
 		}
 	}
+
+	// The game stream, served by this same app (engineering spec §3.1): in
+	// production it is a Lambda, here the local route that runs the same code.
+	env.LOCAL_STREAM = '1';
+	env.STREAM_SECRET = process.env.STREAM_SECRET ?? 'local-stream-secret';
+	env.STREAM_URL = `http://localhost:${appPort}/api/stream`;
 
 	const next = spawn('npx', ['next', prod ? 'start' : 'dev', ...args], {
 		cwd: ROOT,

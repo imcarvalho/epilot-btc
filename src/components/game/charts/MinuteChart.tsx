@@ -31,13 +31,13 @@ const plain = new Intl.NumberFormat('en-US', {
 
 /**
  * The minute itself (product spec §6.1, "This guess"): one point per second
- * from the browser's ticker, against the dashed line where the guess was
+ * of the game price the stream sends, against the dashed line where the guess was
  * locked. The shaded area between them is the margin the player is winning
  * or losing by, and the axis is the countdown. Any second can be read back
  * through the inspector, by pointer or keyboard.
  *
- * Indicative, and it says so: the result is settled on the server with its
- * own price, which may differ by a few cents.
+ * Indicative, and it says so: the result is settled on the server against
+ * the trade at the deadline, which may differ by a few cents.
  */
 export function MinuteChart({
 	guess,

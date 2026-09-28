@@ -1,15 +1,13 @@
 /**
- * The screen's data: the game state and its cadence, the hour of candles,
- * and the live minute's ticker.
+ * The screen's data, all from one game stream: the state, the hour of
+ * candles, the board and the live minute - and placing a guess.
  */
-export { useCandles, type CandlesState } from './useCandles';
 export { useFocusRescue } from './useFocusRescue';
 export {
 	useGame,
 	useServerNow,
 	type GameStatus,
-	type TickerSnapshot,
 	type GuessError,
 } from './useGame';
-export { useLeaderboard } from './useLeaderboard';
+export { useStream, type CandlesState } from './useStream';
 export { useLiveMinute, type LiveMinute } from './useLiveMinute';

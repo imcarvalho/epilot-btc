@@ -16,7 +16,7 @@ import {
 	staleSentence,
 } from '@/lib/guess-phase';
 import { HourChart, MinuteChart } from '../charts';
-import { useCandles, type LiveMinute } from '../hooks';
+import type { CandlesState, LiveMinute } from '../hooks';
 import { styles } from './PriceCard.styles';
 
 export type ChartView = 'hour' | 'minute';
@@ -31,8 +31,8 @@ const WORD = {
  * two views (product spec §6.1): the last hour of candles, or - while a
  * guess is in play - the minute itself, live.
  *
- * The hour view's figure is the server's game price. The minute view's is
- * the browser's ticker, and says so: it is what makes the minute worth
+ * Both figures are the server's game price, pushed once a second. The
+ * minute view's says it is provisional: it is what makes the minute worth
  * watching, and it decides nothing (engineering spec §5.1).
  */
 export function PriceCard({
@@ -42,6 +42,7 @@ export function PriceCard({
 	now,
 	phase,
 	live,
+	candles,
 	view,
 	onViewChange,
 }: {
@@ -52,10 +53,11 @@ export function PriceCard({
 	now: number | null;
 	phase: GuessPhase | null;
 	live: LiveMinute;
+	/** The last hour, pushed by the game stream. */
+	candles: CandlesState;
 	view: ChartView;
 	onViewChange: (view: ChartView) => void;
 }) {
-	const candles = useCandles();
 	const guess = phase && 'guess' in phase ? phase.guess : null;
 	const showMinute = view === 'minute' && guess !== null && now !== null;
 
@@ -74,19 +76,18 @@ export function PriceCard({
 			: null;
 	const secondsLeft = phase?.kind === 'locked' ? phase.secondsLeft : 0;
 
-	// While a guess runs, the browser does not ask the server (§3.1), so the
-	// game price on screen is as old as the guess. The header follows the
-	// live ticker instead - provisional, like everything drawn from it - and
-	// makes no claim about movement until the ticker has spoken.
-	const tickerPrice = guess ? live.price : null;
-	let figure: number | null = tickerPrice ?? price;
+	// While a guess runs, the header follows the live minute - provisional,
+	// like everything drawn from it - and makes no claim about movement until
+	// its first price has arrived.
+	const livePrice = guess ? live.price : null;
+	let figure: number | null = livePrice ?? price;
 	let badge: React.ReactNode = null;
-	if (guess && tickerPrice !== null) {
+	if (guess && livePrice !== null) {
 		if (showMinute) {
 			const { margin } = standing(
 				guess.direction,
 				guess.priceAtGuess,
-				tickerPrice,
+				livePrice,
 			);
 			badge = (
 				<ChangeBadge
@@ -98,7 +99,7 @@ export function PriceCard({
 		} else {
 			badge = (
 				<ChangeBadge
-					change={tickerPrice - guess.priceAtGuess}
+					change={livePrice - guess.priceAtGuess}
 					period="since your guess"
 					flatLabel="unchanged since your guess"
 				/>
@@ -154,7 +155,7 @@ export function PriceCard({
 									: 'the minute is up'}
 							</span>
 						</div>
-					) : tickerPrice !== null ? (
+					) : livePrice !== null ? (
 						<p {...stylex.props(styles.caption, styles.updated)}>
 							Live · provisional
 						</p>

@@ -83,14 +83,14 @@ beforeEach(() => {
 });
 
 describe('the game stream', () => {
-	it('sends the whole screen at once: state, board, price, the hour', async () => {
+	it('sends the whole screen at once: state, board, the hour', async () => {
 		const t = setup();
 		const { playerId } = await createAnonymousPlayer(t.deps);
 		await runGameStream(t.deps, playerId, t.sink, {
 			lifetimeMs: 1,
 			sleep: t.sleep,
 		});
-		expect(t.types()).toEqual(['state', 'leaderboard', 'price', 'candles']);
+		expect(t.types()).toEqual(['state', 'leaderboard', 'candles']);
 		expect(t.events[0]).toMatchObject({
 			type: 'state',
 			data: {
@@ -100,19 +100,20 @@ describe('the game stream', () => {
 		});
 	});
 
-	it('re-reads state every ten seconds with nothing in play, not every second', async () => {
+	it('sends state every second, carrying a price refreshed every second', async () => {
 		const t = setup();
 		const { playerId } = await createAnonymousPlayer(t.deps);
 		await runGameStream(t.deps, playerId, t.sink, {
-			lifetimeMs: 25_000,
+			lifetimeMs: 5_000,
 			sleep: t.sleep,
 		});
-		expect(t.count('state')).toBe(3);
-		// The price moves on every tick, once the one-second cache has passed.
-		expect(t.count('price')).toBe(25);
+		const updated = t.events.flatMap((e) =>
+			e.type === 'state' ? [e.data.priceUpdatedAt] : [],
+		);
+		expect(updated).toEqual([0, 1, 2, 3, 4].map((s) => T0 + s * 1_000));
 	});
 
-	it('re-reads state every second while a guess is in play, so a result arrives at once', async () => {
+	it('shows a result within a second of the guess settling', async () => {
 		const t = setup();
 		const { playerId } = await createAnonymousPlayer(t.deps);
 		await placeGuess(t.deps, playerId, 'up');
@@ -130,15 +131,13 @@ describe('the game stream', () => {
 		const settled = states.findIndex(
 			(e) => e.type === 'state' && e.data.pendingGuess === null,
 		);
-		// One read a second while in play, and the first read after the minute settles it.
+		// One read a second, and the first read after the minute settles it.
 		expect(settled).toBe(60);
 		expect(states[settled]).toMatchObject({
 			data: {
 				score: 1,
 			},
 		});
-		// Then back to the idle rhythm.
-		expect(states.length).toBe(61);
 	});
 
 	it('sends the board again when a result lands', async () => {
@@ -168,6 +167,25 @@ describe('the game stream', () => {
 		expect(t.deps.fetchCandles).toHaveBeenCalledTimes(3);
 	});
 
+	it('says once that there is no hour, when Coinbase is down and nothing is cached', async () => {
+		const t = setup();
+		t.deps.fetchCandles = async () => {
+			throw new Error('down');
+		};
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 5_000,
+			sleep: t.sleep,
+		});
+		const candles = t.events.filter((e) => e.type === 'candles');
+		expect(candles).toEqual([
+			{
+				type: 'candles',
+				data: null,
+			},
+		]);
+	});
+
 	it('says the player is gone, and ends, if there is no such player', async () => {
 		const t = setup();
 		await runGameStream(t.deps, 'anon:nobody', t.sink, {
@@ -189,7 +207,7 @@ describe('the game stream', () => {
 			lifetimeMs: 60_000,
 			sleep: t.sleep,
 		});
-		expect(t.count('price')).toBe(3);
+		expect(t.count('state')).toBe(3);
 	});
 });
 

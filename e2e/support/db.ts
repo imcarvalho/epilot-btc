@@ -149,3 +149,42 @@ export async function setCachedPrice(
 				}),
 	);
 }
+
+/**
+ * Sets the server's cached hour of candles, or removes it. The stream serves
+ * a cached hour for ten seconds before fetching again, so a fresh entry is
+ * what every open page is shown.
+ */
+export async function setCachedCandles(
+	cached: {
+		/** Coinbase's rows: `[time (s), low, high, open, close, volume]`. */
+		rows: number[][];
+		updatedAt: number;
+	} | null,
+): Promise<void> {
+	await db.send(
+		cached
+			? new PutCommand({
+					TableName: TABLE,
+					Item: {
+						playerId: 'CANDLES#BTCUSD',
+						candles: cached.rows
+							.map(([time, low, high, open, close]) => ({
+								time: time * 1000,
+								low,
+								high,
+								open,
+								close,
+							}))
+							.sort((a, b) => a.time - b.time),
+						updatedAt: cached.updatedAt,
+					},
+				})
+			: new DeleteCommand({
+					TableName: TABLE,
+					Key: {
+						playerId: 'CANDLES#BTCUSD',
+					},
+				}),
+	);
+}

@@ -9,10 +9,8 @@ import type { GameDeps } from '@/lib/game';
 import { signIn } from '@/lib/game';
 import { MemoryStore } from '@/lib/testing/memory-store';
 import { POST as createPlayer } from './player/route';
-import { GET as getState } from './state/route';
 import { POST as guess } from './guess/route';
 import { POST as resolve } from './cron/resolve/route';
-import { GET as leaderboard } from './leaderboard/route';
 import { GET as streamTicket } from './stream-token/route';
 import { verifyStreamToken } from '@/lib/stream-token';
 
@@ -63,6 +61,12 @@ beforeEach(() => {
 	feedUp = true;
 	session = null;
 	vi.spyOn(console, 'log').mockImplementation(() => {});
+	vi.stubEnv('STREAM_URL', 'https://stream.example/');
+	vi.stubEnv('STREAM_SECRET', 'stream-secret');
+});
+
+afterEach(() => {
+	vi.unstubAllEnvs();
 });
 
 function request(
@@ -148,42 +152,6 @@ describe('POST /api/player', () => {
 		expect(res.cookies.get('btc_player')!.value).not.toBe(
 			'11111111-1111-4111-8111-111111111111',
 		);
-	});
-});
-
-describe('GET /api/state', () => {
-	it('is 401 without a player cookie', async () => {
-		const res = await getState(request('/api/state'));
-		expect(res.status).toBe(401);
-		expect(await res.json()).toEqual({
-			error: 'no-player',
-		});
-	});
-
-	it('is 401 for a malformed cookie, without touching the store', async () => {
-		const res = await getState(
-			request('/api/state', {
-				cookie: 'PRICE#BTCUSD',
-			}),
-		);
-		expect(res.status).toBe(401);
-	});
-
-	it('returns the state with server time, and is never cached', async () => {
-		const cookie = await newPlayerCookie();
-		const res = await getState(
-			request('/api/state', {
-				cookie,
-			}),
-		);
-		expect(res.status).toBe(200);
-		expect(res.headers.get('cache-control')).toBe('no-store');
-		expect(await res.json()).toMatchObject({
-			score: 0,
-			price: 100_000,
-			serverNow: T0,
-			pendingGuess: null,
-		});
 	});
 });
 
@@ -372,14 +340,6 @@ describe('POST /api/cron/resolve', () => {
 });
 
 describe('GET /api/stream-token', () => {
-	beforeEach(() => {
-		vi.stubEnv('STREAM_URL', 'https://stream.example/');
-		vi.stubEnv('STREAM_SECRET', 'stream-secret');
-	});
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
-
 	it('issues a ticket naming the caller, and never cacheable', async () => {
 		const cookie = await newPlayerCookie();
 		const res = await streamTicket(
@@ -396,6 +356,18 @@ describe('GET /api/stream-token', () => {
 
 	it('is 401 without a player', async () => {
 		const res = await streamTicket(request('/api/stream-token'));
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual({
+			error: 'no-player',
+		});
+	});
+
+	it('is 401 for a malformed cookie', async () => {
+		const res = await streamTicket(
+			request('/api/stream-token', {
+				cookie: 'PRICE#BTCUSD',
+			}),
+		);
 		expect(res.status).toBe(401);
 	});
 
@@ -414,33 +386,6 @@ describe('GET /api/stream-token', () => {
 	});
 });
 
-describe('GET /api/leaderboard', () => {
-	it('answers without a player, with no row of theirs', async () => {
-		const res = await leaderboard(request('/api/leaderboard'));
-		expect(res.status).toBe(200);
-		expect(res.headers.get('cache-control')).toBe('no-store');
-		expect(await res.json()).toEqual({
-			podium: [],
-			you: null,
-			total: 0,
-			isEligible: false,
-		});
-	});
-
-	it('tells an anonymous player they are not on the board', async () => {
-		const cookie = await newPlayerCookie();
-		const res = await leaderboard(
-			request('/api/leaderboard', {
-				cookie,
-			}),
-		);
-		expect(await res.json()).toMatchObject({
-			isEligible: false,
-			you: null,
-		});
-	});
-});
-
 describe('signed in', () => {
 	const deps = (): GameDeps => ({
 		store,
@@ -454,34 +399,28 @@ describe('signed in', () => {
 		fetchTape: async () => [],
 	});
 
+	/** The player a ticket was issued for, and what it says sign-in did. */
+	async function ticketFor(init: Parameters<typeof request>[1] = {}) {
+		const res = await streamTicket(request('/api/stream-token', init));
+		const { token, signIn } = await res.json();
+		return {
+			playerId: verifyStreamToken(token, 'stream-secret', clock),
+			signIn,
+			res,
+		};
+	}
+
 	it('reads the session before the anonymous cookie', async () => {
 		const cookie = await newPlayerCookie();
-		await guess(
-			request('/api/guess', {
-				method: 'POST',
-				cookie,
-				body: {
-					direction: 'up',
-				},
-			}),
-		);
 		await signIn(deps(), 'sub-1', `anon:${cookie}`);
 		session = {
 			playerId: 'google:sub-1',
 		};
 
-		const res = await getState(
-			request('/api/state', {
-				cookie,
-			}),
-		);
-		expect(res.status).toBe(200);
-		expect(await res.json()).toMatchObject({
-			signedIn: true,
-			pendingGuess: {
-				direction: 'up',
-			},
+		const { playerId } = await ticketFor({
+			cookie,
 		});
+		expect(playerId).toBe('google:sub-1');
 	});
 
 	it('reports what sign-in did once, then clears it', async () => {
@@ -490,41 +429,32 @@ describe('signed in', () => {
 			playerId: 'google:sub-1',
 		};
 
-		const first = await getState(
-			request('/api/state', {
-				cookies: 'btc_sign_in=promoted',
-			}),
-		);
-		expect((await first.json()).signIn).toBe('promoted');
-		expect(first.headers.get('set-cookie')).toMatch(/^btc_sign_in=;/);
+		const first = await ticketFor({
+			cookies: 'btc_sign_in=promoted',
+		});
+		expect(first.signIn).toBe('promoted');
+		expect(first.res.headers.get('set-cookie')).toMatch(/^btc_sign_in=;/);
 
-		const next = await getState(request('/api/state'));
-		expect((await next.json()).signIn).toBeNull();
+		const next = await ticketFor();
+		expect(next.signIn).toBeNull();
 	});
 
 	it('ignores a sign-in report without a session, or one it does not know', async () => {
 		const cookie = await newPlayerCookie();
-		const anon = await getState(
-			request('/api/state', {
-				cookie,
-				cookies: 'btc_sign_in=promoted',
-			}),
-		);
-		expect(await anon.json()).toMatchObject({
-			signedIn: false,
-			signIn: null,
+		const anon = await ticketFor({
+			cookie,
+			cookies: 'btc_sign_in=promoted',
 		});
+		expect(anon.signIn).toBeNull();
 
 		await signIn(deps(), 'sub-1', null);
 		session = {
 			playerId: 'google:sub-1',
 		};
-		const odd = await getState(
-			request('/api/state', {
-				cookies: 'btc_sign_in=admin',
-			}),
-		);
-		expect((await odd.json()).signIn).toBeNull();
+		const odd = await ticketFor({
+			cookies: 'btc_sign_in=admin',
+		});
+		expect(odd.signIn).toBeNull();
 	});
 
 	it('recreates a signed-in account whose record is missing, rather than going anonymous', async () => {
@@ -541,19 +471,5 @@ describe('signed in', () => {
 		expect(store.players.get('google:sub-1')).toMatchObject({
 			onBoard: true,
 		});
-	});
-
-	it('puts the signed-in player on the leaderboard as you', async () => {
-		await signIn(deps(), 'sub-1', null);
-		session = {
-			playerId: 'google:sub-1',
-		};
-		const body = await (await leaderboard(request('/api/leaderboard'))).json();
-		expect(body).toMatchObject({
-			isEligible: true,
-			total: 1,
-		});
-		expect(body.podium[0].isYou).toBe(true);
-		expect(JSON.stringify(body)).not.toContain('sub-1');
 	});
 });

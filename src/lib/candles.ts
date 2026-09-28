@@ -1,9 +1,9 @@
 /**
  * The last hour of one-minute candles, for the chart (product spec §5).
  *
- * Engineering spec §5 and §7.1: the chart is cosmetic, so the browser fetches
- * it from Coinbase directly (CORS checked open on day one) and it never
- * affects an outcome. It is drawn as hand-built SVG, four paths in all: up
+ * Engineering spec §5 and §7.1: the chart is cosmetic and never affects an
+ * outcome. The server fetches the hour from Coinbase into a shared cache
+ * (hour-candles.ts) and the game stream pushes it to the browser. It is drawn as hand-built SVG, four paths in all: up
  * bodies, down bodies, up wicks, down wicks. Everything here is pure, so the
  * geometry is tested without a browser.
  */

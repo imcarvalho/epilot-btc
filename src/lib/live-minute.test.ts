@@ -1,6 +1,5 @@
 import {
 	buildMinuteChart,
-	parseTicker,
 	standing,
 	takeSample,
 	type Sample,
@@ -8,55 +7,8 @@ import {
 
 const T0 = 1_790_520_000_000;
 
-describe('parseTicker', () => {
-	it("reads a ticker message's price and time", () => {
-		const msg = {
-			type: 'ticker',
-			product_id: 'BTC-USD',
-			price: '84586.97',
-			time: '2026-09-27T16:27:14.615918Z',
-		};
-		expect(parseTicker(JSON.stringify(msg))).toEqual({
-			price: 84586.97,
-			time: Date.parse('2026-09-27T16:27:14.615Z'),
-		});
-	});
-
-	it('ignores everything that is not a BTC-USD ticker', () => {
-		expect(
-			parseTicker(
-				JSON.stringify({
-					type: 'subscriptions',
-					channels: [],
-				}),
-			),
-		).toBeNull();
-		expect(
-			parseTicker(
-				JSON.stringify({
-					type: 'ticker',
-					product_id: 'ETH-USD',
-					price: '3000',
-					time: '2026-09-27T16:27:14Z',
-				}),
-			),
-		).toBeNull();
-		expect(parseTicker('not json')).toBeNull();
-		expect(
-			parseTicker(
-				JSON.stringify({
-					type: 'ticker',
-					product_id: 'BTC-USD',
-					price: 'abc',
-					time: 'x',
-				}),
-			),
-		).toBeNull();
-	});
-});
-
 describe('takeSample', () => {
-	it('appends the latest price once per call - one point per second, however many ticks arrived', () => {
+	it('appends the latest price once per call - one point per second', () => {
 		let samples: Sample[] = [];
 		samples = takeSample(samples, 100, T0 + 1_000, T0);
 		samples = takeSample(samples, 101, T0 + 2_000, T0);
@@ -72,7 +24,7 @@ describe('takeSample', () => {
 		]);
 	});
 
-	it('takes nothing before the first tick has arrived', () => {
+	it('takes nothing before the first price has arrived', () => {
 		expect(takeSample([], null, T0 + 1_000, T0)).toEqual([]);
 	});
 

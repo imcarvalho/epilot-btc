@@ -15,7 +15,12 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoViolations } from './support/axe';
-import { lockGuessAgo, playerIdOf, seedBoard } from './support/db';
+import {
+	lockGuessAgo,
+	playerIdOf,
+	seedBoard,
+	setCachedCandles,
+} from './support/db';
 
 /** The screen with its price and its hour of candles in. */
 async function openGame(page: Page) {
@@ -176,10 +181,12 @@ test.describe('structure a screen reader navigates by', () => {
 	test('the focused chart inspector holds its minute while the hour refreshes', async ({
 		page,
 	}) => {
-		// A made-up hour: each refresh drops the oldest minute and moves the
-		// one still forming, as the real feed does, so every candle shifts.
+		// A made-up hour, put in the server's shared cache: each refresh drops
+		// the oldest minute and moves the one still forming, as the real feed
+		// does, so every candle shifts. Written fresh each time, so the server
+		// serves it rather than fetching Coinbase, and the stream pushes it.
 		let served = 0;
-		await page.route(/\/products\/BTC-USD\/candles/, (route) => {
+		const serveHour = async () => {
 			const minute = Math.floor(Date.now() / 60_000) * 60;
 			const rows = Array.from(
 				{
@@ -192,15 +199,12 @@ test.describe('structure a screen reader navigates by', () => {
 				},
 			);
 			served += 1;
-			return route.fulfill({
-				status: 200,
-				headers: {
-					'access-control-allow-origin': '*',
-					'content-type': 'application/json',
-				},
-				body: JSON.stringify(rows),
+			await setCachedCandles({
+				rows,
+				updatedAt: Date.now(),
 			});
-		});
+		};
+		await serveHour();
 		await openGame(page);
 		const hour = page.getByRole('img', {
 			name: /over the last hour/,
@@ -208,12 +212,11 @@ test.describe('structure a screen reader navigates by', () => {
 		const inspector = page.getByRole('slider', {
 			name: 'Last hour, minute by minute',
 		});
-		// The chart reloads its candles when the tab comes back into view.
+		await expect(hour).toHaveAttribute('aria-label', /from \$60,/);
+		// The stream pushes the hour whenever the shared cache changes.
 		const refresh = async () => {
 			const before = await hour.getAttribute('aria-label');
-			await page.evaluate(() =>
-				document.dispatchEvent(new Event('visibilitychange')),
-			);
+			await serveHour();
 			await expect(hour).not.toHaveAttribute('aria-label', before!);
 		};
 
@@ -240,6 +243,9 @@ test.describe('structure a screen reader navigates by', () => {
 		await page.keyboard.press('ArrowLeft');
 		await page.keyboard.press('ArrowRight');
 		await expect(inspector).toHaveAttribute('aria-valuetext', held!);
+
+		// Hand the chart back to Coinbase for the tests after this one.
+		await setCachedCandles(null);
 	});
 
 	test('a banner with the page title, then the main content', async ({

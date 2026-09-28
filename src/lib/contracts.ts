@@ -63,8 +63,6 @@ export interface StateResponse {
 	history: ResolvedGuess[];
 	/** Signed in with Google, so on the board and kept across devices. */
 	signedIn: boolean;
-	/** What a sign-in that has just happened did; reported once, then null. */
-	signIn: SignInOutcome | null;
 }
 
 /**
@@ -114,25 +112,14 @@ export interface GuessResponse {
 	serverNow: number;
 }
 
-/** The game price as the stream sends it, every time it changes (§3.1). */
-export interface PriceUpdate {
-	price: number;
-	/** When that price stood, server clock. */
-	updatedAt: number;
-	/** Older than the 15 s guard: nothing can be locked in at it. */
-	stale: boolean;
-	/** The server's clock as it sent this, for the countdown's offset. */
-	serverNow: number;
-}
-
 /**
  * One event on the game stream (engineering spec §3.1), as a Server-Sent
  * Event whose `event:` field is the type and whose `data:` is the JSON.
  */
 export type StreamEvent =
 	| { type: 'state'; data: StateResponse }
-	| { type: 'price'; data: PriceUpdate }
-	| { type: 'candles'; data: Candle[] }
+	/** The last hour; null when there is none to show (Coinbase down, nothing cached). */
+	| { type: 'candles'; data: Candle[] | null }
 	| { type: 'leaderboard'; data: LeaderboardResponse }
 	/** The player no longer exists (expired, or deleted): make a new one and reconnect. */
 	| { type: 'gone'; data: null };
@@ -142,6 +129,8 @@ export interface StreamTicket {
 	/** The stream's URL, without the token. */
 	url: string;
 	token: string;
+	/** What a sign-in that has just happened did; reported once, then null. */
+	signIn: SignInOutcome | null;
 }
 
 export type ApiErrorCode =

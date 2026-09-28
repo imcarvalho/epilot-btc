@@ -215,7 +215,7 @@ function LockedStrip({
 				</div>
 
 				{moved !== null && (
-					// From the browser's ticker: the live gap (product spec §7), provisional.
+					// The live gap (product spec §7), from the streamed price: provisional.
 					<div
 						{...stylex.props(
 							styles.movedBox,

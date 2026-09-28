@@ -3,7 +3,7 @@
  *
  * Engineering spec §3. This is the whole game rule, and it is deliberately
  * pure: no network, no clock, no database. Both resolution triggers - the lazy
- * read on `GET /api/state` and the scheduled sweep - call this same function
+ * read on the game stream's state and the scheduled sweep - call this same function
  * with the server's own price and the server's own clock.
  *
  * A guess resolves only when BOTH conditions hold: at least 60 seconds have

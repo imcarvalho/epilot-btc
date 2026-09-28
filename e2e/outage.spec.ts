@@ -1,15 +1,15 @@
 /**
- * The screen while Coinbase is down: the server cannot fetch the game price
- * (a copy of the app with E2E_PRICE_FEED_DOWN) and the browser cannot fetch
- * the chart (its requests are blocked here). Two cases, set through the
- * server's price cache: a game that has never had a price, and one whose
- * last price is going stale. Both must say what is happening, refuse a guess
- * before it is tried, and pass axe.
+ * The screen while Coinbase is down: the server can fetch neither the game
+ * price nor the chart's candles (a copy of the app with E2E_PRICE_FEED_DOWN),
+ * and nothing is cached for the chart. Two cases, set through the server's
+ * price cache: a game that has never had a price, and one whose last price
+ * is going stale. Both must say what is happening, refuse a guess before it
+ * is tried, and pass axe.
  */
 
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoViolations } from './support/axe';
-import { setCachedPrice } from './support/db';
+import { setCachedCandles, setCachedPrice } from './support/db';
 import { OUTAGE_URL, startOutageServer } from './support/outage';
 
 let stopServer: () => void;
@@ -20,16 +20,15 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
 	stopServer?.();
-	// Leave the cache empty: the main server fetches a fresh price on its
-	// next request rather than serving the old one set here.
+	// Leave the caches empty: the main server fetches afresh on its next
+	// request rather than serving what was set here.
 	await setCachedPrice(null);
+	await setCachedCandles(null);
 });
 
-/** The game with Coinbase unreachable from the browser as well. */
+/** The game with no hour cached either: the chart has nothing to draw. */
 async function openDuringOutage(page: Page) {
-	await page.route('https://api.exchange.coinbase.com/**', (route) =>
-		route.abort(),
-	);
+	await setCachedCandles(null);
 	await page.goto(OUTAGE_URL);
 	await expect(
 		page.getByText('The chart is unavailable right now'),

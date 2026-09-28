@@ -9,8 +9,9 @@
  * web tier happens to run in.
  *
  * `E2E_PRICE_FEED_DOWN` is for the accessibility tests only: it makes every
- * Coinbase fetch fail, so they can show the screen during an outage. Never
- * set it anywhere a player reaches.
+ * Coinbase fetch fail - the price, the trades and the chart's candles - so
+ * they can show the screen during an outage. Never set it anywhere a player
+ * reaches.
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -53,9 +54,11 @@ export function getDeps(): GameDeps {
 					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');
 				}
 			: (from) => fetchTape(from),
-		// The chart is not part of the outage switch: the screen showed the
-		// hour during an outage when the browser fetched it, and still does.
-		fetchCandles: (now) => fetchHourCandles(now),
+		fetchCandles: process.env.E2E_PRICE_FEED_DOWN
+			? async () => {
+					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');
+				}
+			: (now) => fetchHourCandles(now),
 		now: () => Date.now(),
 		newId: () => crypto.randomUUID(),
 	};
