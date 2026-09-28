@@ -1,6 +1,9 @@
 import type { PendingGuess, ResolvedGuess, StateResponse } from './contracts';
 import {
 	guessFailureSentence,
+	PRICE_BLOCKED,
+	PRICE_RETURNED,
+	priceBlockAnnouncement,
 	priceBlocksGuess,
 	guessPhase,
 	resultSentence,
@@ -256,5 +259,31 @@ describe('priceBlocksGuess', () => {
 				priceStale: true,
 			}),
 		).toBe(false);
+	});
+});
+
+describe('priceBlockAnnouncement', () => {
+	it('announces the delay on entering it, once', () => {
+		expect(priceBlockAnnouncement(null, true)).toBe(
+			'Price feed delayed. Nothing can be locked in until it catches up.',
+		);
+		expect(priceBlockAnnouncement(false, true)).toBe(PRICE_BLOCKED);
+		expect(priceBlockAnnouncement(true, true)).toBeNull();
+	});
+
+	it('announces the recovery on leaving it, once', () => {
+		expect(priceBlockAnnouncement(true, false)).toBe(
+			'The price is back. You can guess again.',
+		);
+		expect(priceBlockAnnouncement(true, false)).toBe(PRICE_RETURNED);
+		expect(priceBlockAnnouncement(false, false)).toBeNull();
+	});
+
+	it('says nothing about a recovery from a delay never shown', () => {
+		expect(priceBlockAnnouncement(null, false)).toBeNull();
+	});
+
+	it('is the same sentence the strip shows for a refused guess', () => {
+		expect(guessFailureSentence('price-unavailable')).toBe(PRICE_BLOCKED);
 	});
 });

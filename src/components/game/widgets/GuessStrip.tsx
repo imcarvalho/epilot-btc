@@ -5,6 +5,7 @@ import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import {
 	type GuessPhase,
 	guessFailureSentence,
+	PRICE_BLOCKED,
 	resultHeadline,
 } from '@/lib/guess-phase';
 import { GUESS_WINDOW_MS } from '@/lib/resolve-guess';
@@ -97,7 +98,7 @@ function Prompt({
 				<div {...stylex.props(styles.stack)}>
 					<p {...stylex.props(styles.lead, priceBlocked && styles.warn)}>
 						{priceBlocked
-							? guessFailureSentence('price-unavailable')
+							? PRICE_BLOCKED
 							: firstVisit
 								? 'Will BTC be higher or lower in a minute? Make your first guess.'
 								: 'No guess in play. Pick a direction and the next minute decides it.'}

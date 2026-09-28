@@ -38,7 +38,7 @@ async function openDuringOutage(page: Page) {
 	});
 }
 
-/** Both guess buttons quiet, saying why. */
+/** Both guess buttons quiet, saying why - on screen and to a screen reader. */
 async function expectGuessingPaused(page: Page) {
 	for (const word of ['Higher', 'Lower']) {
 		await expect(
@@ -48,10 +48,15 @@ async function expectGuessingPaused(page: Page) {
 		).toBeDisabled();
 	}
 	await expect(
-		page.getByText(
-			'Price feed delayed. Nothing can be locked in until it catches up.',
-		),
+		page.getByRole('paragraph').filter({
+			hasText:
+				'Price feed delayed. Nothing can be locked in until it catches up.',
+		}),
 	).toBeVisible();
+	// Announced as well as shown: the buttons going quiet is not only seen.
+	await expect(page.locator('main > [role="status"]')).toHaveText(
+		'Price feed delayed. Nothing can be locked in until it catches up.',
+	);
 }
 
 test('no price has ever reached the game', async ({ page }) => {

@@ -1,8 +1,12 @@
 'use client';
 
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState } from 'react';
-import { type GuessPhase, resultSentence } from '@/lib/guess-phase';
+import { useEffect, useRef, useState } from 'react';
+import {
+	type GuessPhase,
+	priceBlockAnnouncement,
+	resultSentence,
+} from '@/lib/guess-phase';
 import { formatAge, formatUsd } from '../utils';
 import { styles } from './Announcer.styles';
 
@@ -28,15 +32,23 @@ function announcementFor(phase: GuessPhase): string | null {
  * not every tick of the countdown. A one-off `notice` - what a sign-in did,
  * a guess that did not go through, the game being unreachable - goes
  * through the same region, so there is still only one.
+ *
+ * `priceBlocked` is the feed holding up a new guess with nothing in play
+ * (`priceBlocksGuess`), or null before the first state. Entering it and
+ * leaving it are each announced once: the buttons going quiet, and coming
+ * back, are not left to be seen only.
  */
 export function Announcer({
 	phase,
+	priceBlocked = null,
 	notice = null,
 }: {
 	phase: GuessPhase | null;
+	priceBlocked?: boolean | null;
 	notice?: string | null;
 }) {
 	const [message, setMessage] = useState('');
+	const wasBlocked = useRef<boolean | null>(null);
 	const key =
 		phase === null
 			? ''
@@ -53,6 +65,17 @@ export function Announcer({
 		// Keyed on the phase and its guess, not on the phase object: the
 		// countdown ticking every second is not news.
 	}, [key]);
+
+	useEffect(() => {
+		if (priceBlocked === null) {
+			return;
+		}
+		const text = priceBlockAnnouncement(wasBlocked.current, priceBlocked);
+		wasBlocked.current = priceBlocked;
+		if (text) {
+			setMessage(text);
+		}
+	}, [priceBlocked]);
 
 	useEffect(() => {
 		if (!notice) {

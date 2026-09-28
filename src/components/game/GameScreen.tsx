@@ -177,7 +177,11 @@ export function GameScreen() {
 							</div>
 						</>
 					)}
-					<Announcer phase={phase} notice={failure ?? notice} />
+					<Announcer
+						phase={phase}
+						priceBlocked={state === null ? null : priceBlocked}
+						notice={failure ?? notice}
+					/>
 					{phase?.kind === 'result' && phase.result.delta === 1 && (
 						<Confetti key={phase.result.id} />
 					)}

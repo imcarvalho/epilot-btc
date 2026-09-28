@@ -97,7 +97,7 @@ export type GuessFailure = 'price-unavailable' | 'failed';
  */
 export function guessFailureSentence(failure: GuessFailure): string {
 	return failure === 'price-unavailable'
-		? 'Price feed delayed. Nothing can be locked in until it catches up.'
+		? PRICE_BLOCKED
 		: 'That guess did not go through. Try again.';
 }
 
@@ -116,6 +116,34 @@ export function priceBlocksGuess(
 	state: Pick<StateResponse, 'pendingGuess' | 'priceStale'>,
 ): boolean {
 	return state.pendingGuess === null && state.priceStale;
+}
+
+/**
+ * The strip while `priceBlocksGuess` holds, and what is announced on entering
+ * that state (product spec §7).
+ */
+export const PRICE_BLOCKED =
+	'Price feed delayed. Nothing can be locked in until it catches up.';
+
+/** Announced once when the price returns and guessing is open again. */
+export const PRICE_RETURNED = 'The price is back. You can guess again.';
+
+/**
+ * What the announcer says when guessing is blocked or unblocked by the price
+ * feed: the delay on entry, the recovery on leaving it, and nothing when the
+ * state has not changed - an unchanged state is not news, and a screen is
+ * not announced as recovered from a delay it never showed.
+ *
+ * @param was blocked at the last announcement; null before the first state
+ */
+export function priceBlockAnnouncement(
+	was: boolean | null,
+	is: boolean,
+): string | null {
+	if (is) {
+		return was === true ? null : PRICE_BLOCKED;
+	}
+	return was === true ? PRICE_RETURNED : null;
 }
 
 /** The price card when no price has ever reached the game. */
