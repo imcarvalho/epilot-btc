@@ -1,6 +1,7 @@
 import type { PendingGuess, ResolvedGuess, StateResponse } from './contracts';
 import {
 	guessFailureSentence,
+	priceBlocksGuess,
 	guessPhase,
 	resultSentence,
 } from './guess-phase';
@@ -219,5 +220,41 @@ describe('guessFailureSentence', () => {
 		expect(guessFailureSentence('failed')).toBe(
 			'That guess did not go through. Try again.',
 		);
+	});
+});
+
+describe('priceBlocksGuess', () => {
+	const guess = {
+		id: 'g1',
+		direction: 'up' as const,
+		priceAtGuess: 100_000,
+		createdAt: 0,
+	};
+
+	it('blocks a new guess while the price is stale or missing', () => {
+		expect(
+			priceBlocksGuess({
+				pendingGuess: null,
+				priceStale: true,
+			}),
+		).toBe(true);
+	});
+
+	it('lets a guess through on a fresh price', () => {
+		expect(
+			priceBlocksGuess({
+				pendingGuess: null,
+				priceStale: false,
+			}),
+		).toBe(false);
+	});
+
+	it('leaves a guess in play to its own waiting state', () => {
+		expect(
+			priceBlocksGuess({
+				pendingGuess: guess,
+				priceStale: true,
+			}),
+		).toBe(false);
 	});
 });

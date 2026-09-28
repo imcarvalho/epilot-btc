@@ -10,6 +10,7 @@ import {
 	UNREACHABLE_TITLE,
 	guessFailureSentence,
 	guessPhase,
+	priceBlocksGuess,
 } from '@/lib/guess-phase';
 import { signInSentence } from '@/lib/sign-in';
 import { EmptyMessage, Panel } from '@/components/ui';
@@ -53,6 +54,8 @@ export function GameScreen() {
 	const phase = state ? guessPhase(state, now, watchedGuessId) : null;
 
 	const pending = state?.pendingGuess ?? null;
+	// Nothing in play and no fresh price: nothing can be locked in.
+	const priceBlocked = state !== null && priceBlocksGuess(state);
 	// The board moves only when a result does.
 	const board = useLeaderboard(state?.lastResult?.id ?? null);
 	const live = useLiveMinute(pending, ready?.clockOffset ?? 0);
@@ -137,6 +140,7 @@ export function GameScreen() {
 								name={state?.publicName ?? null}
 								signedIn={state?.signedIn ?? false}
 								guessError={guessError}
+								priceBlocked={priceBlocked}
 								now={now}
 								live={live}
 								isMinuteView={isMinuteView}
@@ -154,6 +158,7 @@ export function GameScreen() {
 							<GuessButtons
 								phase={phase}
 								onGuess={placeGuess}
+								priceBlocked={priceBlocked}
 								isBusy={isPlacing}
 							/>
 

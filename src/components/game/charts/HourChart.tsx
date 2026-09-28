@@ -47,8 +47,11 @@ function describe(candles: Candle[]): string {
 export function HourChart({
 	state,
 	lock,
+	hasPrice = true,
 }: {
 	state: CandlesState;
+	/** Whether the card shows a game price above the chart, for the note below. */
+	hasPrice?: boolean;
 	/** The guess to mark: its locked price and when it was locked. */
 	lock: { price: number; at: number } | null;
 }) {
@@ -84,8 +87,9 @@ export function HourChart({
 			<div ref={ref} {...stylex.props(frame.plot)}>
 				{state.kind === 'error' ? (
 					<p {...stylex.props(styles.note)}>
-						The chart is unavailable right now. The price above is the
-						game&apos;s own and is unaffected.
+						{hasPrice
+							? "The chart is unavailable right now. The price above is the game's own and is unaffected."
+							: 'The chart is unavailable right now.'}
 					</p>
 				) : chart && state.kind === 'ready' ? (
 					<svg

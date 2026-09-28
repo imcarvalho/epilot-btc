@@ -120,3 +120,32 @@ export async function seedBoard(): Promise<void> {
 		}),
 	);
 }
+
+/**
+ * Sets the server's cached game price, or removes it. With the price feed
+ * down, that cache is all the server has: an old entry is a stale feed, no
+ * entry is a game that has never had a price.
+ */
+export async function setCachedPrice(
+	cached: {
+		price: number;
+		updatedAt: number;
+	} | null,
+): Promise<void> {
+	await db.send(
+		cached
+			? new PutCommand({
+					TableName: TABLE,
+					Item: {
+						playerId: 'PRICE#BTCUSD',
+						...cached,
+					},
+				})
+			: new DeleteCommand({
+					TableName: TABLE,
+					Key: {
+						playerId: 'PRICE#BTCUSD',
+					},
+				}),
+	);
+}

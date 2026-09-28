@@ -31,6 +31,7 @@ export function GuessStrip({
 	name,
 	signedIn,
 	guessError,
+	priceBlocked,
 	now,
 	live,
 	isMinuteView,
@@ -39,6 +40,8 @@ export function GuessStrip({
 	name: string | null;
 	signedIn: boolean;
 	guessError: GuessError;
+	/** No guess is in play and the server has no fresh price (`priceBlocksGuess`). */
+	priceBlocked: boolean;
 	now: number;
 	live: LiveMinute;
 	/** The chart header carries the countdown in the minute view. */
@@ -67,6 +70,7 @@ export function GuessStrip({
 			name={name}
 			signedIn={signedIn}
 			guessError={guessError}
+			priceBlocked={priceBlocked}
 		/>
 	);
 }
@@ -76,11 +80,13 @@ function Prompt({
 	name,
 	signedIn,
 	guessError,
+	priceBlocked,
 }: {
 	firstVisit: boolean;
 	name: string | null;
 	signedIn: boolean;
 	guessError: GuessError;
+	priceBlocked: boolean;
 }) {
 	return (
 		<Panel as="div" variant="dashed">
@@ -89,12 +95,14 @@ function Prompt({
 					<Icon icon={Loader} size="md" />
 				</span>
 				<div {...stylex.props(styles.stack)}>
-					<p {...stylex.props(styles.lead)}>
-						{firstVisit
-							? 'Will BTC be higher or lower in a minute? Make your first guess.'
-							: 'No guess in play. Pick a direction and the next minute decides it.'}
+					<p {...stylex.props(styles.lead, priceBlocked && styles.warn)}>
+						{priceBlocked
+							? guessFailureSentence('price-unavailable')
+							: firstVisit
+								? 'Will BTC be higher or lower in a minute? Make your first guess.'
+								: 'No guess in play. Pick a direction and the next minute decides it.'}
 					</p>
-					{guessError ? (
+					{guessError && !priceBlocked ? (
 						<p {...stylex.props(styles.sub, styles.warn)}>
 							{guessFailureSentence(guessError)}
 						</p>

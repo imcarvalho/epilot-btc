@@ -13,34 +13,9 @@
  * is checked by the structure tests at the end.
  */
 
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { expectNoViolations } from './support/axe';
 import { lockGuessAgo, playerIdOf, seedBoard } from './support/db';
-
-const RULES = [
-	'wcag2a',
-	'wcag2aa',
-	'wcag21a',
-	'wcag21aa',
-	'wcag22aa',
-	'best-practice',
-];
-
-/** Runs axe and fails with every violation spelled out, not a count. */
-async function expectNoViolations(page: Page) {
-	const { violations } = await new AxeBuilder({
-		page,
-	})
-		.withTags(RULES)
-		.analyze();
-	const report = violations.map(
-		(v) =>
-			`${v.id} (${v.impact}): ${v.help}\n${v.nodes
-				.map((n) => `  ${n.target.join(' ')}\n    ${n.failureSummary}`)
-				.join('\n')}`,
-	);
-	expect(report, report.join('\n\n')).toEqual([]);
-}
 
 /** The screen with its price and its hour of candles in. */
 async function openGame(page: Page) {

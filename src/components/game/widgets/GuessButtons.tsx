@@ -8,6 +8,7 @@ import { styles } from './GuessButtons.styles';
 function buttonFor(
 	direction: Direction,
 	phase: GuessPhase | null,
+	priceBlocked: boolean,
 ): { mode: DirectionButtonMode; hint: string } {
 	if (
 		phase?.kind === 'locked' ||
@@ -24,6 +25,13 @@ function buttonFor(
 					hint: 'one guess at a time',
 				};
 	}
+	// No price to lock in at: nothing to press, and the strip says why.
+	if (priceBlocked) {
+		return {
+			mode: 'muted',
+			hint: 'waiting for the price',
+		};
+	}
 	return {
 		mode: 'ready',
 		hint: phase?.kind === 'result' ? 'go again' : 'in 60 seconds',
@@ -35,8 +43,11 @@ export function GuessButtons({
 	phase,
 	onGuess,
 	isBusy,
+	priceBlocked,
 }: {
 	phase: GuessPhase | null;
+	/** No guess is in play and the server has no fresh price (`priceBlocksGuess`). */
+	priceBlocked: boolean;
 	onGuess: (direction: Direction) => void;
 	/** Loading, or a guess on its way to the server. */
 	isBusy: boolean;
@@ -44,7 +55,7 @@ export function GuessButtons({
 	return (
 		<div role="group" aria-label="Make a guess" {...stylex.props(styles.grid)}>
 			{(['up', 'down'] as const).map((direction) => {
-				const { mode, hint } = buttonFor(direction, phase);
+				const { mode, hint } = buttonFor(direction, phase, priceBlocked);
 				return (
 					<DirectionButton
 						key={direction}

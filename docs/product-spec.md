@@ -231,6 +231,9 @@ Decisions worth stating:
 - Waiting: *"Locked at $X. 47s to go."* with the live gap beside it, for example *"+$12 so far"*.
 - Countdown at zero: *"Time is up - waiting for the price to change."*
 - Stale feed: *"Price feed delayed. Last updated 25s ago. Nothing is settled until it catches up."*
+- Stale feed, no guess in play: the buttons go quiet with *"waiting for the price"*, and the strip says *"Price feed delayed. Nothing can be locked in until it catches up."* - a guess is refused before it is tried, not after.
+- No price has ever reached the game: *"The price is unavailable right now. Nothing can be guessed until it returns."*
+- Chart unavailable: *"The chart is unavailable right now. The price above is the game's own and is unaffected."* - or just the first sentence when there is no price above it.
 - Win: *"Correct. The price went up. Score 3."*
 - Loss: *"Not this time. The price went down. Score 1."*
 - Returning to a settled guess: *"While you were away: your up guess was correct. +1."*

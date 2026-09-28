@@ -7,10 +7,10 @@ import {
 } from '@astryxdesign/core/SegmentedControl';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { hourChange } from '@/lib/candles';
-import type { GuessPhase } from '@/lib/guess-phase';
 import { standing } from '@/lib/live-minute';
 import { ChangeBadge, Eyebrow, Numeric, Panel } from '@/components/ui';
 import { formatAge, formatCountdown, formatUsd } from '../utils';
+import { type GuessPhase, PRICE_UNAVAILABLE } from '@/lib/guess-phase';
 import { HourChart, MinuteChart } from '../charts';
 import { useCandles, type LiveMinute } from '../hooks';
 import { styles } from './PriceCard.styles';
@@ -119,6 +119,10 @@ export function PriceCard({
 					<div {...stylex.props(styles.figure)}>
 						{figure !== null ? (
 							<Numeric size="hero">{formatUsd(figure)}</Numeric>
+						) : now !== null ? (
+							// Loaded, and still nothing: say so, rather than shimmer as if
+							// the price were on its way.
+							<p {...stylex.props(styles.unavailable)}>{PRICE_UNAVAILABLE}</p>
 						) : (
 							<Skeleton width={420} height={72} />
 						)}
@@ -180,7 +184,7 @@ export function PriceCard({
 			{showMinute && guess && now !== null ? (
 				<MinuteChart guess={guess} live={live} now={now} />
 			) : (
-				<HourChart state={candles} lock={lock} />
+				<HourChart state={candles} lock={lock} hasPrice={figure !== null} />
 			)}
 		</Panel>
 	);

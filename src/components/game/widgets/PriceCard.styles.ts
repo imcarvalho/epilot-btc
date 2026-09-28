@@ -2,6 +2,12 @@ import * as stylex from '@stylexjs/stylex';
 import { palette } from '@/components/ui/tokens.stylex';
 
 export const styles = stylex.create({
+	unavailable: {
+		color: 'var(--color-warning)',
+		fontSize: 'var(--font-size-lg)',
+		margin: 0,
+		maxWidth: '32rem',
+	},
 	header: {
 		alignItems: 'flex-end',
 		display: 'flex',

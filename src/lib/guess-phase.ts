@@ -105,3 +105,19 @@ export function guessFailureSentence(failure: GuessFailure): string {
 export const UNREACHABLE_TITLE = 'The game could not be reached.';
 export const UNREACHABLE_BODY =
 	'Nothing has been lost: your score is kept on the server. Try again in a moment.';
+
+/**
+ * No guess can be placed: nothing is in play, and the server's price is
+ * missing or too old to lock in at (the same 15 s rule the server enforces).
+ * The buttons go quiet and the strip says why, rather than letting a guess be
+ * tried and refused.
+ */
+export function priceBlocksGuess(
+	state: Pick<StateResponse, 'pendingGuess' | 'priceStale'>,
+): boolean {
+	return state.pendingGuess === null && state.priceStale;
+}
+
+/** The price card when no price has ever reached the game. */
+export const PRICE_UNAVAILABLE =
+	'The price is unavailable right now. Nothing can be guessed until it returns.';
