@@ -85,10 +85,50 @@ Players
      history             last 10 resolved guesses
                          { id, direction, priceAtGuess, priceAtResolve,
                            createdAt, resolvedAt, delta }
-     createdAt, updatedAt, ttl
+     createdAt, updatedAt
+     ttl                 anonymous players only: 30 days, refreshed on every
+                         write (8). Signed-in players are counted on the
+                         board, so they never expire
 ```
 
-One item per player; gameplay access is always by `playerId`. The price cache is a separate item with its own TTL. Two sparse indexes hang off this: one for the leaderboard (6.4) and one for the sweep (3.2).
+One item per player; gameplay access is always by `playerId`. Three more items share the table, each under a fixed key: the price cache (`PRICE#BTCUSD`, 5), the count of players on the board (`BOARD#GLOBAL`, 6.4) and the cached podium (`BOARD#PODIUM`, 6.4). None of them expires: their freshness is judged by `updatedAt`, since DynamoDB's TTL deletes lazily, hours late, and deleting the price would only lose the last-known value the game falls back on. Two sparse indexes hang off the table: one for the leaderboard (6.4) and one for the sweep (3.2).
+
+```mermaid
+flowchart LR
+    subgraph table["Players table · partition key playerId · on-demand · TTL on ttl"]
+        direction TB
+        subgraph players["One item per player"]
+            direction LR
+            anon["<b>anon:&lt;uuid&gt;</b><br/>anonymous player<br/>ttl 30 days, refreshed on write"]
+            google["<b>google:&lt;sub&gt;</b><br/>signed-in player<br/>board = GLOBAL · no ttl"]
+        end
+        subgraph shared["Fixed keys, never expire"]
+            direction LR
+            price["<b>PRICE#BTCUSD</b><br/>price, updatedAt<br/>the game price, cached 5 s"]
+            total["<b>BOARD#GLOBAL</b><br/>total<br/>players on the board"]
+            podium["<b>BOARD#PODIUM</b><br/>entries, updatedAt<br/>top three, cached 10 s"]
+        end
+    end
+
+    subgraph byScore["byScore · sparse on board"]
+        scoreKeys["PK board · SK score<br/>projects publicName, wins, losses"]
+    end
+
+    subgraph byPending["byPending · sparse on pendingBucket"]
+        pendingKeys["PK pendingBucket · SK pendingAt<br/>projects everything"]
+    end
+
+    anon -. "first sign-in: promoted,<br/>then deleted, in one transaction" .-> google
+    google -. "same transaction: ADD 1" .-> total
+    google -- "always" --> scoreKeys
+    anon -- "guess pending" --> pendingKeys
+    google -- "guess pending" --> pendingKeys
+
+    scoreKeys --> leaderboard(["GET /api/leaderboard<br/>top 3: Limit 3, descending<br/>your rank: COUNT of score &gt; yours"])
+    pendingKeys --> sweep(["POST /api/cron/resolve<br/>pendingAt ≤ price time - 60 s"])
+```
+
+Every arrow into an index is an attribute written or removed by the same conditional write that changes the game: starting a guess sets `pendingBucket` and `pendingAt`, settling it removes them, and the sign-in transaction is the only write that sets `board`. Neither index is ever scanned.
 
 ### API
 
