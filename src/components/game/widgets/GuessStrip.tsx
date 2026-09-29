@@ -8,6 +8,7 @@ import {
 	guessFailureSentence,
 	PRICE_BLOCKED,
 	resultHeadline,
+	SETTLEMENT_DELAYED,
 	staleSentence,
 	TIME_UP,
 } from '@/lib/guess-phase';
@@ -54,7 +55,8 @@ export function GuessStrip({
 	if (
 		phase?.kind === 'locked' ||
 		phase?.kind === 'time-up' ||
-		phase?.kind === 'stale'
+		phase?.kind === 'stale' ||
+		phase?.kind === 'delayed'
 	) {
 		return (
 			<LockedStrip
@@ -132,7 +134,10 @@ function LockedStrip({
 	live,
 	showClock,
 }: {
-	phase: Extract<GuessPhase, { kind: 'locked' | 'time-up' | 'stale' }>;
+	phase: Extract<
+		GuessPhase,
+		{ kind: 'locked' | 'time-up' | 'stale' | 'delayed' }
+	>;
 	now: number;
 	live: LiveMinute;
 	showClock: boolean;
@@ -151,7 +156,9 @@ function LockedStrip({
 				: 'The line is indicative. The result is settled on the server with its own price, which may differ by a few cents.'
 			: phase.kind === 'time-up'
 				? TIME_UP
-				: staleSentence(formatAge(phase.ageMs));
+				: phase.kind === 'delayed'
+					? SETTLEMENT_DELAYED
+					: staleSentence(formatAge(phase.ageMs));
 
 	return (
 		<Panel

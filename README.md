@@ -24,7 +24,7 @@ The decisions, briefly:
 | Hosting                  | Amplify Hosting for the web tier, a small CDK stack for the table, indexes, scheduler and IAM. eu-central-1                                                                                           |
 | Store                    | DynamoDB, one item per player, the price cached in its own item so one Coinbase call serves every screen                                                                                                  |
 | Price                    | Coinbase Exchange ticker, the same market the chart and the live minute read, so the provisional line and the result agree                                                                            |
-| Identity                 | Anonymous cookie first; Google sign-in as an upgrade that carries the anonymous player over once, in one transaction                                                                                  |
+| Identity                 | Anonymous cookie first; Google sign-in as an upgrade that carries the anonymous player's name and any guess in play over once, in one transaction, with the score starting at zero                                                                                  |
 | Public identity          | A server-generated `AdjectiveAnimal` name for everyone. The Google account never appears publicly; the app asks Google for `openid` only                                                              |
 | Leaderboard              | Global, top three plus your own row, signed-in players only, served from a sparse index (a `COUNT` query for your rank, a counter for the total), never a scan                                        |
 | UI                       | [Astryx](https://astryx.atmeta.com/) with a Dracula token set, and the app's own atoms on top. Charts are hand-built SVG                                                                               |
@@ -37,6 +37,7 @@ The full reasoning is in [`docs/product-spec.md`](docs/product-spec.md) (what an
 Named here rather than found later:
 
 - **Anonymous identity is a cookie.** Clearing browser data makes a new player, another browser or device is another player, and anyone who learns an id can play as that player. Nothing stops someone minting fresh anonymous players; that is why only signed-in players are on the board.
+- **The board counts only score earned while signed in.** Signing in promotes the anonymous player's name and any guess in play, but the score, counters and history start at zero, and the screen says so. Otherwise a farmer could run pairs of anonymous cookies guessing opposite directions, chain the winners and sign in once with a chosen score. Farming across many Google accounts is still possible and out of scope.
 - **Signing in to an account that already has a score keeps the account's score.** The two are never summed, or anyone could farm points in incognito windows and merge them in. The screen says so, and the anonymous score comes back on sign-out.
 - **The leaderboard is eventually consistent.** The index lags the table by a moment, so your own card can show a new score before the board moves.
 - **Your rank costs O(players above you).** A `COUNT` query still reads what it counts. Fine at a few thousand players; the scale answer is a histogram of score buckets maintained at resolution time.

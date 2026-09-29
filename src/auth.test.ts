@@ -205,7 +205,7 @@ describe('Google sign-in through Auth.js', () => {
 		expect(cookiesSet).toEqual([['btc_sign_in', 'created']]);
 	});
 
-	it('carries the browser anonymous player across', async () => {
+	it('carries the anonymous name across, but not its score', async () => {
 		const anon = 'anon:00000000-0000-4000-8000-0000000000aa';
 		const { newPlayerRecord } = await import('@/lib/game');
 		await store.createPlayer({
@@ -221,7 +221,8 @@ describe('Google sign-in through Auth.js', () => {
 
 		expect(store.players.has(anon)).toBe(false);
 		expect(store.players.get('google:abc123')).toMatchObject({
-			score: 3,
+			score: 0,
+			wins: 0,
 			publicName: 'PatientHeron',
 		});
 		expect(cookiesSet).toEqual([['btc_sign_in', 'promoted']]);

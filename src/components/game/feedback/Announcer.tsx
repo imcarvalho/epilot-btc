@@ -8,6 +8,7 @@ import {
 	lockedSentence,
 	priceBlockAnnouncement,
 	resultSentence,
+	SETTLEMENT_DELAYED,
 	staleSentence,
 	TIME_UP,
 } from '@/lib/guess-phase';
@@ -26,6 +27,8 @@ function announcementFor(phase: GuessPhase): string | null {
 			return TIME_UP;
 		case 'stale':
 			return staleSentence(formatAge(phase.ageMs));
+		case 'delayed':
+			return SETTLEMENT_DELAYED;
 		case 'result':
 			return resultSentence(phase.result, phase.score);
 		case 'away-result':

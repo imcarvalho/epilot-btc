@@ -1,11 +1,16 @@
 import { signInSentence } from './sign-in';
 
 describe('signInSentence', () => {
-	it('says the score now travels, when it was carried over or started fresh', () => {
-		expect(signInSentence('promoted')).toBe(
+	it('says the score now travels, for a fresh account', () => {
+		expect(signInSentence('created')).toBe(
 			'Signed in. Your score now follows you to any device.',
 		);
-		expect(signInSentence('created')).toBe(signInSentence('promoted'));
+	});
+
+	it('says plainly that the score starts again when an anonymous player was promoted', () => {
+		expect(signInSentence('promoted')).toBe(
+			'Signed in. Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.',
+		);
 	});
 
 	it('says plainly when an existing account replaced what was on screen', () => {

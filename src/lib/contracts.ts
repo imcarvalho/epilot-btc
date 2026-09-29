@@ -54,6 +54,12 @@ export interface StateResponse {
 	priceUpdatedAt: number | null;
 	/** True when the price is too old to resolve against (§3, 15 s). */
 	priceStale: boolean;
+	/**
+	 * True when a guess is past its deadline and the trade history that would
+	 * settle it cannot be read (§3): the ticker may be fine, so `priceStale`
+	 * does not cover it. Always false with nothing in play.
+	 */
+	settlementDelayed: boolean;
 	serverNow: number;
 	pendingGuess: PendingGuess | null;
 	/** The most recent resolution, newest first in `history` too. */
