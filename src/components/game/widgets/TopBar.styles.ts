@@ -106,8 +106,7 @@ export const signOut = stylex.create({
 			[NARROW]: 32,
 		},
 		paddingInline: {
-			default: null,
-			[NARROW]: 'var(--spacing-3)',
+			default: 'var(--spacing-3)',
 		},
 	},
 });
