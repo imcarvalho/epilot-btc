@@ -145,12 +145,20 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/auth.ts` - Google sign-in via Auth.js (scope `openid`, JWT session carrying only `google:<sub>`); its `signIn` callback runs `signIn` in `src/lib/game.ts`, the one-time anonymous merge: one transaction that writes the account onto the board, deletes the anonymous item if unchanged, and increments `BOARD#GLOBAL`. Signed-in players have no TTL. Route handlers read identity through `playerIdFrom` (session first, then the anonymous cookie); without `AUTH_SECRET` sign-in is off. `src/lib/sign-in.ts` holds what the screen says afterwards
 
-## Scaffolding note
+## Regenerating the diagrams
 
-There is no `package.json` yet, deliberately - the versions should be current at the time of the build, and day one starts from the Astryx Next example. When scaffolding:
+`docs/flows/*.mmd` is the source; the `.png` beside it is derived and committed so the specs can embed it. **They are edited together, never separately** - a `.mmd` changed without re-rendering leaves the picture in the product spec contradicting the text, which is how a reviewer finds an inconsistency before you do.
 
-- Preserve `CLAUDE.md`, `README.md`, `docs/` and `src/lib/` intact.
-- If the scaffolder refuses to run in a non-empty directory, scaffold into a temporary directory and merge, rather than deleting anything here.
+```
+npx -y @mermaid-js/mermaid-cli \
+  -i docs/flows/00-user-flow.mmd \
+  -o docs/flows/00-user-flow.png \
+  -c docs/flows/mermaid-theme.json -s 2 -b transparent
+```
+
+`mermaid-theme.json` is committed so the styling is reproducible rather than living in someone's shell history. The renderer needs a headless Chromium; if it cannot find one, set `PUPPETEER_EXECUTABLE_PATH` rather than changing the theme or the scale.
+
+The product spec embeds `flows/00-user-flow.png`, so a regenerated diagram means rebuilding the spec PDF too, if one is being kept.
 
 ## Deliverables the brief asks for
 
