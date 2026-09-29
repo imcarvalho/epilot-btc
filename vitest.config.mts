@@ -16,6 +16,9 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: 'node',
+		// The deploy build sets VITEST_REPORTER=dot: a passing file is a dot,
+		// and a failure is still printed in full. Locally, the default.
+		reporters: [process.env.VITEST_REPORTER ?? 'default'],
 		server: {
 			deps: {
 				// next-auth imports `next/server` without the extension, which

@@ -40,6 +40,10 @@ frontend:
         # which tsconfig.json includes. The unit, store and infra tests share
         # nothing with the build, so they run beside it; either failing fails
         # the step.
+        # A quiet log: no colour codes (the log viewer does not render them)
+        # and one dot per passing test file instead of a line per slow test.
+        # Failures are still printed in full.
+        - export NO_COLOR=1 FORCE_COLOR=0 VITEST_REPORTER=dot
         - npm run typecheck
         - npm run test:unit & unit=$!; npm run build & build=$!; wait $unit && wait $build
         - E2E_PREBUILT=1 npm run test:a11y
