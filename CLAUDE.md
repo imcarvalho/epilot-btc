@@ -104,8 +104,12 @@ The backend cycle (build order item 1, server half) is built on top of them:
 - `src/lib/settlement.ts` - the price that settles a guess: the market at its deadline, read from Coinbase's trade history (`settleAgainstTape` pure, `fetchTape` paging trades with a candle fallback), so the timing of a request cannot choose an outcome
 - `src/lib/store.ts`, `dynamo-store.ts` - the storage interface and its DynamoDB implementation, every once-only write conditional
 - `src/lib/testing/memory-store.ts` - the same conditional semantics in memory, so races are testable
+- `src/lib/coinbase.ts` - where the Coinbase Exchange BTC-USD endpoints are (`coinbaseUrl`); `E2E_COINBASE_URL` points them at a fake in the a11y tests
+- `src/lib/identity.ts` - the anonymous identity cookie (`btc_player`): the bare uuid in an `httpOnly` cookie, the `anon:` prefix added on the server
+- `src/lib/spoken.ts` - what a screen reader hears where the screen shows a symbol ("plus 1", "minus 1", "42 points")
 - `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client
 - `src/app/api/{player,stream-token,guess,cron/resolve}/route.ts` - thin adapters over `game.ts`
+- `src/app/actions.ts` - sign-in and sign-out as server actions, plain forms that work before hydration
 
 The game stream (eng §3.1): `src/stream/game-stream.ts` (`runGameStream`, host-independent) is run by `src/stream/lambda.ts` (the CDK stack's `GameStream` Function URL, bundled from `src/`) in production and by `src/app/api/stream/route.ts` locally (`LOCAL_STREAM=1`, set by `dev:local` and the e2e servers). `src/lib/stream-token.ts` signs the ticket with the secret in SSM `/btc-guess/stream-secret`, also set as `STREAM_SECRET` on Amplify with `STREAM_URL`.
 
