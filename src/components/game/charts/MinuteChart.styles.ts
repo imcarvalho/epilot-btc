@@ -2,6 +2,22 @@ import * as stylex from '@stylexjs/stylex';
 import { palette } from '@/components/ui/tokens.stylex';
 
 export const styles = stylex.create({
+	// The plot's ground: the card colour at first, the end tint by the time
+	// the minute is up. The mix is set as a whole colour by `tint` once a
+	// second; the transition fills the second in between. Reduced motion
+	// keeps the once-a-second step and drops the glide.
+	tinted: {
+		borderRadius: 'var(--radius-inner)',
+		transitionDuration: {
+			default: '1s',
+			'@media (prefers-reduced-motion: reduce)': '0s',
+		},
+		transitionProperty: 'background-color',
+		transitionTimingFunction: 'linear',
+	},
+	tint: (percent: number) => ({
+		backgroundColor: `color-mix(in srgb, ${palette.minuteEnd} ${percent.toFixed(2)}%, var(--color-background-card))`,
+	}),
 	future: {
 		fill: 'rgba(0, 0, 0, 0.18)',
 	},

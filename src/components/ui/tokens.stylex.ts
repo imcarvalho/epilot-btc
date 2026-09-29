@@ -36,4 +36,8 @@ export const palette = stylex.defineVars({
 	upGlow: 'rgba(125, 251, 170, 0.22)',
 	downGlow: 'rgba(255, 163, 215, 0.2)',
 	pageGlow: 'rgba(189, 147, 249, 0.10)',
+
+	// Where the live minute's background ends up, mixed in from the card
+	// colour a second at a time (src/lib/minute-tint.ts)
+	minuteEnd: '#311C1C',
 });
