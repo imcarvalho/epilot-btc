@@ -61,7 +61,7 @@ Named here rather than found later:
 
 ### Future work
 
-Sign-in providers beyond Google and self-service account deletion; leaderboards over time windows and a country view; an opponent bot (a scheduled job playing a fixed strategy under a reserved player); other trading pairs; variable stakes or guess windows.
+Sign-in providers beyond Google and self-service account deletion; leaderboards over time windows and a country view; an opponent bot (a scheduled job playing a fixed strategy under a reserved player); other trading pairs; variable stakes or guess windows. Unique display names: today two players can share a generated name, and a short id after it (`AmazingWeasel:123`) would tell them apart.
 
 ## Where things are
 

@@ -345,6 +345,8 @@ The merge is one transactional write conditioned on the source still existing, s
 
 Generated server-side when the player item is created, from two curated word lists (adjectives and animals) joined in PascalCase - `AudaciousRaccoon`. Curated, so no combination is unfortunate; with roughly 200 × 200 entries there is plenty of room, and collisions are allowed rather than retried, since `playerId` is the real key and a duplicate name costs nothing. Generation is pure and therefore trivially testable; the name is stored, never recomputed, so it is stable for the player's lifetime.
 
+**Future work: telling namesakes apart.** With about 200 words in each list there are roughly 38,000 names, so two players will sometimes share one, and on the board two identical names cannot be told apart. A later change could join the name and a short id, `AmazingWeasel:123`, drawn from a per-name counter or from the start of the player's id. It needs the suffix chosen at creation and stored with the name, and a decision on whether the suffix is public. It is out of scope now because nothing else depends on a name being unique.
+
 The Google display name, when there is one, is stored only if the signed-in UI shows it to the player themselves. It never goes into a leaderboard response.
 
 **Country was considered and dropped.** A flag beside each name would have come from the `CloudFront-Viewer-Country` header, which requires controlling the distribution's origin request policy - and with Amplify Hosting the distribution is managed, so that control is not ours to exercise. The alternative, a geo lookup per request, is a dependency and a privacy question for decoration. The board is global only, which also keeps it to one index instead of two.
