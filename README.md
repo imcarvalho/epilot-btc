@@ -46,6 +46,10 @@ Named here rather than found later:
 - **A stream lasts up to 14 minutes**, the Function URL's limit being 15; the browser then reconnects with a fresh ticket, which is invisible on screen but costs a new invocation.
 - **The live minute moves once a second**, not per trade: it is drawn from the game price the stream sends, which is cached for a second.
 - **Google brand verification was skipped, on purpose.** The OAuth app asks for `openid` only, a non-sensitive scope, so it can be published and used by anyone without verification, and Google shows no unverified-app warning. What verification adds is the app's name and logo on the consent screen, which is why Google shows the `amplifyapp.com` domain there instead. It needs a domain registered to us and a privacy policy page, out of scope for this exercise.
+- **Alerting stops at the alarm.** The stack has CloudWatch alarms for a failing sweep and for repeated price-feed failures, but they notify nobody: there is no SNS topic, email or pager behind them. A production app would route them to an on-call channel; here that would only mean a personal address in the template.
+- **Observability stops at the stack's edge.** The stream Lambda and the sweep are logged, measured and alarmed. The web tier on Amplify logs to a group outside CDK, so its own log lines have no alarm, request id or player id. A stalled sweep is still caught through the trigger.
+- **The session is a fixed 30 days from sign-in**, not a sliding one; after that the player signs in again and gets the same record back.
+- **The board's player count only goes up.** A signed-in record deleted by hand stays counted, and is counted again if that account signs in afresh. Signed-in records never expire, so this should be rare; exact counting would need a marker item per account.
 - **Astryx is pre-1.0**, so it is pinned exactly: `@astryxdesign/core`, `theme-neutral` and `cli` at 0.6.3. Upgrading is a deliberate change of all three together. The Dracula theme is compiled from `src/themes/dracula.theme.ts` on every `dev` and `build`, so an upgrade takes effect on the next run; check the screen after one.
 
 ### Alternatives considered
@@ -148,6 +152,7 @@ npm run deploy # needs AWS credentials
 
 One-off setup around the stack, because none of it can live in a template:
 
+- The stack always deploys to eu-central-1, whatever region your AWS profile names. The profile only supplies credentials and the account; if its region differs, `cdk` prints a warning and carries on.
 - Create the Amplify app in eu-central-1, connected to the repository, with an SSR compute role, and attach the stack's `PlayersTableAccessPolicyArn` output to that role.
 - Set the environment variables above on the Amplify app. They reach the build but not the SSR runtime, so `amplify.yml` copies exactly these names into `.env.production`, which Next loads at runtime. After changing one, redeploy.
 - Put the sweep's shared secret in SSM as a SecureString, with the same value as `CRON_SECRET` on the Amplify app. CloudFormation cannot create a SecureString, and this keeps the value out of every template:

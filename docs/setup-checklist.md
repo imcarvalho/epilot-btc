@@ -14,8 +14,8 @@ Tick as you go, so the agent can tell what is already standing.
 - [x] IAM user `ines-cli`, `AdministratorAccess`, no console access
 - [x] Access key created, CLI use case
 - [x] `aws configure` - region `eu-central-1`, output `json`
-- [ ] `aws sts get-caller-identity` returns the `ines-cli` ARN
-- [ ] `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-central-1`
+- [x] `aws sts get-caller-identity` returns the `ines-cli` ARN
+- [x] `npx cdk bootstrap aws://<ACCOUNT_ID>/eu-central-1`
 - [ ] **At the end of the project:** delete the access key
 
 Region is `eu-central-1` everywhere. The console's region selector is per-session and resets - a resource that "disappeared" is almost always in another region.
@@ -27,7 +27,7 @@ Private while building, public at delivery. The brief asks for a public reposito
 - [x] Private repository created - `imcarvalho/epilot-btc`
 - [x] Skeleton committed and pushed (`CLAUDE.md`, `docs/`, `src/lib/`)
 - [x] History scanned: no access keys, no private keys, no `.env` tracked
-- [ ] `.git/index.lock.stale-remove-me` deleted - harmless, does not block git, just clutter
+- [x] `.git/index.lock.stale-remove-me` deleted - harmless, does not block git, just clutter
 - [ ] **At delivery:** switch the repository to public
 
 Blocks Amplify, which deploys from the repository.
@@ -77,14 +77,14 @@ Never in the repository. The auth values are Amplify app environment variables, 
 
 From engineering spec §2.1. Each one can invalidate work done after it:
 
-- [ ] StyleX compiling, with a real Astryx component rendering and atomic CSS emitted - starting from Astryx's own Next.js StyleX example
+- [x] StyleX compiling, with a real Astryx component rendering and atomic CSS emitted - starting from Astryx's own Next.js StyleX example
 - [x] Infrastructure hello world deployed and serving
-- [ ] The app's compute role reaching DynamoDB - configured separately from the service role above
-- [x] Coinbase CORS checked - `access-control-allow-origin: *` on both hosts, confirmed in the browser from the deployed origin. Chart fetches client-side; no proxy route needed
+- [x] The app's compute role reaching DynamoDB - configured separately from the service role above
+- [x] Coinbase CORS checked - `access-control-allow-origin: *` on both hosts, confirmed in the browser from the deployed origin. Moot since: the browser no longer calls Coinbase, the server does (eng §5)
 
 ## Delivery
 
 - [ ] Public repository link
-- [ ] Deployed link, reachable - https://main.dalnijp0oanzq.amplifyapp.com/
-- [ ] README covering the design, how to run it, how to deploy it
+- [x] Deployed link, reachable - https://main.dalnijp0oanzq.amplifyapp.com/
+- [x] README covering the design, how to run it, how to deploy it
 - [ ] Aiko's colleague in copy - confirm the address now rather than at send time
