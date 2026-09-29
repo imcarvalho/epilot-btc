@@ -168,7 +168,7 @@ export function PriceCard({
 									priceStale && styles.stale,
 								)}
 							>
-								{priceStale ? staleSentence(age) : `Updated ${age}`}
+								{priceStale ?? staleSentence(age)}
 							</p>
 						)
 					)}
