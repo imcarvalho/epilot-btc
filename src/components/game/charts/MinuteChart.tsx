@@ -9,7 +9,6 @@ import { buildMinuteChart, standing } from '@/lib/live-minute';
 import { minuteTintPercent } from '@/lib/minute-tint';
 import {
 	Axis,
-	CHART_HEIGHT,
 	CHART_PADDING,
 	Crosshair,
 	GridLines,
@@ -18,7 +17,7 @@ import {
 	PointTag,
 	ReadoutTip,
 	plotWidthOf,
-	useWidth,
+	useSize,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
 import { formatUsd, sampleReadout, standingPhrase } from '../utils';
@@ -55,7 +54,7 @@ export function MinuteChart({
 	live: LiveMinute;
 	now: number;
 }) {
-	const [ref, width] = useWidth<HTMLDivElement>();
+	const [ref, { width, height }] = useSize<HTMLDivElement>();
 	const [inspected, setInspected] = useState<Inspection | null>(null);
 	// The line fills the plot; the price labels take the gutter beside it.
 	const plotWidth = plotWidthOf(width);
@@ -63,7 +62,7 @@ export function MinuteChart({
 		plotWidth > 0
 			? buildMinuteChart(live.samples, {
 					width: plotWidth,
-					height: CHART_HEIGHT,
+					height,
 					start: guess.createdAt,
 					lockedPrice: guess.priceAtGuess,
 					now,
@@ -108,7 +107,7 @@ export function MinuteChart({
 				{chart && last ? (
 					<svg
 						width={width}
-						height={CHART_HEIGHT}
+						height={height}
 						role="img"
 						aria-label={description}
 					>
@@ -117,15 +116,11 @@ export function MinuteChart({
 								x={chart.nowX}
 								y={0}
 								width={plotWidth - chart.nowX}
-								height={CHART_HEIGHT}
+								height={height}
 								{...stylex.props(styles.future)}
 							/>
 						)}
-						<GridLines
-							plotWidth={plotWidth}
-							ticks={chart.yTicks}
-							step={chart.yStep}
-						/>
+						<GridLines width={width} ticks={chart.yTicks} step={chart.yStep} />
 						<path
 							d={chart.area}
 							{...stylex.props(
@@ -167,10 +162,10 @@ export function MinuteChart({
 								)}
 							</>
 						)}
-						{point && <Crosshair x={point.x} y={point.y} />}
+						{point && <Crosshair x={point.x} y={point.y} height={height} />}
 					</svg>
 				) : (
-					<Skeleton width="100%" height={CHART_HEIGHT} />
+					<Skeleton width="100%" height="100%" />
 				)}
 				{point && (
 					<ReadoutTip
@@ -198,6 +193,7 @@ export function MinuteChart({
 				)}
 			</div>
 			<Axis
+				width={width}
 				ticks={[
 					{
 						at: 0,

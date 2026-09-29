@@ -8,8 +8,14 @@ export const styles = stylex.create({
 		borderRadius: 'var(--radius-element)',
 		color: palette.ink,
 		display: 'inline-flex',
-		height: 40,
+		height: {
+			default: 40,
+			'@media (max-width: 640px)': 32,
+		},
 		justifyContent: 'center',
-		width: 40,
+		width: {
+			default: 40,
+			'@media (max-width: 640px)': 32,
+		},
 	},
 });

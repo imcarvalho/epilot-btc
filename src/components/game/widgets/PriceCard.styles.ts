@@ -21,7 +21,17 @@ export const styles = stylex.create({
 	headline: {
 		display: 'flex',
 		flexDirection: 'column',
-		gap: 'var(--spacing-5)',
+		gap: {
+			default: 'var(--spacing-5)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
+	},
+	titleRow: {
+		alignItems: 'center',
+		display: 'flex',
+		flexWrap: 'wrap',
+		columnGap: 'var(--spacing-4)',
+		rowGap: 'var(--spacing-2)',
 	},
 	figure: {
 		alignItems: 'center',

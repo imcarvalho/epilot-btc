@@ -77,6 +77,13 @@ export function GameScreen() {
 	}
 	const isMinuteView = view === 'minute' && pending !== null;
 
+	// Nothing in play and nothing to report: the strip is only a prompt, and
+	// on a phone it steps below the buttons it points at. A warning stays on top.
+	const prompting =
+		(phase === null || phase.kind === 'first-visit' || phase.kind === 'idle') &&
+		!priceBlocked &&
+		!guessError;
+
 	// What a sign-in did is reported once, by the stream's ticket; hold it
 	// until the player dismisses it.
 	const [signInSeen, setSignInSeen] = useState<SignInOutcome | null>(null);
@@ -107,14 +114,6 @@ export function GameScreen() {
 							signedIn: state.signedIn,
 						}
 					}
-					isLive={
-						isMinuteView
-							? live.isAlive
-							: state
-								? isLive && !state.priceStale
-								: true
-					}
-					source={isMinuteView ? 'ticker' : 'candles'}
 				/>
 				<main ref={mainRef} {...stylex.props(styles.main)}>
 					{status.kind === 'error' ? (
@@ -139,36 +138,52 @@ export function GameScreen() {
 									dismissLabel="Dismiss"
 								/>
 							)}
-							{/* Focusable only by script: where focus goes when its control disappears. */}
-							<div ref={stripRef} tabIndex={-1} {...stylex.props(styles.strip)}>
-								<GuessStrip
+							<div {...stylex.props(styles.play)}>
+								{/* Focusable only by script: where focus goes when its control disappears. */}
+								<div
+									ref={stripRef}
+									tabIndex={-1}
+									{...stylex.props(
+										styles.strip,
+										prompting && styles.stripAfter,
+									)}
+								>
+									<GuessStrip
+										phase={phase}
+										name={state?.publicName ?? null}
+										signedIn={state?.signedIn ?? false}
+										guessError={guessError}
+										priceBlocked={priceBlocked}
+										now={now}
+										live={live}
+										isMinuteView={isMinuteView}
+									/>
+								</div>
+								<PriceCard
+									price={state?.price ?? null}
+									priceUpdatedAt={state?.priceUpdatedAt ?? null}
+									priceStale={state?.priceStale ?? false}
+									now={ready ? now : null}
 									phase={phase}
-									name={state?.publicName ?? null}
-									signedIn={state?.signedIn ?? false}
-									guessError={guessError}
-									priceBlocked={priceBlocked}
-									now={now}
 									live={live}
-									isMinuteView={isMinuteView}
+									candles={candles}
+									view={view}
+									onViewChange={setView}
+									isFeedLive={
+										isMinuteView
+											? live.isAlive
+											: state
+												? isLive && !state.priceStale
+												: true
+									}
+								/>
+								<GuessButtons
+									phase={phase}
+									onGuess={placeGuess}
+									priceBlocked={priceBlocked}
+									isBusy={isPlacing}
 								/>
 							</div>
-							<PriceCard
-								price={state?.price ?? null}
-								priceUpdatedAt={state?.priceUpdatedAt ?? null}
-								priceStale={state?.priceStale ?? false}
-								now={ready ? now : null}
-								phase={phase}
-								live={live}
-								candles={candles}
-								view={view}
-								onViewChange={setView}
-							/>
-							<GuessButtons
-								phase={phase}
-								onGuess={placeGuess}
-								priceBlocked={priceBlocked}
-								isBusy={isPlacing}
-							/>
 
 							<div {...stylex.props(styles.panels)}>
 								<LeaderboardPanel board={board} />

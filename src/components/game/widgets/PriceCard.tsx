@@ -8,7 +8,13 @@ import {
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { hourChange } from '@/lib/candles';
 import { standing } from '@/lib/live-minute';
-import { ChangeBadge, Eyebrow, Numeric, Panel } from '@/components/ui';
+import {
+	ChangeBadge,
+	Eyebrow,
+	Numeric,
+	Panel,
+	SourceBadge,
+} from '@/components/ui';
 import { formatAge, formatCountdown, formatUsd } from '../utils';
 import {
 	type GuessPhase,
@@ -32,7 +38,8 @@ const WORD = {
 /**
  * The price, always visible (rule R1), and the chart beneath it in one of
  * two views (product spec §6.1): the last hour of candles, or - while a
- * guess is in play - the minute itself, live.
+ * guess is in play - the minute itself, live. Beside the title, where the
+ * numbers come from and whether that feed is live.
  *
  * Both figures are the server's game price, pushed once a second. The
  * minute view's says it is provisional: it is what makes the minute worth
@@ -48,6 +55,7 @@ export function PriceCard({
 	candles,
 	view,
 	onViewChange,
+	isFeedLive,
 }: {
 	price: number | null;
 	priceUpdatedAt: number | null;
@@ -60,6 +68,8 @@ export function PriceCard({
 	candles: CandlesState;
 	view: ChartView;
 	onViewChange: (view: ChartView) => void;
+	/** Whether the feed behind the view on show is live. */
+	isFeedLive: boolean;
 }) {
 	const guess = phase && 'guess' in phase ? phase.guess : null;
 	const showMinute = view === 'minute' && guess !== null && now !== null;
@@ -119,11 +129,17 @@ export function PriceCard({
 		<Panel aria-labelledby="price-heading">
 			<div {...stylex.props(styles.header)}>
 				<div {...stylex.props(styles.headline)}>
-					<Eyebrow as="h2" id="price-heading">
-						{showMinute && guess
-							? `Your minute · ${WORD[guess.direction]}`
-							: 'Bitcoin · US Dollar'}
-					</Eyebrow>
+					<div {...stylex.props(styles.titleRow)}>
+						<Eyebrow as="h2" id="price-heading">
+							{showMinute && guess
+								? `Your minute · ${WORD[guess.direction]}`
+								: 'Bitcoin · US Dollar'}
+						</Eyebrow>
+						<SourceBadge
+							isLive={isFeedLive}
+							source={showMinute ? 'ticker' : 'candles'}
+						/>
+					</div>
 					<div {...stylex.props(styles.figure)}>
 						{figure !== null ? (
 							<Numeric size="hero">{formatUsd(figure)}</Numeric>

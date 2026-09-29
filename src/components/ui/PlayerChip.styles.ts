@@ -3,15 +3,29 @@ import * as stylex from '@stylexjs/stylex';
 export const styles = stylex.create({
 	pill: {
 		paddingInlineStart: 'var(--spacing-1-5)',
+		// A phone's row holds the name and Sign out side by side.
+		minHeight: {
+			default: null,
+			'@media (max-width: 640px)': 'var(--size-element-sm)',
+		},
 	},
 	avatar: {
 		display: 'inline-flex',
-		transform: 'scale(1.25)',
-		marginInline: 'var(--spacing-1)',
+		transform: {
+			default: 'scale(1.25)',
+			'@media (max-width: 640px)': 'none',
+		},
+		marginInline: {
+			default: 'var(--spacing-1)',
+			'@media (max-width: 640px)': 0,
+		},
 	},
 	name: {
 		color: 'var(--color-text-primary)',
-		fontSize: 'var(--font-size-lg)',
+		fontSize: {
+			default: 'var(--font-size-lg)',
+			'@media (max-width: 640px)': 'var(--font-size-sm)',
+		},
 		fontWeight: 'var(--font-weight-medium)',
 	},
 });

@@ -9,6 +9,17 @@ export const styles = stylex.create({
 			'@media (max-width: 640px)': 'var(--spacing-4)',
 		},
 	},
+	// A hint, not news: on a phone it takes a line or two, not a third of the screen.
+	prompt: {
+		paddingBlock: {
+			default: 'var(--spacing-6)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
+		paddingInline: {
+			default: 'var(--spacing-10)',
+			'@media (max-width: 640px)': 'var(--spacing-4)',
+		},
+	},
 	row: {
 		alignItems: 'center',
 		display: 'flex',
@@ -27,7 +38,10 @@ export const styles = stylex.create({
 	},
 	lead: {
 		color: 'var(--color-text-primary)',
-		fontSize: 'var(--font-size-xl)',
+		fontSize: {
+			default: 'var(--font-size-xl)',
+			'@media (max-width: 640px)': 'var(--font-size-base)',
+		},
 		margin: 0,
 	},
 	sub: {
@@ -40,7 +54,10 @@ export const styles = stylex.create({
 	locked: {
 		alignItems: 'center',
 		display: 'grid',
-		gap: 'var(--spacing-6)',
+		gap: {
+			default: 'var(--spacing-6)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
 		gridTemplateColumns: {
 			default: 'auto auto 1fr',
 			'@media (max-width: 860px)': '1fr 1fr',
@@ -67,7 +84,22 @@ export const styles = stylex.create({
 		fontSize: 'var(--font-size-sm)',
 		gap: 'var(--spacing-3)',
 		paddingBlock: 'var(--spacing-2)',
-		paddingInline: 'var(--spacing-4)',
+		paddingInline: {
+			default: 'var(--spacing-4)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
+	},
+	// With no clock in the strip, the box takes its place beside the guess on
+	// a narrow screen, rather than a row of its own under the bar.
+	movedBeside: {
+		gridColumn: {
+			default: 'auto',
+			'@media (max-width: 860px)': 2,
+		},
+		gridRow: {
+			default: 'auto',
+			'@media (max-width: 860px)': 1,
+		},
 	},
 	movedYes: {
 		backgroundColor: 'rgba(125, 251, 170, 0.06)',

@@ -84,7 +84,7 @@ export function DirectionButton({
 				// The hint already says so ("your guess is in play"): the badge is for the eye.
 				<span aria-hidden {...stylex.props(styles.badge)}>
 					<Check size={14} strokeWidth={3} />
-					chosen
+					<span {...stylex.props(styles.badgeWord)}>chosen</span>
 				</span>
 			)}
 		</button>

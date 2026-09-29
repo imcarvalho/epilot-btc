@@ -18,9 +18,13 @@ export const styles = stylex.create({
 		minHeight: 32,
 		paddingInline: 'var(--spacing-3)',
 	},
+	// A little lower on a phone, where the header's chips stack.
 	md: {
 		fontSize: 'var(--font-size-base)',
-		minHeight: 'var(--size-element-lg)',
+		minHeight: {
+			default: 'var(--size-element-lg)',
+			'@media (max-width: 640px)': 'var(--size-element-md)',
+		},
 		paddingInline: 'var(--spacing-4)',
 	},
 });

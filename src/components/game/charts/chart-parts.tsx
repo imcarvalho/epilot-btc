@@ -13,7 +13,12 @@ import {
 import { formatAxisPrice, type Readout } from '../utils';
 import { styles } from './chart-parts.styles';
 
-/** Both charts share one height, so switching views does not move the page. */
+/**
+ * Both charts share one height, so switching views does not move the page.
+ * The height is set in CSS (`frame.plot`: shorter on a phone, so the buttons
+ * stay in view) and read back by `useSize`; this is the height to draw at
+ * before the first measurement.
+ */
 export const CHART_HEIGHT = 300;
 export const CHART_PADDING = 12;
 /**
@@ -23,44 +28,84 @@ export const CHART_PADDING = 12;
  * before it that leaves a little room.
  */
 const Y_AXIS_GUTTER = 80;
+/**
+ * Below this width the gutter would take a quarter of the plot, so the
+ * labels move inside it instead, above their gridlines.
+ */
+const INSET_LABELS_BELOW = 480;
+
+/** Whether the price labels sit inside the plot rather than in a gutter. */
+const insetLabels = (width: number) => width < INSET_LABELS_BELOW;
+
+/** The price-axis gutter at this chart width: none once the labels are inside. */
+export const gutterOf = (width: number) =>
+	insetLabels(width) ? 0 : Y_AXIS_GUTTER;
 
 /** The plot's width: the chart's, less the price-axis gutter. */
 export const plotWidthOf = (width: number) =>
-	Math.max(0, width - Y_AXIS_GUTTER);
+	Math.max(0, width - gutterOf(width));
 
-/** Width of an element, tracked as it resizes. The charts are drawn in real pixels. */
-export function useWidth<T extends HTMLElement>() {
+/**
+ * An element's size, tracked as it resizes. The charts are drawn in real
+ * pixels, at the size their CSS gives them.
+ */
+export function useSize<T extends HTMLElement>() {
 	const ref = useRef<T>(null);
-	const [width, setWidth] = useState(0);
+	const [size, setSize] = useState({
+		width: 0,
+		height: CHART_HEIGHT,
+	});
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) {
 			return;
 		}
 		const observer = new ResizeObserver(([entry]) =>
-			setWidth(entry.contentRect.width),
+			setSize({
+				width: entry.contentRect.width,
+				height: entry.contentRect.height || CHART_HEIGHT,
+			}),
 		);
 		observer.observe(el);
 		return () => observer.disconnect();
 	}, []);
-	return [ref, width] as const;
+	return [ref, size] as const;
 }
 
 /**
+ * About how wide a tag's text is: 0.6em a character in the monospace type,
+ * rounded up so the box always holds its label.
+ */
+const tagTextWidth = (label: string, fontSize: number) =>
+	Math.ceil(label.length * fontSize * 0.62);
+
+/**
+ * Where a tag of this width starts, centred on `x` but kept inside the plot.
+ * The left edge wins when the tag is wider than the plot.
+ */
+const tagLeft = (x: number, tagWidth: number, width: number) =>
+	Math.max(0, Math.min(x - tagWidth / 2, width - tagWidth));
+
+/**
  * The price axis: a light gridline at each round price across the plot,
- * labelled in the gutter to its right. The labels are part of the picture,
- * not extra information for assistive technology: the chart's summary and
- * the inspector already give every price as a sentence.
+ * labelled in the gutter to its right - or, on a narrow chart, just above
+ * the line at the plot's left edge, haloed so it reads over what is drawn
+ * there. The labels are part of the picture, not extra information for
+ * assistive technology: the chart's summary and the inspector already give
+ * every price as a sentence.
  */
 export function GridLines({
-	plotWidth,
+	width,
 	ticks,
 	step,
 }: {
-	plotWidth: number;
+	/** The chart's full width, gutter included. */
+	width: number;
 	ticks: YTick[];
 	step: number;
 }) {
+	const plotWidth = plotWidthOf(width);
+	const inset = insetLabels(width);
 	return (
 		<g aria-hidden>
 			<g {...stylex.props(styles.grid)}>
@@ -71,10 +116,10 @@ export function GridLines({
 			{ticks.map((t) => (
 				<text
 					key={t.value}
-					x={plotWidth + 8}
-					y={t.y}
-					dominantBaseline="middle"
-					{...stylex.props(styles.yLabel)}
+					x={inset ? 4 : plotWidth + 8}
+					y={inset ? t.y - 5 : t.y}
+					dominantBaseline={inset ? 'auto' : 'middle'}
+					{...stylex.props(styles.yLabel, inset && styles.yLabelInset)}
 				>
 					{formatAxisPrice(t.value, step)}
 				</text>
@@ -99,8 +144,8 @@ export function LockedLine({
 	tagX: number;
 	label: string;
 }) {
-	const tagWidth = label.length * 7.4 + 18;
-	const x = Math.min(Math.max(0, tagX - tagWidth / 2), width - tagWidth);
+	const tagWidth = tagTextWidth(label, 13) + 18;
+	const x = tagLeft(tagX, tagWidth, width);
 	const above = y - 30 >= 0;
 	const tagY = above ? y - 30 : y + 8;
 	return (
@@ -140,8 +185,8 @@ export function PointTag({
 	label: string;
 	tone: 'ahead' | 'behind' | 'level';
 }) {
-	const tagWidth = label.length * 7 + 20;
-	const left = Math.min(Math.max(0, x - tagWidth / 2), width - tagWidth);
+	const tagWidth = tagTextWidth(label, 13) + 20;
+	const left = tagLeft(x, tagWidth, width);
 	const above = y - 36 >= 0;
 	const tagY = above ? y - 36 : y + 12;
 	return (
@@ -169,16 +214,20 @@ export function PointTag({
 /** The time axis under the plot, stopping where the price labels begin. */
 export function Axis({
 	ticks,
-	inset = Y_AXIS_GUTTER,
+	width,
 }: {
 	ticks: {
 		at: number;
 		label: string;
 	}[];
-	inset?: number;
+	/** The chart's full width, gutter included. */
+	width: number;
 }) {
 	return (
-		<div aria-hidden {...stylex.props(styles.axis, styles.axisInset(inset))}>
+		<div
+			aria-hidden
+			{...stylex.props(styles.axis, styles.axisInset(gutterOf(width)))}
+		>
 			{ticks.map((t) => (
 				<span key={t.label} {...stylex.props(styles.tick(t.at))}>
 					{t.label}
@@ -283,14 +332,22 @@ export function Inspector({
 }
 
 /** Where the inspector is: a vertical rule through the tick, and a ring on its value. */
-export function Crosshair({ x, y }: { x: number; y: number }) {
+export function Crosshair({
+	x,
+	y,
+	height,
+}: {
+	x: number;
+	y: number;
+	height: number;
+}) {
 	return (
 		<g aria-hidden>
 			<line
 				x1={x}
 				x2={x}
 				y1={0}
-				y2={CHART_HEIGHT}
+				y2={height}
 				{...stylex.props(styles.crosshair)}
 			/>
 			<circle cx={x} cy={y} r={4.5} {...stylex.props(styles.crosshairDot)} />

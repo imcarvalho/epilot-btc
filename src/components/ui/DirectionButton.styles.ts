@@ -1,6 +1,13 @@
 import * as stylex from '@stylexjs/stylex';
 import { palette } from './tokens.stylex';
 
+const NARROW = '@media (max-width: 640px)';
+
+/**
+ * On a phone the two buttons share a row, so each one packs tighter: the
+ * arrow beside the word, the hint beneath both (a grid, with the text span
+ * dissolved into it).
+ */
 export const styles = stylex.create({
 	base: {
 		alignItems: 'center',
@@ -9,14 +16,28 @@ export const styles = stylex.create({
 		borderStyle: 'solid',
 		borderWidth: 2,
 		color: palette.ink,
+		columnGap: {
+			default: 'var(--spacing-5)',
+			[NARROW]: 'var(--spacing-2)',
+		},
 		cursor: 'pointer',
-		display: 'flex',
+		display: {
+			default: 'flex',
+			[NARROW]: 'grid',
+		},
 		fontFamily: 'inherit',
-		gap: 'var(--spacing-5)',
+		gridTemplateAreas: {
+			default: null,
+			[NARROW]: '"arrow word" "hint hint"',
+		},
+		gridTemplateColumns: {
+			default: null,
+			[NARROW]: 'auto auto',
+		},
 		justifyContent: 'center',
 		minHeight: {
 			default: 172,
-			'@media (max-width: 640px)': 120,
+			[NARROW]: 88,
 		},
 		outlineColor: 'var(--color-text-primary)',
 		outlineOffset: 4,
@@ -25,8 +46,16 @@ export const styles = stylex.create({
 			':focus-visible': 'solid',
 		},
 		outlineWidth: 2,
-		paddingInline: 'var(--spacing-6)',
+		paddingBlock: {
+			default: 0,
+			[NARROW]: 'var(--spacing-3)',
+		},
+		paddingInline: {
+			default: 'var(--spacing-6)',
+			[NARROW]: 'var(--spacing-3)',
+		},
 		position: 'relative',
+		rowGap: 'var(--spacing-1)',
 		transform: {
 			default: 'none',
 			':hover': {
@@ -73,22 +102,46 @@ export const styles = stylex.create({
 	},
 	arrow: {
 		flexShrink: 0,
+		gridArea: 'arrow',
+		height: {
+			default: 40,
+			[NARROW]: 26,
+		},
+		width: {
+			default: 40,
+			[NARROW]: 26,
+		},
 	},
 	text: {
 		alignItems: 'flex-start',
-		display: 'flex',
+		display: {
+			default: 'flex',
+			[NARROW]: 'contents',
+		},
 		flexDirection: 'column',
 		gap: 'var(--spacing-1)',
 	},
 	word: {
-		fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+		fontSize: {
+			default: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+			[NARROW]: '1.5rem',
+		},
+		gridArea: 'word',
 		fontWeight: 'var(--font-weight-semibold)',
 		letterSpacing: '-0.01em',
 		lineHeight: 1.1,
 	},
 	hint: {
 		color: palette.inkSoft,
-		fontSize: 'var(--font-size-lg)',
+		fontSize: {
+			default: 'var(--font-size-lg)',
+			[NARROW]: 'var(--font-size-sm)',
+		},
+		gridArea: 'hint',
+		textAlign: {
+			default: null,
+			[NARROW]: 'center',
+		},
 	},
 	mutedHint: {
 		color: 'var(--color-text-disabled)',
@@ -101,10 +154,30 @@ export const styles = stylex.create({
 		fontSize: 'var(--font-size-sm)',
 		fontWeight: 'var(--font-weight-medium)',
 		gap: 'var(--spacing-1)',
-		insetBlockStart: 'var(--spacing-3)',
-		insetInlineEnd: 'var(--spacing-3)',
-		paddingBlock: 'var(--spacing-1)',
-		paddingInline: 10,
+		insetBlockStart: {
+			default: 'var(--spacing-3)',
+			[NARROW]: 'var(--spacing-2)',
+		},
+		insetInlineEnd: {
+			default: 'var(--spacing-3)',
+			[NARROW]: 'var(--spacing-2)',
+		},
+		paddingBlock: {
+			default: 'var(--spacing-1)',
+			[NARROW]: 3,
+		},
+		paddingInline: {
+			default: 10,
+			[NARROW]: 3,
+		},
 		position: 'absolute',
+	},
+	// On a phone the badge is just the tick: the word would sit on the arrow.
+	// The ring round the button says "chosen" as well.
+	badgeWord: {
+		display: {
+			default: 'inline',
+			[NARROW]: 'none',
+		},
 	},
 });

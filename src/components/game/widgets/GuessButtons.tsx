@@ -39,7 +39,7 @@ function buttonFor(
 	};
 }
 
-/** The two hero actions, side by side; stacked on a narrow screen. */
+/** The two hero actions, side by side at every width, so they are always compared together. */
 export function GuessButtons({
 	phase,
 	onGuess,

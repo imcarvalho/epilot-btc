@@ -10,10 +10,17 @@ export const frame = stylex.create({
 		display: 'flex',
 		flexDirection: 'column',
 		gap: 'var(--spacing-4)',
-		marginTop: 'var(--spacing-8)',
+		marginTop: {
+			default: 'var(--spacing-8)',
+			'@media (max-width: 640px)': 'var(--spacing-4)',
+		},
 	},
+	// Shorter on a phone, so the chart and both buttons fit on one screen.
 	plot: {
-		height: 300,
+		height: {
+			default: 300,
+			'@media (max-width: 640px)': 200,
+		},
 		position: 'relative',
 		width: '100%',
 	},
@@ -54,6 +61,14 @@ export const styles = stylex.create({
 		fill: 'var(--color-text-secondary)',
 		fontFamily: 'var(--font-family-code)',
 		fontSize: 12,
+	},
+	// Inside the plot: a halo in the card colour keeps the label legible over
+	// a gridline, a candle or the live line.
+	yLabelInset: {
+		paintOrder: 'stroke',
+		stroke: 'var(--color-background-card)',
+		strokeLinejoin: 'round',
+		strokeWidth: 3,
 	},
 	axis: {
 		color: 'var(--color-text-secondary)',

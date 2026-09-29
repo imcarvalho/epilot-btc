@@ -7,7 +7,6 @@ import { buildCandleChart, type Candle } from '@/lib/candles';
 import { shownIndex, type Inspection } from '@/lib/chart-inspect';
 import {
 	Axis,
-	CHART_HEIGHT,
 	CHART_PADDING,
 	Crosshair,
 	GridLines,
@@ -15,7 +14,7 @@ import {
 	LockedLine,
 	ReadoutTip,
 	plotWidthOf,
-	useWidth,
+	useSize,
 } from './chart-parts';
 import { frame } from './chart-parts.styles';
 import { candleReadout, formatUsd } from '../utils';
@@ -56,7 +55,7 @@ export function HourChart({
 	/** The guess to mark: its locked price and when it was locked. */
 	lock: { price: number; at: number } | null;
 }) {
-	const [ref, width] = useWidth<HTMLDivElement>();
+	const [ref, { width, height }] = useSize<HTMLDivElement>();
 	const [inspected, setInspected] = useState<Inspection | null>(null);
 	// The candles fill the plot; the price labels take the gutter beside it.
 	const plotWidth = plotWidthOf(width);
@@ -65,7 +64,7 @@ export function HourChart({
 		state.kind === 'ready' && plotWidth > 0
 			? buildCandleChart(state.candles, {
 					width: plotWidth,
-					height: CHART_HEIGHT,
+					height,
 					windowEnd: state.windowEnd,
 					padding: CHART_PADDING,
 					includePrice: lock?.price,
@@ -93,7 +92,7 @@ export function HourChart({
 				) : chart && state.kind === 'ready' ? (
 					<svg
 						width={width}
-						height={CHART_HEIGHT}
+						height={height}
 						role="img"
 						aria-label={describe(state.candles)}
 					>
@@ -102,15 +101,11 @@ export function HourChart({
 								x={lockX}
 								y={0}
 								width={plotWidth - lockX}
-								height={CHART_HEIGHT}
+								height={height}
 								{...stylex.props(styles.minute)}
 							/>
 						)}
-						<GridLines
-							plotWidth={plotWidth}
-							ticks={chart.yTicks}
-							step={chart.yStep}
-						/>
+						<GridLines width={width} ticks={chart.yTicks} step={chart.yStep} />
 						{chart.lastCloseY !== null && !lock && (
 							<line
 								x1={0}
@@ -139,11 +134,15 @@ export function HourChart({
 							/>
 						)}
 						{point && (
-							<Crosshair x={point.x} y={chart.yFor(candles[at!].close)} />
+							<Crosshair
+								x={point.x}
+								y={chart.yFor(candles[at!].close)}
+								height={height}
+							/>
 						)}
 					</svg>
 				) : (
-					<Skeleton width="100%" height={CHART_HEIGHT} />
+					<Skeleton width="100%" height="100%" />
 				)}
 				{point && (
 					<ReadoutTip
@@ -164,6 +163,7 @@ export function HourChart({
 				)}
 			</div>
 			<Axis
+				width={width}
 				ticks={[
 					{
 						at: 0,

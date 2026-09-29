@@ -138,7 +138,7 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/lib/confetti.ts` + `Confetti` - confetti on a win only, laid out by a pure function over an injected random source; aria-hidden, and never generated under `prefers-reduced-motion`
 
-- `src/lib/axis.ts` - the charts' price axis: gridlines at round prices, labelled in a shared right-hand gutter (`Y_AXIS_GUTTER`), hidden from assistive technology since the summary and inspector already give the prices
+- `src/lib/axis.ts` - the charts' price axis: gridlines at round prices, labelled in a shared right-hand gutter (`Y_AXIS_GUTTER`), or inside the plot below a 480px chart width (`gutterOf`), hidden from assistive technology since the summary and inspector already give the prices
 - `src/lib/chart-inspect.ts` + `Inspector` - reading the charts tick by tick: hover shows a crosshair and tooltip, and a transparent slider over the plot gives the keyboard and screen readers the same readings (`utils/readout.ts` writes them)
 
 - `src/lib/leaderboard.ts` - the board: podium from the sparse `byScore` index (cached 10 s), the caller's rank by a COUNT query (equal scores share a rank), the total from a counter item; sent on the stream; no ids or real names in any response. Only players with the `board` attribute are on it, and nothing writes that attribute until sign-in - so the board is empty until then

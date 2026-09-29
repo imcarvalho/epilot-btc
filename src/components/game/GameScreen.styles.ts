@@ -36,6 +36,12 @@ export const styles = stylex.create({
 			'@media (max-width: 860px)': '1fr',
 		},
 	},
+	// The strip, the price and the buttons: the game itself.
+	play: {
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 'var(--spacing-5)',
+	},
 	strip: {
 		borderRadius: 'var(--radius-container)',
 		outlineColor: 'var(--color-text-primary)',
@@ -45,6 +51,13 @@ export const styles = stylex.create({
 			':focus-visible': 'solid',
 		},
 		outlineWidth: 2,
+	},
+	// Visual order only: the strip is not in the tab order.
+	stripAfter: {
+		order: {
+			default: 0,
+			'@media (max-width: 640px)': 1,
+		},
 	},
 	retry: {
 		display: 'flex',

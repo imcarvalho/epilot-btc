@@ -95,7 +95,7 @@ function Prompt({
 	priceBlocked: boolean;
 }) {
 	return (
-		<Panel as="div" variant="dashed">
+		<Panel as="div" variant="dashed" xstyle={styles.prompt}>
 			<div {...stylex.props(styles.row)}>
 				<span aria-hidden {...stylex.props(styles.sparkle)}>
 					<Icon icon={Loader} size="md" />
@@ -226,6 +226,7 @@ function LockedStrip({
 					<div
 						{...stylex.props(
 							styles.movedBox,
+							!showClock && styles.movedBeside,
 							moved === 0 ? styles.movedFlat : styles.movedYes,
 						)}
 					>

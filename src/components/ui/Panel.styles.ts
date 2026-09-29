@@ -9,7 +9,7 @@ export const styles = stylex.create({
 		borderWidth: 1,
 		padding: {
 			default: 'var(--spacing-10)',
-			'@media (max-width: 640px)': 'var(--spacing-6)',
+			'@media (max-width: 640px)': 'var(--spacing-5)',
 		},
 	},
 	dashed: {
