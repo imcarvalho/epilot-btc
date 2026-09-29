@@ -32,18 +32,18 @@ These are settled. The reasoning is in the specs; this is the index.
 | Area | Decision | Where |
 |---|---|---|
 | Framework | Next.js App Router, for deployment risk and Auth.js - **not** for rendering | eng §2.1 |
-| Rendering | No server rendering of game data. Server components render the shell only; all state arrives by `fetch` to route handlers | eng §2.1 |
-| Hosting | Amplify Hosting for the web tier; CDK for table, indexes, scheduler, IAM | eng §8 |
+| Rendering | No server rendering of game data. Server components render the shell only; all state arrives on the game stream | eng §2.1, §3.1 |
+| Hosting | Amplify Hosting for the web tier; CDK for table, indexes, the stream Lambda, scheduler, IAM | eng §8 |
 | Region | eu-central-1 | eng §2 |
 | Store | DynamoDB, one item per player, price cached in its own item | eng §2 |
-| Resolution | Pure `resolveGuess()` against the price at the deadline (last Coinbase trade at or before `createdAt + 60 s`), three triggers (lazy read, client cadence, scheduled sweep), stale-price guard at 15 s | eng §3, §3.1, §3.2 |
-| Sockets | None from our backend. One browser-side socket to Coinbase for the live minute, cosmetic only | eng §3.1, §5.1 |
+| Resolution | Pure `resolveGuess()` against the price at the deadline (last Coinbase trade at or before `createdAt + 60 s`), two triggers (the stream's state read every second, scheduled sweep), stale-price guard at 15 s | eng §3, §3.1, §3.2 |
+| Streaming | One Server-Sent Events stream per tab, from a Lambda Function URL in `RESPONSE_STREAM` mode (Amplify buffers responses and cuts them at 30 s), opened with a 60 s signed ticket from `GET /api/stream-token`. Everything the screen shows arrives on it; `POST /api/guess` is the one call the player makes. About nine players at once (Lambda concurrency 10), accepted as a known limitation | eng §3.1, §11 |
 | Identity | Anonymous `httpOnly` cookie first; Google sign-in via Auth.js as an upgrade, merging the anonymous record once | eng §6.1, §6.2, §6.5 |
 | Public identity | Server-generated `AdjectiveAnimal` name. No country, no flags | eng §6.3, product §6.6 |
 | Leaderboard | Global only, top 3 plus your own row, signed-in players only, served from a sparse GSI | eng §6.4, product §6.7 |
 | UI | Astryx (`@astryxdesign/core`, React 19 + StyleX) with a Dracula token set | eng §7.1 |
 | Charts | Hand-built SVG, no charting library | eng §7.1 |
-| Chart data | Fetched client-side straight from Coinbase - CORS checked and open on both hosts | eng §5 |
+| Coinbase | Called only from the server: ticker (1 s shared cache), trades (settlement), candles (10 s shared cache). The browser never calls Coinbase | eng §5 |
 
 ## Still open
 
@@ -56,7 +56,7 @@ In this order, because each one can invalidate work done after it:
 
 1. **StyleX compiling**, with a real Astryx component on screen and atomic CSS emitted. Start from Astryx's own Next.js StyleX example rather than a blank project. Next needs `@stylexjs/babel-plugin` and `@stylexjs/postcss-plugin` with the `next/babel` preset.
 2. **An infrastructure hello-world deployed** - Amplify Hosting serving the app, and the Amplify compute role reaching a DynamoDB table. Not at the end; AWS is the least familiar part of this stack.
-3. ~~Coinbase endpoints checked for CORS~~ - **done**: open on both hosts, so chart data is fetched client-side and there is no proxy route to build (eng §5).
+3. ~~Coinbase endpoints checked for CORS~~ - **done**, and since moot: the browser no longer calls Coinbase (eng §5).
 
 ## Build order
 
@@ -92,10 +92,9 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 
 - `src/lib/resolve-guess.ts` - the resolution rule, exactly as specified, with its tests
 - `src/lib/names.ts` - the generated-name function, with its tests
-- `src/lib/ask-scheduler.ts` - the request cadence from eng §3.1 as a pure decision function, with its tests
 - `docs/` - both specs, the screen designs, the user-flow diagram
 
-These three modules are the parts the specs single out as testable without any infrastructure. They are deliberately framework-free: scaffolding must **merge around them**, not overwrite them.
+These modules are the parts the specs single out as testable without any infrastructure. They are deliberately framework-free: scaffolding must **merge around them**, not overwrite them.
 
 The backend cycle (build order item 1, server half) is built on top of them:
 
@@ -106,7 +105,9 @@ The backend cycle (build order item 1, server half) is built on top of them:
 - `src/lib/store.ts`, `dynamo-store.ts` - the storage interface and its DynamoDB implementation, every once-only write conditional
 - `src/lib/testing/memory-store.ts` - the same conditional semantics in memory, so races are testable
 - `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client
-- `src/app/api/{player,state,guess,cron/resolve}/route.ts` - thin adapters over `game.ts`
+- `src/app/api/{player,stream-token,guess,cron/resolve}/route.ts` - thin adapters over `game.ts`
+
+The game stream (eng §3.1): `src/stream/game-stream.ts` (`runGameStream`, host-independent) is run by `src/stream/lambda.ts` (the CDK stack's `GameStream` Function URL, bundled from `src/`) in production and by `src/app/api/stream/route.ts` locally (`LOCAL_STREAM=1`, set by `dev:local` and the e2e servers). `src/lib/stream-token.ts` signs the ticket with the secret in SSM `/btc-guess/stream-secret`, also set as `STREAM_SECRET` on Amplify with `STREAM_URL`.
 
 The sweep is scheduled from `infra/`: EventBridge Scheduler invokes `infra/lambda/sweep-trigger`, which POSTs to `/api/cron/resolve` with the secret from SSM (`/btc-guess/cron-secret`). The Amplify app's env vars are set and copied into `.env.production` by `amplify.yml`.
 
@@ -118,15 +119,15 @@ The screen (build order item 1, client half, first-visit state):
   - `widgets/` - the screen's self-contained blocks: `TopBar`, `PriceCard`, `GuessButtons`, `GuessStrip`, `LeaderboardPanel`, `HistoryPanel`
   - `charts/` - `HourChart`, `MinuteChart` and the `chart-parts` they share (inside `PriceCard`)
   - `feedback/` - `Announcer` (the one `aria-live` region) and `Confetti`
-  - `hooks/` - `useGame` (state from `GET /api/state` only, placing guesses, the cadence), `useCandles`, `useLiveMinute`, `useFocusRescue` (focus to the guess strip when a re-render removes the focused control)
+  - `hooks/` - `useStream` (the game stream: ticket, `EventSource`, reconnect with a fresh ticket, closed while hidden), `useGame` (the stream's state, placing guesses), `useLiveMinute` (points from the streamed price), `useFocusRescue` (focus to the guess strip when a re-render removes the focused control)
   - `utils/` - formatting
   - Every component keeps its StyleX in a sibling `Name.styles.ts`
-- `src/lib/candles.ts` - the last-hour chart as pure functions (parse Coinbase's candles, the hour's change, SVG geometry); `HourChart` draws it and `useCandles` fetches it from Coinbase in the browser, every 10 s and just after each minute turns, while the tab is visible
+- `src/lib/candles.ts` - the last-hour chart as pure functions (parse Coinbase's candles, the hour's change, SVG geometry); `HourChart` draws it; the server fetches it into a shared cache (`src/lib/hour-candles.ts`, 10 s) and the stream pushes it
 
 - `src/lib/guess-phase.ts` - which state the guess strip is in (first visit, idle, locked, time up, stale, result) and the result sentence, as pure functions; the buttons, the strip and the `aria-live` announcer all render from it
-- `useGame` places guesses (`POST /api/guess`) and runs the §3.1 cadence through `shouldAsk`; with no browser ticker yet it polls only once the minute is up and nothing has moved
+- `useGame` places guesses (`POST /api/guess`) and shows an accepted guess at once, until the stream's next state knows it
 
-- `src/lib/live-minute.ts` - the live minute (eng §5.1) as pure functions: parsing ticker messages, one sample per second, ahead/behind, the minute chart's geometry; `useLiveMinute` owns the browser's Coinbase WebSocket, open only while a guess is pending, and feeds the cadence so the client asks when the ticker shows a move
+- `src/lib/live-minute.ts` - the live minute (eng §5.1) as pure functions: one sample per price, ahead/behind, the minute chart's geometry; `useLiveMinute` takes its points from the game price the stream sends each second
 - During a guess the hour view carries the locked-in line and the shaded minute, and the price card has a "Last hour / This guess" toggle that follows the guess
 
 - `src/lib/stats.ts` - the success rate and the streak wording ("2 wins in a row", "streak ended at 2"), from the counters; the streak a loss broke is stored as `previousStreak` in the same settle write, never derived from the trimmed history
@@ -136,7 +137,7 @@ The screen (build order item 1, client half, first-visit state):
 - `src/lib/axis.ts` - the charts' price axis: gridlines at round prices, labelled in a shared right-hand gutter (`Y_AXIS_GUTTER`), hidden from assistive technology since the summary and inspector already give the prices
 - `src/lib/chart-inspect.ts` + `Inspector` - reading the charts tick by tick: hover shows a crosshair and tooltip, and a transparent slider over the plot gives the keyboard and screen readers the same readings (`utils/readout.ts` writes them)
 
-- `src/lib/leaderboard.ts` - the board: podium from the sparse `byScore` index (cached 10 s), the caller's rank by a COUNT query (equal scores share a rank), the total from a counter item; `GET /api/leaderboard`; no ids or real names in any response. Only players with the `board` attribute are on it, and nothing writes that attribute until sign-in - so the board is empty until then
+- `src/lib/leaderboard.ts` - the board: podium from the sparse `byScore` index (cached 10 s), the caller's rank by a COUNT query (equal scores share a rank), the total from a counter item; sent on the stream; no ids or real names in any response. Only players with the `board` attribute are on it, and nothing writes that attribute until sign-in - so the board is empty until then
 
 - `src/auth.ts` - Google sign-in via Auth.js (scope `openid`, JWT session carrying only `google:<sub>`); its `signIn` callback runs `signIn` in `src/lib/game.ts`, the one-time anonymous merge: one transaction that writes the account onto the board, deletes the anonymous item if unchanged, and increments `BOARD#GLOBAL`. Signed-in players have no TTL. Route handlers read identity through `playerIdFrom` (session first, then the anonymous cookie); without `AUTH_SECRET` sign-in is off. `src/lib/sign-in.ts` holds what the screen says afterwards
 

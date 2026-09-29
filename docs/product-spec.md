@@ -81,7 +81,7 @@ Designed against the flow above. The visual language is the Dracula palette on a
 
 ![Guess in play: Higher chosen and marked, Lower disabled, countdown at 47 seconds, price has moved](screens/small/02-guess-in-play.png)
 
-**The minute, live.** Optional, and the reason the waiting minute is worth watching: the chart switches from the hour to the minute itself, drawn live from the ticker at one point per second, against the dashed line where the guess was locked.
+**The minute, live.** Optional, and the reason the waiting minute is worth watching: the chart switches from the hour to the minute itself, drawn live from the game price at one point per second, against the dashed line where the guess was locked.
 
 ![The minute view: a live line above the dashed locked-in price, twenty seconds left, labelled ahead by 118 dollars, provisional](screens/small/03b-tension.png)
 

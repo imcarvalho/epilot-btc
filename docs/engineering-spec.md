@@ -22,24 +22,25 @@ That is the whole answer to the brief's one explicit requirement: guesses "resol
 
 ```
 Browser (React 19, Astryx design system)
-  |  GET /api/state, on the cadence in 3.1 (score, stats, price, pending guess, serverNow)
-  |  POST /api/guess { direction }  (the direction, and nothing else)
-  |  chart data: Coinbase directly (CORS confirmed open, section 5)
+  |  GET /api/stream-token, then the game stream (Server-Sent Events):
+  |    state every second (score, stats, price, pending guess, serverNow), the hour of candles, the board
+  |  POST /api/guess { direction }  (the direction, and nothing else: the one call the player makes)
   v
-Next.js (App Router, Node runtime)
+Amplify Hosting: Next.js (App Router, Node runtime)
   |-- app/               UI shell (server) + the game itself (client components)
-  |-- app/api/*/route.ts state, guess, auth, leaderboard
-  |-- lib/               resolveGuess, price adapter, DynamoDB access, name generator
-        |-- DynamoDB: Players (PK playerId) + PRICE#BTCUSD cache item
-        |-- Coinbase API (called only from here)
+  |-- app/api/*/route.ts player, stream-token, guess, auth, cron
+  |-- lib/               resolveGuess, settlement, price adapter, DynamoDB access, name generator
+Lambda Function URL (RESPONSE_STREAM): the game stream, bundled from the same lib/
+        |-- DynamoDB: Players (PK playerId) + PRICE#BTCUSD and CANDLES#BTCUSD cache items
+        |-- Coinbase API (called only from the server: ticker, trades, candles)
 EventBridge Scheduler (1 min) -> Lambda -> POST /api/cron/resolve (shared-secret header)
                                            -> resolves guesses left by closed browsers
-Hosting: AWS Amplify Hosting (Next SSR). Data and schedule: AWS CDK. Region: eu-central-1.
+Hosting: AWS Amplify Hosting (Next SSR) and one streaming Lambda. Data, stream and schedule: AWS CDK. Region: eu-central-1.
 ```
 
 ### 2.1 Why Next.js
 
-Everything decided so far - no push from our server (3.1), a ticker that lives in the browser (5.1), a chart that is explicitly provisional - describes a **client-side game with a small stateful API**. On architecture alone the answer would be a static bundle on S3 and CloudFront with one Lambda behind it, and nothing in the game would be worse for it.
+Everything decided so far - a screen fed by one server stream (3.1), a live minute drawn from it (5.1), a chart that is explicitly provisional - describes a **client-side game with a small stateful API**. On architecture alone the answer would be a static bundle on S3 and CloudFront with one Lambda behind it, and nothing in the game would be worse for it.
 
 Next.js is chosen anyway, for two reasons that have nothing to do with rendering.
 
@@ -49,13 +50,14 @@ Next.js is chosen anyway, for two reasons that have nothing to do with rendering
 
 Two lesser reasons, real but not decisive: one type system across UI and API, so the guess shape is defined once; and route handlers that test as plain functions, with no API Gateway event shapes to mock.
 
-**The discipline that makes this defensible:** none of Next's server rendering is used for game data. Every piece of state arrives through `fetch` to a route handler, on the cadence in 3.1. Server components render the shell - layout, header, static copy - and stop there. Next is doing three jobs here, and none of them is rendering strategy: it serves a shell, hosts five route handlers, and runs Auth.js. That sentence belongs in the README, because it turns "this is overkill" from an accusation into a decision with its scope drawn.
+**The discipline that makes this defensible:** none of Next's server rendering is used for game data. Every piece of state arrives on the game stream (3.1), and the one thing the player sends is a `POST` to a route handler. Server components render the shell - layout, header, static copy - and stop there. Next is doing three jobs here, and none of them is rendering strategy: it serves a shell, hosts a handful of route handlers, and runs Auth.js. That sentence belongs in the README, because it turns "this is overkill" from an accusation into a decision with its scope drawn.
 
 **What it costs, said plainly**
 
 - **An SSR runtime that is barely used**, deployed, warmed and watched for pages that are not personalised until the data arrives.
-- **Cold starts** show up in the first interaction after a quiet period - and the cadence in 3.1 is deliberately sparse, so quiet periods are the norm here rather than the exception. Worth a README note rather than a workaround.
-- **Two deployment artefacts, not one.** Amplify owns the web tier; CDK owns the data tier and the scheduler. They meet at one point: the Amplify SSR compute role needs an IAM policy for the table.
+- **Cold starts** show up in the first interaction after a quiet period: the ticket route and the stream Lambda each start cold once. Worth a README note rather than a workaround.
+- **Two deployment artefacts, not one.** Amplify owns the web tier; CDK owns the data tier, the stream and the scheduler. They meet at two points: the Amplify SSR compute role needs an IAM policy for the table, and the two tiers share the stream's signing secret.
+- **Amplify cannot stream.** Its compute buffers a whole response and cuts it at 30 s (measured, 3.1), so the one long-lived response, the game stream, runs as its own Lambda.
 - **Vercel is deliberately not chosen**, simplest though it would be, because the brief's stack is AWS.
 
 **What would flip this:** if Google sign-in leaves scope, the last reason for Next goes with it and the answer becomes a Vite SPA with one Lambda behind it. Worth remembering if time gets short - it is a reduction in scope, not a rewrite, because no game state depends on server rendering.
@@ -64,7 +66,7 @@ Two lesser reasons, real but not decisive: one type system across UI and API, so
 
 - **StyleX compiling**, with a real Astryx component on screen and the atomic CSS emitted - starting from Astryx's own Next.js StyleX example rather than from a blank project. Next needs two plugins, `@stylexjs/babel-plugin` and `@stylexjs/postcss-plugin` with the `next/babel` preset, which is more setup than Vite's single unplugin, but it is documented and supported on the App Router with both Webpack and Turbopack. Half an hour here saves a Sunday.
 - **The Amplify compute role reaching DynamoDB.** A connection point to resolve first, not to discover halfway.
-- ~~Coinbase CORS from the browser~~ - **settled**: both hosts return `access-control-allow-origin: *` (section 5), so the chart fetches client-side and no proxy route is needed.
+- ~~Coinbase CORS from the browser~~ - **settled, and since moot**: the browser no longer calls Coinbase at all (section 5).
 
 ### Data model
 
@@ -124,7 +126,7 @@ flowchart LR
     anon -- "guess pending" --> pendingKeys
     google -- "guess pending" --> pendingKeys
 
-    scoreKeys --> leaderboard(["GET /api/leaderboard<br/>top 3: Limit 3, descending<br/>your rank: COUNT of score &gt; yours"])
+    scoreKeys --> leaderboard(["leaderboard event on the stream<br/>top 3: Limit 3, descending<br/>your rank: COUNT of score &gt; yours"])
     pendingKeys --> sweep(["POST /api/cron/resolve<br/>pendingAt ≤ price time - 60 s"])
 ```
 
@@ -138,12 +140,12 @@ Route handlers, all under `app/api`:
 |---|---|---|---|
 | POST | `/api/player` | - | sets the anonymous identity cookie (first visit) |
 | GET/POST | `/api/auth/[...nextauth]` | - | Auth.js: Google sign-in, session, sign-out |
-| GET | `/api/state` | session or anonymous cookie | `{ publicName, score, stats, price, priceUpdatedAt, priceStale, serverNow, pendingGuess, lastResult, history }`, or 401 with no player |
+| GET | `/api/stream-token` | session or anonymous cookie | `{ url, token, signIn }`: where the game stream is and a 60 s ticket to open it; 401 with no player, 503 if the stream is not configured |
+| GET | `<stream url>?token=` | the ticket | the game stream (3.1): `state` every second, `candles`, `leaderboard`, `gone`. Served by the Lambda; locally by `/api/stream` |
 | POST | `/api/guess` | `{ direction }`, strictly: any other field is a 400 | `{ pendingGuess, serverNow }`; 409 if one already exists; 503 if the price is stale |
-| GET | `/api/leaderboard` | - | top 3 rows, the caller's own row with its rank, and the eligible-player total |
 | POST | `/api/cron/resolve` | shared-secret header | sweeps pending guesses; called by EventBridge Scheduler, not by browsers |
 
-`GET /api/state` resolves the pending guess when the conditions are met, before responding. It is the normal resolution path and costs nothing extra.
+The stream's state read resolves the pending guess when the conditions are met, before sending it. It is the normal resolution path and costs nothing extra.
 
 `POST /api/guess` refuses a guess outright while the price is stale: locking in at an old number would be as unfair as resolving against one. The body schema is strict, so a request that carries a price or a timestamp is rejected rather than having the field silently ignored - the fairness rule shows up in the contract as well as in the handler.
 
@@ -182,46 +184,44 @@ The trades are read after the deadline from Coinbase's public trade history (`/p
 
 The other end of the minute follows the same rule. The locked price is the ticker's last trade read fresh when the guess is placed, and `createdAt` is when that trade stood (section 5, "The locked price") - so the locked price is the last trade at or before `createdAt`, and the deadline is a minute after it on the same tape.
 
-Normal play needs one page of trades: the browser asks at t+60 s, and a page covers a few minutes. A late sweep pages further back; past five pages, one-minute candles stand in (each minute read as its open and its close), which only happens when recovering from an outage. The deadline is on the server's clock and the trades on Coinbase's; both are NTP-synchronised, and the skew is far below the gaps between price changes that matter.
+Normal play needs one page of trades: the stream reads state within a second of t+60 s, and a page covers a few minutes. A late sweep pages further back; past five pages, one-minute candles stand in (each minute read as its open and its close), which only happens when recovering from an outage. The deadline is on the server's clock and the trades on Coinbase's; both are NTP-synchronised, and the skew is far below the gaps between price changes that matter.
 
 ### Two triggers, one guard
 
-- **Lazy, on `GET /state`:** the normal path while the player is watching. Free, since the request was happening anyway.
+- **Lazy, on the stream's state read:** the normal path while the player is watching, once a second. Free, since the read was happening anyway.
 - **Scheduled sweep, every minute:** resolves guesses for players who closed the browser. It covers the brief's optional requirement and is what separates "works in the demo" from "works". How it finds them is 3.2.
 
-Both take the same conditional write, so a guess resolves exactly once even when they collide. *When* the lazy path fires is a decision in its own right, set out in 3.1.
+Both take the same conditional write, so a guess resolves exactly once even when they collide. How the lazy path reaches the browser is 3.1.
 
 ### A stale price resolves nothing
 
-If the trade history cannot be read, no resolution happens and the guess stays pending; the next ask tries again. On screen this is the delayed-feed state: the cached ticker price older than the freshness threshold (15 s) is what the API reports as delayed, and the screen stops offering guesses; a guess is refused on its own terms whenever the fresh read it locks in at fails (section 5). Resolving against a guessed-at price would be unfair, and it is an obvious thing for a reviewer to probe.
+If the trade history cannot be read, no resolution happens and the guess stays pending; the next read, a second later, tries again. On screen this is the delayed-feed state: the cached ticker price older than the freshness threshold (15 s) is what the API reports as delayed, and the screen stops offering guesses; a guess is refused on its own terms whenever the fresh read it locks in at fails (section 5). Resolving against a guessed-at price would be unfair, and it is an obvious thing for a reviewer to probe.
 
-### 3.1 How the browser learns the outcome
+### 3.1 How the browser learns the outcome: one server stream
 
-There is no WebSocket from our backend, and none is needed. The server never has to push, because the browser can work out when it is worth asking.
+The server pushes. Each open tab holds one **Server-Sent Events** stream, and everything the screen shows arrives on it; the browser sends nothing on it. The one call the player makes is `POST /api/guess`. The browser never talks to Coinbase: every price, trade and candle is read server-side (section 5).
 
-Both halves of the resolution condition are visible to the client. The minute is a local countdown. The price change is arriving anyway on the Coinbase ticker the chart already has open (5.1). So the browser asks at the moments that can plausibly produce an answer, rather than on a fixed interval:
+| Event | When | What |
+|---|---|---|
+| `state` | Every second | The player's state as `getState` reads it: score, stats, the game price and its age, the pending guess, the last result, `serverNow`. Reading it settles a guess that is due, so a result reaches the screen within a second of its deadline |
+| `candles` | On connect, then whenever the shared hour is refreshed (every 10 s) | The last hour of one-minute candles; `null` once if there is none (Coinbase down, nothing cached) |
+| `leaderboard` | On connect, then whenever a result lands or the player signs in | The board as 6.4 describes it |
+| `gone` | Once, then the stream ends | The player no longer exists (expired or deleted): the browser creates one and reconnects |
 
-| Moment | What the browser does |
-|---|---|
-| On mount, and when the tab becomes visible again | One `GET /api/state` - answers "is a guess in play, and has it settled?" |
-| During the minute | Nothing. The countdown is local and there is nothing to learn |
-| At t+60 s | One `GET /api/state` |
-| Resolved | Stop asking about the guess; the idle refresh below takes over |
-| No guess in play | One `GET /api/state` every 10 s, for the price on screen - the server's game price, which otherwise only moves when the client asks |
-| Not resolved (price unchanged) | Wait for the ticker to print a price different from the locked one, then `GET /api/state` - at most every 2 s, since the server's price is cached for a few seconds and can lag the ticker |
-| Socket down, or no ticks arriving | Fall back to polling every 5 s, backing off to 10 s after six polls (half a minute) have not settled it |
-| A request fails | Whatever the moment above calls for, wait first: 5 s after one failure, doubling with each further failure in a row up to 60 s. Every interval here is counted from when the last request *started*, whatever came of it, so a failing server is not asked on every tick |
+**Where it runs.** Amplify Hosting cannot serve it: measured on a deployed branch, its compute buffers a whole response and cuts it at 30 s with a 500, so not one event arrives. The stream is a **Lambda Function URL in `RESPONSE_STREAM` mode**, defined in the CDK stack and bundled from the app's own `lib/`, so the stream and the routes share one implementation of the game. Measured: first byte in 0.2 s, one event a second, worst gap 1.1 s, and a clean end at its 14-minute lifetime (the Function URL's limit is 15). `runGameStream` (`src/stream/game-stream.ts`) is host-independent; a Next route at `/api/stream` runs it for local development and the e2e tests, switched on only by `LOCAL_STREAM=1`.
 
-A normal guess therefore costs **two requests**: one when the app opens and one when the minute is up. Between guesses, a visible tab asks every 10 s so the price and its "updated" age stay current - six cheap reads a minute (the player item and the shared price item; Coinbase is still called at most once per 5 s cache window for everyone), and nothing at all once the tab is hidden. The chart refreshes on the same 10 s rhythm straight from Coinbase, and just after each minute turns, so the forming candle grows rather than jumping once a minute. Sustained polling exists only in the unchanged-price case, which on BTC is rare and is exactly the case the UI has a screen for.
+**Identity across domains.** The stream's domain gets none of this site's cookies, and `EventSource` cannot set a header. So the page first asks `GET /api/stream-token`, which reads identity as every route does and returns a ticket: the player id and an expiry 60 s out, signed with HMAC-SHA256 under a secret the two tiers share (SSM `/btc-guess/stream-secret`, read by the Lambda at cold start). The ticket travels in the stream's URL, which is why it is short-lived. The same route reports, once, what a sign-in just did (6.2), since the stream cannot read the cookie that says so.
 
-Four properties worth stating, because they are what makes this safe rather than merely cheap:
+**Reconnecting.** Every end of an `EventSource` looks like an error, the planned end included, and its own retry would reuse an expired ticket. So the client closes it and reconnects with a fresh ticket, backing off from a second to half a minute while it keeps failing; after three failures with nothing on screen it says the game is unreachable and offers "Try again".
 
-- **The client triggers, the server decides - and the trigger's timing decides nothing.** The browser only says *look now*; the server reads the market at the guess's deadline and applies `resolveGuess`. Asking early costs one request that answers "not yet"; asking late gets the same answer asking on time would have. No trust is placed in the browser, and no outcome depends on its socket or its timing.
-- **A failing server is not hammered.** The gaps above are measured from the last attempt, not the last answer, and consecutive failures back off exponentially to a minute. Without this, every open tab would ask an erroring endpoint once a second.
-- **Hidden tabs do not poll.** Polling pauses on `document.visibilityState === "hidden"` and resumes with an immediate call rather than waiting out the interval. Without this, a forgotten tab hits the endpoint for hours.
-- **The sweep is still required.** Client-side cadence serves the player who is watching; the scheduled sweep serves the one who closed the tab and comes back tomorrow. They are not alternatives.
+Four properties worth stating:
 
-This is the third trigger, then, and the only one that involves a decision: the lazy read and the sweep are mechanisms, this is a policy about when to fire the lazy one.
+- **The server decides, and nobody's timing decides anything.** The browser only listens. A guess settles against the trade at its deadline (section 3), whenever the read that settles it happens.
+- **Hidden tabs hold no stream.** The client closes the stream on `document.visibilityState === "hidden"` and reopens it, with a fresh ticket, when the tab is shown. This also frees one of the few streams the account can run at once (section 11).
+- **Coinbase load does not grow with players.** Every stream reads the shared caches: the price at most once a second and the hour every ten seconds, whoever triggers the refresh.
+- **The sweep is still required.** The stream serves the player who is watching; the scheduled sweep serves the one who closed the tab and comes back tomorrow. They are not alternatives.
+
+**What it costs.** One Lambda held open per visible tab, for up to 14 minutes at a time, and one DynamoDB read a second per tab. Fine for a demo; the concurrency limit it runs into is in section 11.
 
 ### 3.2 How the sweep finds work
 
@@ -250,43 +250,38 @@ It also bounds the failure mode. If the scheduler stops, work accumulates visibl
 | Use | Source | Why |
 |---|---|---|
 | **Locked price** (placing a guess) | Server, read fresh from the ticker for that request | Fairness; a cached price could be one the player has already seen the market leave |
-| **Game price** (on screen) | Server, shared cache | From the client it would be forgeable; the cache keeps it to one Coinbase call per window |
+| **Game price** (on screen, and the live minute) | Server, shared cache, pushed on the stream | From the client it would be forgeable; the cache keeps it to one Coinbase call a second |
 | **Settlement price** (resolution) | Server, trade history at the deadline (3) | Fixed by the clock, so the timing of a request cannot choose it |
-| **Chart** (history and ticker) | Comes from the client | Cosmetic; saves server invocations and cuts latency |
+| **Chart** (the last hour) | Server, shared cache, pushed on the stream | Cosmetic; one Coinbase call per ten seconds for everyone, and no dependency on Coinbase's CORS policy |
 
 Public Coinbase Exchange endpoints, unauthenticated, needing neither an account nor a key:
 
 - Ticker (the game price, server-side): `https://api.exchange.coinbase.com/products/BTC-USD/ticker`
 - Trades (the settlement price, server-side): `https://api.exchange.coinbase.com/products/BTC-USD/trades`
-- One-minute candles: `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60`
-- Live ticker: WebSocket `wss://ws-feed.exchange.coinbase.com`, `ticker` channel
+- One-minute candles (the chart, server-side): `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60`
 
-**CORS is open, checked on day one.** Both hosts answer a cross-origin `GET` with `access-control-allow-origin: *`, confirmed at the header level with `curl` and then in the browser from the deployed origin - the only test that counts, since `curl` ignores CORS entirely and would have succeeded either way. The endpoints are public and unauthenticated, so the wildcard costs nothing: no credentials are sent with these requests.
+**All of it server-side.** The browser calls none of these. The chart and the live minute used to read Coinbase straight from the browser (its CORS is open, checked on day one); they now arrive on the game stream (3.1), so every Coinbase call is the server's, cached and shared, and a change in a third party's CORS policy can no longer break the screen.
 
-So the chart fetches Coinbase directly and there is no proxy route. **The fallback stays in the README rather than in the code**: if the policy ever changes, the chart moves behind a cached `GET /api/history` using the same cache-item pattern as the price. Worth one paragraph there, because a third party's CORS policy is not ours to rely on forever - and because the change would put candles through our Lambda, where a cold start stops being invisible.
+**One market for everything.** The game price is the Exchange ticker's last trade, the same book the chart's candles and the settling trades come from. It was first specified as Coinbase's retail spot price (`api.coinbase.com/v2/prices/BTC-USD/spot`), which runs $20-30 away from the Exchange price: the live minute then opened "ahead by $29" before the market had moved at all. Settling on the same market the player watches keeps the provisional line honest; the game is exactly as fair either way, since one source decides every outcome.
 
-None of this touches the game price, which is read server-side whether or not the browser could read it too.
+**Caching:** the latest price lives in its own DynamoDB item with a timestamp, served for a second, so one Coinbase call a second serves every player's screen and live minute. The last hour of candles lives the same way in `CANDLES#BTCUSD`, served for ten seconds; a failed refresh serves the hour it had. Per-request calls would hit rate limits with two players and an open tab.
 
-**One market for everything.** The game price is the Exchange ticker's last trade, the same book the chart's candles and the live minute's WebSocket read. It was first specified as Coinbase's retail spot price (`api.coinbase.com/v2/prices/BTC-USD/spot`), which runs $20-30 away from the Exchange price: the live minute then opened "ahead by $29" before the market had moved at all. Settling on the same market the player watches keeps the provisional line honest; the game is exactly as fair either way, since one source decides every outcome.
-
-**Caching:** the latest price lives in its own DynamoDB item with a timestamp and a few seconds of TTL, so one Coinbase call per window serves every player's screen. Per-request calls would hit rate limits with two players and an open tab.
-
-**The locked price is never the cached one.** The cached price can be up to 5 s old, and up to 15 s while Coinbase is failing, and it is the number on the player's screen. Locking a guess at it would let a player who can see the market has already moved (on the chart, which reads Coinbase directly) guess with that knowledge: better than a coin flip. So `placeGuess` reads the ticker for that request (`fetchFreshPrice`), and if the read fails the guess is refused (`price-unavailable`), with no fallback to the cache. The fresh price is still written to the cache, so everyone's screen gets it. Before reading, one read of the player item turns away a player who cannot guess (none, or a guess already pending) without calling Coinbase, so the extra calls are bounded by about one per player per minute; the conditional write still decides R3.
+**The locked price is never the cached one.** The cached price can be up to a second old, and up to 15 s while Coinbase is failing, and it is the number on the player's screen. Locking a guess at it would let a player who can see the market has already moved (on Coinbase's own site) guess with that knowledge: better than a coin flip. So `placeGuess` reads the ticker for that request (`fetchFreshPrice`), and if the read fails the guess is refused (`price-unavailable`), with no fallback to the cache. The fresh price is still written to the cache, so everyone's screen gets it. Before reading, one read of the player item turns away a player who cannot guess (none, or a guess already pending) without calling Coinbase, so the extra calls are bounded by about one per player per minute; the conditional write still decides R3.
 
 `createdAt` is when the locked price stood, not when the read came back. The ticker's last trade is the price from its trade time until the response, so it held at the trade time if that falls inside the request, and at the start of the request if the trade came before it (a quiet market); a trade time after the response (clock skew) is held to the response (`observedAt`). The locked price is therefore the last trade at or before `createdAt`, the same rule settlement applies at `createdAt + 60 s` (section 3). Reading the lock from the trade history instead would give the same price with a second endpoint and paging; the ticker already names its trade and its time, so it is the simpler of two equivalent reads.
 
-**Failure:** retry with exponential backoff, then serve the last known price with its timestamp (for the screen; a guess is refused instead, above). The game degrades, it does not break. On screen: the last price stays up, marked delayed; once it is past the 15 s guard the guess buttons go quiet and the strip says why, so a guess is refused before it is tried (`priceBlocksGuess`); a game that has never had a price says so rather than showing a loading placeholder forever. The chart fails on its own, with its own note, and recovers on its next refresh.
+**Failure:** retry with exponential backoff, then serve the last known price with its timestamp (for the screen; a guess is refused instead, above). The game degrades, it does not break. On screen: the last price stays up, marked delayed; once it is past the 15 s guard the guess buttons go quiet and the strip says why, so a guess is refused before it is tried (`priceBlocksGuess`); a game that has never had a price says so rather than showing a loading placeholder forever. The chart fails on its own, with its own note (the stream sends `candles: null`), and recovers when the shared hour next refreshes.
 
-### 5.1 The live minute: a browser-side ticker
+### 5.1 The live minute
 
-While a guess is in play the chart can switch from the hour of candles to the minute itself, drawn live (product spec, 6.1). That view is fed by a **WebSocket straight from the browser** to Coinbase's public feed - `wss://ws-feed.exchange.coinbase.com`, `ticker` channel, `BTC-USD`, no key and no auth. It never touches our backend.
+While a guess is in play the chart can switch from the hour of candles to the minute itself, drawn live (product spec, 6.1). It is drawn from the game price the stream sends every second (3.1) - no socket of the browser's own, and no Coinbase call from the browser.
 
-- **Sampled at one point per second.** BTC ticks several times a second; the socket's messages land in a buffer and a one-second timer takes the latest, giving sixty points across the minute. Cheaper, and a jagged one-second line reads better here than a smooth one.
-- **Drawing:** append to the path's `d` rather than re-rendering the series, or draw to a canvas. With sixty points either is trivial, and the append keeps the SVG approach consistent with the candle view.
-- **It cannot affect the outcome, by construction.** The socket's prices are never sent anywhere: resolution reads the trade history at the deadline, server-side. The UI labels the live delta *provisional*, because the settled price can differ by a few cents.
-- **Connection handling:** reconnect with exponential backoff and jitter; while disconnected, fall back to the price arriving in the `GET /api/state` polls described in 3.1, grey the line and show a reconnecting note. The socket is opened when a guess starts and closed when it resolves - no socket sitting open on an idle screen.
+- **One point per second.** Each state carries the game price and when it stood; a new observation is a new point, giving sixty points across the minute. A jagged one-second line reads better here than a smooth one.
+- **Drawing:** SVG, rebuilt from the points each second. With sixty points that is trivial, and it keeps the approach consistent with the candle view.
+- **It cannot affect the outcome, by construction.** The browser only draws these prices: resolution reads the trade history at the deadline, server-side. The UI labels the live delta *provisional*, because the settled price can differ by a few cents.
+- **When the stream drops:** the line greys and a note says the live view is paused, until the stream is back.
 - **`prefers-reduced-motion`:** no drawing animation and no transitions; the line and the number update in place.
-- **Testing:** the sampling and path-building are pure functions over a list of `{t, price}` - a fake feed drives them, and no test needs a socket.
+- **Testing:** the sampling and path-building are pure functions over a list of `{t, price}` - a fake feed drives them, and no test needs a stream.
 
 ---
 
@@ -360,7 +355,7 @@ If the player is already in the podium rows, queries 2 and 3 are skipped.
 **Known trade-offs, worth naming before they are found:**
 
 - **The rank query is O(players above you).** A `COUNT` query still reads the matching items server-side, so a player near the bottom of a large board is the expensive case - the opposite of the usual intuition. At a few thousand players this is a handful of reads and stays in the free tier. The scale answer is a histogram of score buckets maintained at resolution time, where rank is the sum of the buckets above plus an approximation inside the bucket; that is a README line, not today's work.
-- **The rank is read live, not cached.** The board has its own endpoint, `GET /api/leaderboard`, fetched on load and after each result rather than on the `GET /api/state` cadence, so there is no burst around a resolution for a cache to absorb. The podium is cached (below); the caller's row is theirs alone.
+- **The rank is read live, not cached.** The board is sent on the game stream when it opens and after each result or sign-in (3.1), not with every state, so there is no burst around a resolution for a cache to absorb. The podium is cached (below); the caller's row is theirs alone.
 - **One hot partition.** Every row shares the partition key `GLOBAL`, so writes concentrate. Fine at this volume; at scale the key becomes `GLOBAL#<shard>` with a scatter-gather read.
 - **Eventual consistency.** GSIs lag their table by a moment, so a player can see their new score on their own card before it moves on the board. Acceptable for a leaderboard, and worth one sentence in the README rather than a fix.
 - **Caching.** The podium is identical for everyone, so it is cached for ten seconds in the same cache-item pattern used for the price. Not at CloudFront: the distribution in front of Amplify Hosting is managed, so cache behaviour there is not ours to configure - the same constraint that dropped the country (6.3). The player's own row is not cached, since it is theirs alone.
@@ -379,7 +374,7 @@ As built (`src/auth.ts`, `signIn` in `src/lib/game.ts`):
 
 - **Scope `openid` only.** The UI never shows the Google name, so it is not asked for; the JWT carries `playerId` and nothing else from Google. Checks are `pkce` and `state`, JWT sessions (no adapter), sliding 30 days.
 - **The merge is one `TransactWriteItems`:** put `google:<sub>` with `board` set (condition: does not exist), delete the anonymous item (condition: `updatedAt` and the pending guess unchanged since read - the only writes to an anonymous item start or settle a guess, and both change them), and `ADD 1` to the board counter. A conflict re-reads and retries, so a guess settling mid-merge is carried over rather than lost, and a double click merges once. This is the only place a player joins the board.
-- **Outcomes:** `promoted`, `kept-existing` (the account wins; the anonymous item is left alone, and comes back on sign-out), `returning` (account exists, browser had not played) and `created`. The callback leaves the outcome in a short-lived `httpOnly` cookie; the next `GET /api/state` reports it once as `signIn` and clears it, and the screen says what happened (product §7).
+- **Outcomes:** `promoted`, `kept-existing` (the account wins; the anonymous item is left alone, and comes back on sign-out), `returning` (account exists, browser had not played) and `created`. The callback leaves the outcome in a short-lived `httpOnly` cookie; the next `GET /api/stream-token` reports it once as `signIn` and clears it, and the screen says what happened (product §7).
 - **Identity is read in one place** (`playerIdFrom`): the session's `google:<sub>` first, the anonymous cookie otherwise. Without `AUTH_SECRET`, sign-in is off and the game runs anonymously.
 - **Sign-in and sign-out are server actions** behind plain forms, so they carry Auth.js's CSRF protection and work before hydration.
 
@@ -417,10 +412,10 @@ What it pulls in, and must be set up first:
 
 ### 7.2 Behaviour
 
-- **Event-driven requests for game state** rather than a socket to our own backend, on the cadence set out in 3.1: the browser asks when the countdown ends and when the ticker shows the price has moved, not on a fixed interval. A persistent connection to our server would exist to deliver one message per minute that the client can already predict. The one socket in the app goes straight to Coinbase for the live minute (5.1), where a second of latency would be visible.
+- **One Server-Sent Events stream for game state** (3.1), not polling and not a WebSocket: the traffic is one-way, server to browser, which is what SSE is for, and `EventSource` needs no library. The one thing the player sends is a `POST`.
 - **The chart view is local state**, defaulting to the hour and switching to the minute when a guess starts; the player can switch back, and the choice is remembered for the session only.
 - **Countdown from server time.** Every response carries `serverNow`; the client derives the offset once and counts from there, so a skewed clock cannot show a wrong countdown.
-- **Page Visibility API:** pause the fallback polling on a hidden tab and resync immediately on focus, rather than waiting out the interval. Saves calls and avoids a frozen countdown.
+- **Page Visibility API:** close the stream on a hidden tab and reopen it on focus, with a fresh ticket. Frees a stream the account can ill spare (section 11), and the reopened stream's first state resyncs the countdown at once.
 - **Multiple tabs reconcile** on every `GET /state`; the server is the truth and a pending guess disables the buttons everywhere.
 - **A result settled while away is said once.** A result this page watched pending is the result moment; any other `lastResult` the browser has not shown before is the "while you were away" result (product spec §7). "Shown before" is the last result id the browser has put on screen, kept in `localStorage` - display state only, nothing the server reads, so it has no bearing on fairness. It is read once per page load, so the away result stays up for that visit as a watched one does, and is not new on the next. Without storage, an unwatched result stays in the history and nothing is announced: silence is the better failure than announcing it on every load. A first visit on a new browser (another device after sign-in, cleared storage) says it once. No confetti: the moment was missed, and a burst on opening the page celebrates nothing the player just did.
 - **Explicit loading and error states:** first load, offline, 409 on a duplicate guess, delayed feed.
@@ -435,7 +430,7 @@ What it pulls in, and must be set up first:
 - **Runtime identity:** the app runs under an execution role with least-privilege access to the one table and its indexes. No AWS keys reach the client, and none exist in the repository.
 - **Secrets:** `AUTH_SECRET` and the Google client id and secret are Amplify app environment variables, copied into the runtime by `amplify.yml`. The cron shared secret is also in SSM Parameter Store as a SecureString, where the sweep Lambda reads it. None is ever committed.
 - **Security:** same-origin by construction, since the API is part of the app - no CORS configuration to get wrong. The cron route rejects anything without the shared secret.
-- **Abuse, and what actually bounds it:** the conditional write on `POST /api/guess` already limits a player to one guess until it resolves, which is at most one per minute - a tighter bound than any rate limiter would have set, enforced by the data rather than by a counter. A counter would also need shared state to mean anything, since each runtime instance has its own memory. What that leaves exposed is minting fresh anonymous players and read volume on `GET /api/state`; the first is the limitation already stated in 6.1, and the second is what the cadence in 3.1 keeps small. Named rather than solved.
+- **Abuse, and what actually bounds it:** the conditional write on `POST /api/guess` already limits a player to one guess until it resolves, which is at most one per minute - a tighter bound than any rate limiter would have set, enforced by the data rather than by a counter. A counter would also need shared state to mean anything, since each runtime instance has its own memory. What that leaves exposed is minting fresh anonymous players and holding streams open; the first is the limitation already stated in 6.1, and the second is bounded, bluntly, by the account's Lambda concurrency (section 11). Named rather than solved.
 - **Observability:** structured JSON logs with a request id and `playerId`, metrics for price-fetch failures and resolved guesses, one CloudWatch alarm on the failure metric.
 - **Retention:** TTL on inactive anonymous player items, 30 days, refreshed on every write. Signed-in players carry no TTL: they are on the board and counted in its total, and an expiry would delete them while the counter still counted them.
 - **Cost:** DynamoDB on-demand and Amplify's build and hosting stay inside the free tier at this volume; the SSR runtime is the one line item a static bundle would not have had.
@@ -449,9 +444,9 @@ What it pulls in, and must be set up first:
 - **Coinbase adapter:** contract test against a recorded response, plus the failure paths (timeout, 429).
 - **Google sign-in:** wrong `aud`, wrong issuer, expired token and tampered signature are all rejected; a valid token issues a session; the merge runs once and is refused the second time.
 - **Names and leaderboard:** generation is pure and draws only on the curated lists; an anonymous player never carries the `board` attribute and signing in adds it; the board orders negative scores correctly; equal scores produce equal ranks and the next rank skips accordingly; a podium player gets no duplicate row; no response ever contains a Google display name.
-- **The sweep (3.2):** a pending guess enters the index on creation and leaves it on resolution; a sweep with nothing outstanding returns nothing; a guess left by a closed browser is picked up once, and a sweep racing a `GET /api/state` still resolves it exactly once.
+- **The sweep (3.2):** a pending guess enters the index on creation and leaves it on resolution; a sweep with nothing outstanding returns nothing; a guess left by a closed browser is picked up once, and a sweep racing the stream's state read still resolves it exactly once.
 - **Frontend:** buttons disabled (`aria-disabled`, keeping focus) while a guess is pending; focus never falls to the page when its control goes away; the "waiting for price change" notice; the countdown uses server time; no confetti under `prefers-reduced-motion`.
-- **Request cadence (3.1):** the scheduler is a pure function over `{ countdownEnded, lockedPrice, lastTickerPrice, socketAlive, visible, msSinceLastAsk, consecutiveFailures, fallbackPolls }` returning *ask* or *wait*, so a fake feed and a fake clock cover it: one call at t+60; no calls during the minute; a call when the ticker first differs from the locked price; fallback polling only when the socket is down, backing off from 5 s to 10 s; a failing server backed off exponentially to a minute, never asked on every tick; nothing at all while hidden.
+- **The game stream (3.1):** `runGameStream` over the in-memory store and a fake clock: the whole screen on connect; state every second, carrying a price refreshed every second; a result within a second of the guess settling; the board again when a result lands; the hour only when the shared cache refreshes it, and "no hour" said once when there is none; `gone` for a missing player; stopping when the browser leaves. The stream ticket: it names one player, cannot be forged or altered, and expires after a minute.
 - **Accessibility:** axe-core runs in a real browser over the screen's states - first visit at desktop and phone width, the chart inspector reached by keyboard, a guess on the live minute, a win and a loss, a guess settled while away (said once, then idle on the next visit) - against WCAG 2.2 A and AA, colour contrast as rendered included (`npm run test:a11y`, Playwright against a production build and DynamoDB Local, in its own table). The outage is tested too: a second copy of the app with the server's Coinbase fetch switched off (`E2E_PRICE_FEED_DOWN`, test-only) and the browser's Coinbase requests blocked, checked with no price ever cached and with a stale one - each must say what is happening, pause guessing, and pass axe. axe's best-practice rules run as well (one `h1`, content in landmarks). What no scanner can see is tested directly: the banner landmark holds the `h1` and sits outside `main`, every panel is a region with an `h2`, the countdown is a `timer`, the guess buttons read as one phrase, and a guess that does not go through is announced through the one live region - twice in a row, heard twice. axe cannot judge text on a gradient, so it reports the hero buttons as needing review rather than failing; that one case is not covered automatically.
 - **Optional:** one end-to-end run with Playwright and a fake clock.
 
@@ -474,12 +469,13 @@ What it pulls in, and must be set up first:
 
 | Risk | Mitigation |
 |---|---|
-| ~~Coinbase CORS blocks browser calls~~ | Checked on day one: open on both hosts. The proxy-route fallback is documented in the README in case the policy changes |
+| ~~Coinbase CORS blocks browser calls~~ | Checked on day one: open on both hosts. Since moot: the browser no longer calls Coinbase (3.1, 5) |
+| Amplify Hosting cannot stream a response | Measured on a deployed branch: buffered, and cut at 30 s. The game stream is a Lambda Function URL in `RESPONSE_STREAM` mode instead (3.1) |
 | AWS and CDK are the unfamiliar part | Deploy an infrastructure "hello world" first, before any game code |
 | Next.js on AWS is more deployment than a static bundle | Amplify Hosting first, because it runs Next natively; the fallback is OpenNext with CDK, decided on day one rather than the evening before delivery |
 | The scheduled sweep depends on an HTTP route being reachable | The shared secret is the only guard, so the route is written and tested before the scheduler exists; if it proves awkward, the sweep moves to a standalone Lambda in the same CDK stack |
 | Google OAuth setup drags | Consent screen and client id done before any code; anonymous play alone satisfies the brief, so sign-in can be dropped - but the leaderboard goes with it, since eligibility is being signed in, and 2.1's flip condition on the framework applies too |
-| Settlement reads Coinbase's trade history per resolution, from shared Amplify IPs, against a public rate limit | Normal play is one request per guess; only the unchanged-price case repeats, at most every 2 s. If limits bite, the tape is cached per deadline second in the price item's pattern |
+| Settlement reads Coinbase's trade history per resolution, from shared AWS IPs, against a public rate limit | Normal play is one request per guess; only the unchanged-price case repeats, once a second per open stream while it waits. If limits bite, the tape is cached per deadline second in the price item's pattern |
 | Lambda concurrency: each open tab holds one streaming Lambda for up to 15 minutes, and the account's limit is 10, shared with the sweep | **Accepted as a known limitation: about nine players at once.** The tenth simultaneous tab is throttled until another closes, and the browser retries. A quota increase to the standard 1,000 lifts it; not requested, on purpose, for a demo |
 | Scope creep (bot, extra providers, time-windowed boards) | They stay in the README's future-work list |
 | Astryx and StyleX change the build | Start from the official Next example, pin the version, and get a component rendering through the pipeline on day one (2.1); falling back to plain CSS modules later would cost a morning |

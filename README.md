@@ -10,9 +10,9 @@ A take-home exercise for epilot. Everything in the build order is in: the fair g
 
 The question underneath the game is whether a player can trust the result. So **the server is the only source of truth about game state.** The browser sends who it is (an `httpOnly` cookie) and what it guesses (`up` or `down`), and nothing else it says counts: no prices, no timestamps. Those fields do not exist in the API contract, and a request that tries to carry one is a 400, which you can check in the network tab.
 
-A guess resolves when a minute has passed _and_ the price has changed, decided by a pure function (`resolveGuess`) against the market as it stood at the deadline: the last Coinbase trade at or before `createdAt + 60 s`, read server-side from the public trade history (or, if that equals the locked price, the first later trade that moves it). When a request arrives therefore cannot choose the outcome, and anyone can check the settling trade against Coinbase. A delayed feed blocks resolution and the screen says so. Resolution has three triggers that share one path: a lazy check on every state read, the browser's cadence, and a scheduled sweep for guesses left behind by closed browsers. Each write that must happen once is a DynamoDB conditional write, so a double click, a second tab and the sweep racing a read all settle a guess exactly once.
+A guess resolves when a minute has passed _and_ the price has changed, decided by a pure function (`resolveGuess`) against the market as it stood at the deadline: the last Coinbase trade at or before `createdAt + 60 s`, read server-side from the public trade history (or, if that equals the locked price, the first later trade that moves it). When a request arrives therefore cannot choose the outcome, and anyone can check the settling trade against Coinbase. A delayed feed blocks resolution and the screen says so. Resolution has two triggers that share one path: the game stream's state read, once a second while the page is open, and a scheduled sweep for guesses left behind by closed browsers. Each write that must happen once is a DynamoDB conditional write, so a double click, a second tab and the sweep racing a read all settle a guess exactly once.
 
-There is no WebSocket to our backend. The browser knows when to ask, because it owns the countdown and, during a guess, watches Coinbase's public ticker for the live minute. That socket is cosmetic by construction: its prices never leave the browser, and the line it draws is labelled provisional.
+The server pushes the game to the browser over **one Server-Sent Events stream per tab**: the player's state every second (which carries the price, and so draws the live minute), the hour of candles, and the board. The browser sends one thing: `POST /api/guess`. It never calls Coinbase; every price, trade and candle is fetched server-side into shared caches, so Coinbase load does not grow with players. Amplify Hosting buffers responses and cuts them at 30 s (measured), so the stream is a Lambda Function URL in `RESPONSE_STREAM` mode, opened with a short-lived signed ticket from `GET /api/stream-token`, since its domain gets none of the site's cookies.
 
 The player can check a result rather than take it on trust. Each history row shows both prices the game used, the locked price is drawn on the chart, and the charts can be read tick by tick with a pointer or the keyboard.
 
@@ -42,8 +42,9 @@ Named here rather than found later:
 - **Your rank costs O(players above you).** A `COUNT` query still reads what it counts. Fine at a few thousand players; the scale answer is a histogram of score buckets maintained at resolution time.
 - **One hot partition.** Every board row shares one partition key. At scale that becomes `GLOBAL#<shard>` with a scatter-gather read.
 - **About nine players at once.** Each open tab holds one streaming Lambda for up to 15 minutes, and this AWS account's Lambda concurrency limit is 10, shared with the sweep. The tenth simultaneous tab is throttled until another closes; its stream fails to open and the browser retries. A quota increase to the standard 1,000 lifts it; it was left as is on purpose for a demo.
-- **Cold starts** can show in the first request after a quiet period, and the request cadence is deliberately sparse, so quiet periods are normal.
-- **The chart fetches Coinbase straight from the browser**, since both endpoints send `access-control-allow-origin: *` (checked from the deployed origin). If that ever changes, the chart moves behind a cached `GET /api/history` using the same cache-item pattern as the price.
+- **Cold starts** can show in the first request after a quiet period: the ticket route and the stream Lambda each start cold once.
+- **A stream lasts up to 14 minutes**, the Function URL's limit being 15; the browser then reconnects with a fresh ticket, which is invisible on screen but costs a new invocation.
+- **The live minute moves once a second**, not per trade: it is drawn from the game price the stream sends, which is cached for a second.
 - **Google brand verification was skipped, on purpose.** The OAuth app asks for `openid` only, a non-sensitive scope, so it can be published and used by anyone without verification, and Google shows no unverified-app warning. What verification adds is the app's name and logo on the consent screen, which is why Google shows the `amplifyapp.com` domain there instead. It needs a domain registered to us and a privacy policy page, out of scope for this exercise.
 - **Astryx is pre-1.0**, so it is pinned exactly: `@astryxdesign/core`, `theme-neutral` and `cli` at 0.6.3. Upgrading is a deliberate change of all three together. The Dracula theme is compiled from `src/themes/dracula.theme.ts` on every `dev` and `build`, so an upgrade takes effect on the next run; check the screen after one.
 
@@ -62,13 +63,14 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 | Path                         | What                                                                                                                                                                                         |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `docs/`                      | Both specs, the six screen designs, the user-flow diagram with its Mermaid source, and the setup checklist                                                                                    |
-| `src/lib/`                   | The game, framework-free and unit-tested: the resolution rule, scoring, the price cache, the guess cycle and sign-in merge (`game.ts`), the DynamoDB store, the leaderboard, the name generator, the request cadence, and the pure logic behind every screen state and chart |
-| `src/app/api/`               | Thin route handlers over `src/lib`: `player`, `state`, `guess`, `leaderboard`, `cron/resolve`, and Auth.js at `auth/[...nextauth]`                                                            |
+| `src/lib/`                   | The game, framework-free and unit-tested: the resolution rule, scoring, the price cache, the guess cycle and sign-in merge (`game.ts`), the DynamoDB store, the leaderboard, the name generator, the stream ticket, and the pure logic behind every screen state and chart |
+| `src/app/api/`               | Thin route handlers over `src/lib`: `player`, `stream-token`, `guess`, `cron/resolve`, Auth.js at `auth/[...nextauth]`, and `stream` (the game stream, local only) |
+| `src/stream/`                | The game stream: `runGameStream`, and the Lambda that serves it in production |
 | `src/auth.ts`                | Google sign-in via Auth.js; its callback runs the one-time merge                                                                                                                             |
 | `src/components/ui/`         | The design language as atoms (`Panel`, `Pill`, `DirectionButton`, ...), on Astryx primitives and tokens                                                                                        |
 | `src/components/game/`       | The screen: `GameScreen` composing `widgets/`, `charts/`, `feedback/`, with `hooks/` and `utils/`                                                                                             |
 | `src/themes/`                | The Dracula token set, and the theme compiled from it                                                                                                                                        |
-| `infra/`                     | CDK stack: table and indexes, the IAM policy for the Amplify compute role, and the once-a-minute sweep (EventBridge Scheduler invoking a small Lambda that calls `/api/cron/resolve`)        |
+| `infra/`                     | CDK stack: table and indexes, the IAM policy for the Amplify compute role, the game stream's Lambda and Function URL, and the once-a-minute sweep (EventBridge Scheduler invoking a small Lambda that calls `/api/cron/resolve`)        |
 | `CLAUDE.md`                  | Context for an agent picking this up: decisions made and open, build order, conventions                                                                                                      |
 
 ## Running it
@@ -89,7 +91,7 @@ npm run test:all   # both of the above
 
 Sign-in is off locally until `.env.local` has `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`; the game plays anonymously without them.
 
-`npm run dev` on its own runs against a real table instead: put `PLAYERS_TABLE_NAME` (the stack's `PlayersTableName` output) in `.env.local`, and the AWS SDK uses your local AWS credentials. Anything played that way lands in the deployed game's table.
+`dev:local` also serves the game stream from the app itself (`LOCAL_STREAM=1`), since the Lambda is for production. `npm run dev` on its own runs against a real table instead: put `PLAYERS_TABLE_NAME` (the stack's `PlayersTableName` output) in `.env.local`, with `LOCAL_STREAM=1`, any `STREAM_SECRET`, and `STREAM_URL=http://localhost:3000/api/stream`, and the AWS SDK uses your local AWS credentials. Anything played that way lands in the deployed game's table.
 
 The environment:
 
@@ -101,19 +103,22 @@ The environment:
 | `DYNAMODB_ENDPOINT`                    | Local development only: point at DynamoDB Local instead of AWS. `dev:local` sets it, with the other three                                                                              |
 | `AUTH_SECRET`                          | Encrypts the Auth.js session cookie (`openssl rand -base64 32`). Unset, sign-in is off and the game runs anonymously                                                                   |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | The Google OAuth client. Redirect URI: `<origin>/api/auth/callback/google`                                                                                                             |
+| `STREAM_URL`                           | Where the game stream is: the stack's `StreamUrl` output when deployed; `<origin>/api/stream` locally |
+| `STREAM_SECRET`                        | Signs the stream tickets. Deployed, the same value as SSM `/btc-guess/stream-secret`, which the stream Lambda reads. Unset, the ticket route says the stream is unavailable |
+| `LOCAL_STREAM`                         | Local development and the e2e tests only: `1` serves the game stream from `/api/stream`. `dev:local` sets it |
 | `AUTH_URL`                             | Deployed only: the public origin, e.g. `https://main.dalnijp0oanzq.amplifyapp.com`. Behind Amplify's proxy the app sees itself as `localhost:3000`, and Auth.js would build its Google callback from that |
 
 The cycle by hand, with a cookie jar standing in for the browser:
 
 ```
 curl -c jar -X POST localhost:3000/api/player                  # first visit: sets the httpOnly cookie
-curl -b jar localhost:3000/api/state                           # score, price, pending guess
+curl -b jar localhost:3000/api/stream-token                    # the stream's URL and a 60 s ticket
+curl -N "localhost:3000/api/stream?token=$TOKEN"               # the game stream: state every second, the hour, the board
 curl -b jar -H 'content-type: application/json' \
      -d '{"direction":"up"}' localhost:3000/api/guess          # 201; again and it is a 409
 curl -b jar -H 'content-type: application/json' \
      -d '{"direction":"up","price":1}' localhost:3000/api/guess   # 400: the server takes no price
 curl -X POST -H "x-cron-secret: $CRON_SECRET" localhost:3000/api/cron/resolve   # the sweep
-curl localhost:3000/api/leaderboard                            # public; generated names only
 ```
 
 ## Tests
@@ -123,6 +128,7 @@ Fairness is the thing being demonstrated, so the tests carry the argument. `npm 
 - **The rules:** no resolution before a minute or on an unchanged price, the price at the deadline settles a guess however late anyone asks (so waiting for a better moment finds nothing), a stale feed blocks it, and correct and wrong move the score by exactly one.
 - **Races:** two simultaneous guesses let exactly one through; reads racing each other, and the sweep racing a player's own read, settle a guess exactly once; two sign-ins racing merge once; a guess settling mid-merge is carried over rather than lost. They run over an in-memory store with DynamoDB's conditional semantics, and separate tests check that the real store's expressions encode those same conditions.
 - **The edge:** a request body carrying a price or a timestamp is a 400; cookies are `httpOnly` and `SameSite=Lax`; no leaderboard response carries a player id.
+- **The stream:** what it sends and when, over the in-memory store and a fake clock (the whole screen on connect, state every second, a result within a second of settling, the board after a result, the hour only when it changes), and the ticket (one player, unforgeable, expiring).
 - **The screen:** every waiting and result state, the copy it announces, and the chart geometry, as pure functions.
 - **Accessibility:** `npm run test:a11y` runs axe-core in a real browser over the screen's states: first visit (desktop and phone), the chart inspector by keyboard, a guess on the live minute, a win and a loss - and Coinbase down, with no price ever fetched and with a stale one. It builds the app and runs it against DynamoDB Local in a separate `PlayersE2E` table, so your local players are untouched; the first run needs `npx playwright install chromium`.
 
