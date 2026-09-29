@@ -131,7 +131,7 @@ export function useStream(): GameStream {
 				MAX_BACKOFF_MS,
 				1_000 * 2 ** (failures.current - 1),
 			);
-			timer = setTimeout(open, backoff * (0.5 + Math.random() * 0.5));
+			timer = setTimeout(open, backoff * (1 + Math.random()));
 		};
 
 		const open = async () => {

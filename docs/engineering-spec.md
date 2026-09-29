@@ -214,6 +214,8 @@ The server pushes. Each open tab holds one **Server-Sent Events** stream, and ev
 
 **Reconnecting.** Every end of an `EventSource` looks like an error, the planned end included, and its own retry would reuse an expired ticket. So the client closes it and reconnects with a fresh ticket, backing off from a second to half a minute while it keeps failing; after three failures with nothing on screen it says the game is unreachable and offers "Try again".
 
+**When a tick fails.** A DynamoDB throttle or timeout in a tick (the state read, the board, the shared hour) is logged as `stream-tick-failed` and that tick sends nothing; the stream carries on at the next second, and the board or hour that failed is tried again then. A failed write to the candle cache is only logged (`candles-cache-write-failed`): the fetched hour is still used. After five failed ticks in a row (`MAX_CONSECUTIVE_FAILED_TICKS`) the store is really down and the stream ends, so the browser reconnects and reports its own state. In the Lambda the response is always ended in a `finally`, and the handler waits for the flush before returning, so a failure cannot leave a partial 200 open. To keep players who drop together from returning together, the stream's `retry:` hint is jittered (1 to 3 s) and the client's own reconnect wait is its backoff times a random factor between 1 and 2.
+
 Four properties worth stating:
 
 - **The server decides, and nobody's timing decides anything.** The browser only listens. A guess settles against the trade at its deadline (section 3), whenever the read that settles it happens.

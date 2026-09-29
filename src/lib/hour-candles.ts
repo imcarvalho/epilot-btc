@@ -68,6 +68,16 @@ export async function getHourCandles({
 		candles,
 		updatedAt: startedAt,
 	};
-	await store.putCachedCandles(fresh);
+	try {
+		await store.putCachedCandles(fresh);
+	} catch (error) {
+		// The cache only saves the next caller a fetch; the hour is still good.
+		console.error(
+			JSON.stringify({
+				event: 'candles-cache-write-failed',
+				error: String(error),
+			}),
+		);
+	}
 	return fresh;
 }
