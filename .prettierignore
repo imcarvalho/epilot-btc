@@ -2,6 +2,7 @@ node_modules
 .next
 .dynamodb
 .playwright-mcp
+.claude/
 infra/cdk.out
 infra/node_modules
 coverage

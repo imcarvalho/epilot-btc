@@ -19,6 +19,7 @@ export default tseslint.config(
 			'.next/',
 			'.dynamodb/',
 			'.playwright-mcp/',
+			'.claude/',
 			'coverage/',
 			'test-results/',
 			'playwright-report/',
