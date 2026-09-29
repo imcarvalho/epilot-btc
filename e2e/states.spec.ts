@@ -153,14 +153,17 @@ test('the game cannot be reached: said, and "Try again" works from the keyboard'
 	page,
 }) => {
 	let blocked = true;
-	await page.route('**/api/stream-token', (route) =>
-		blocked
-			? route.fulfill({
-					status: 500,
-					body: '{}',
-				})
-			: route.continue(),
-	);
+	// Both ways in are down: the stream, and the polling that stands in for it.
+	for (const path of ['**/api/stream-token', '**/api/snapshot']) {
+		await page.route(path, (route) =>
+			blocked
+				? route.fulfill({
+						status: 500,
+						body: '{}',
+					})
+				: route.continue(),
+		);
+	}
 	await page.goto('/');
 
 	await expect(shown(page, 'The game could not be reached.')).toBeVisible({
@@ -188,6 +191,20 @@ test('the game cannot be reached: said, and "Try again" works from the keyboard'
 	await expect(page.locator(':focus')).toContainText(
 		'Will BTC be higher or lower in a minute?',
 	);
+});
+
+test('the stream cannot be opened: the screen is polled instead, and still works', async ({
+	page,
+}) => {
+	await page.route('**/api/stream-token', (route) =>
+		route.fulfill({
+			status: 500,
+			body: '{}',
+		}),
+	);
+	await openGame(page);
+	await expect(shown(page, 'The game could not be reached.')).toHaveCount(0);
+	await expectNoViolations(page);
 });
 
 test('a guess that does not go through: said beside the buttons, and announced every time', async ({

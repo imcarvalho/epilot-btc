@@ -5,6 +5,7 @@ import type { Candle } from '@/lib/candles';
 import type {
 	LeaderboardResponse,
 	SignInOutcome,
+	SnapshotResponse,
 	StateResponse,
 	StreamTicket,
 } from '@/lib/contracts';
@@ -39,6 +40,11 @@ const FAILURES_BEFORE_ERROR = 3;
 const MAX_BACKOFF_MS = 30_000;
 /** No state for this long and the stream counts as down. */
 const QUIET_MS = 5_000;
+/**
+ * While the stream cannot be opened the screen is polled instead (§3.1): a
+ * state every two seconds, well inside `QUIET_MS`, so it still counts as live.
+ */
+const POLL_MS = 2_000;
 
 /**
  * First contact is "ask for a ticket; if there is no player yet, create one
@@ -76,6 +82,20 @@ async function fetchTicket(): Promise<StreamTicket> {
 	return res.json();
 }
 
+/** The polled fallback: one read of what a stream tick says, `null` if the player is gone. */
+async function fetchSnapshot(): Promise<SnapshotResponse | null> {
+	const res = await fetch('/api/snapshot', {
+		cache: 'no-store',
+	});
+	if (res.status === 401 || res.status === 404) {
+		return null;
+	}
+	if (!res.ok) {
+		throw new Error(`snapshot failed: ${res.status}`);
+	}
+	return res.json();
+}
+
 /**
  * The game, pushed (engineering spec §3.1): one Server-Sent Events stream
  * carries the player's state every second, the hour of candles and the
@@ -88,6 +108,11 @@ async function fetchTicket(): Promise<StreamTicket> {
  * backing off from a second to half a minute while it keeps failing. It is
  * closed while the tab is hidden, which also frees one of the few streams
  * the account can run at once.
+ *
+ * When the stream will not open (the account's concurrency is used up, so
+ * the Lambda answers 429, which `EventSource` cannot report), the screen is
+ * polled from `/api/snapshot` instead, and the stream is still retried in
+ * the background. The first state the stream delivers ends the polling.
  */
 export function useStream(): GameStream {
 	const [status, setStatus] = useState<StreamStatus>({
@@ -112,6 +137,87 @@ export function useStream(): GameStream {
 		let disposed = false;
 		let generation = 0;
 
+		let polling: ReturnType<typeof setTimeout> | undefined;
+		let polls = 0;
+		let pollFailures = 0;
+
+		const applyState = (state: StateResponse) => {
+			setLastStateAt(Date.now());
+			clockOffset.current = state.serverNow - Date.now();
+			setStatus({
+				kind: 'ready',
+				state,
+				clockOffset: clockOffset.current,
+			});
+		};
+		const applyCandles = (candles: Candle[] | null) => {
+			setCandles((current) =>
+				candles
+					? {
+							kind: 'ready',
+							candles,
+							windowEnd: toServerTime(Date.now(), clockOffset.current),
+						}
+					: current.kind === 'ready'
+						? current
+						: {
+								kind: 'error',
+							},
+			);
+		};
+
+		const stopPolling = () => {
+			polls += 1;
+			clearTimeout(polling);
+			polling = undefined;
+			pollFailures = 0;
+		};
+
+		const poll = async () => {
+			const mine = polls;
+			try {
+				const snapshot = await fetchSnapshot();
+				if (mine !== polls || disposed) {
+					return;
+				}
+				if (!snapshot) {
+					// The player expired or was deleted: make a new one, then read again.
+					await createPlayer();
+					if (mine === polls && !disposed) {
+						polling = setTimeout(poll, 0);
+					}
+					return;
+				}
+				pollFailures = 0;
+				applyState(snapshot.state);
+				applyCandles(snapshot.candles);
+				setBoard(snapshot.leaderboard);
+			} catch {
+				if (mine !== polls || disposed) {
+					return;
+				}
+				pollFailures += 1;
+				if (pollFailures >= FAILURES_BEFORE_ERROR) {
+					setStatus((s) =>
+						s.kind === 'ready'
+							? s
+							: {
+									kind: 'error',
+								},
+					);
+				}
+			}
+			if (mine === polls && !disposed) {
+				polling = setTimeout(poll, POLL_MS);
+			}
+		};
+
+		const startPolling = () => {
+			if (polling === undefined) {
+				polling = setTimeout(poll, 0);
+			}
+		};
+
 		const close = () => {
 			generation += 1;
 			clearTimeout(timer);
@@ -123,13 +229,7 @@ export function useStream(): GameStream {
 			close();
 			failures.current += 1;
 			if (failures.current >= FAILURES_BEFORE_ERROR) {
-				setStatus((s) =>
-					s.kind === 'ready'
-						? s
-						: {
-								kind: 'error',
-							},
-				);
+				startPolling();
 			}
 			const backoff = Math.min(
 				MAX_BACKOFF_MS,
@@ -165,31 +265,12 @@ export function useStream(): GameStream {
 			);
 			source = es;
 			es.addEventListener('state', (e) => {
-				const state = JSON.parse((e as MessageEvent).data) as StateResponse;
 				failures.current = 0;
-				setLastStateAt(Date.now());
-				clockOffset.current = state.serverNow - Date.now();
-				setStatus({
-					kind: 'ready',
-					state,
-					clockOffset: clockOffset.current,
-				});
+				stopPolling();
+				applyState(JSON.parse((e as MessageEvent).data) as StateResponse);
 			});
 			es.addEventListener('candles', (e) => {
-				const candles = JSON.parse((e as MessageEvent).data) as Candle[] | null;
-				setCandles((current) =>
-					candles
-						? {
-								kind: 'ready',
-								candles,
-								windowEnd: toServerTime(Date.now(), clockOffset.current),
-							}
-						: current.kind === 'ready'
-							? current
-							: {
-									kind: 'error',
-								},
-				);
+				applyCandles(JSON.parse((e as MessageEvent).data) as Candle[] | null);
 			});
 			es.addEventListener('leaderboard', (e) => {
 				setBoard(JSON.parse((e as MessageEvent).data) as LeaderboardResponse);
@@ -220,6 +301,7 @@ export function useStream(): GameStream {
 				void open();
 			} else {
 				close();
+				stopPolling();
 			}
 		};
 
@@ -228,6 +310,7 @@ export function useStream(): GameStream {
 		return () => {
 			disposed = true;
 			close();
+			stopPolling();
 			document.removeEventListener('visibilitychange', onVisibility);
 		};
 	}, []);

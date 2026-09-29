@@ -129,6 +129,17 @@ export type StreamEvent =
 	/** The player no longer exists (expired, or deleted): make a new one and reconnect. */
 	| { type: 'gone'; data: null };
 
+/**
+ * `GET /api/snapshot`: what one tick of the game stream says, in one response,
+ * for when the stream cannot be opened (engineering spec §3.1).
+ */
+export interface SnapshotResponse {
+	state: StateResponse;
+	/** The last hour; null when there is none to show. */
+	candles: Candle[] | null;
+	leaderboard: LeaderboardResponse;
+}
+
 /** `GET /api/stream-token`: where the game stream is, and the ticket to open it. */
 export interface StreamTicket {
 	/** The stream's URL, without the token. */

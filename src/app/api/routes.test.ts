@@ -12,6 +12,7 @@ import { POST as createPlayer } from './player/route';
 import { POST as guess } from './guess/route';
 import { POST as resolve } from './cron/resolve/route';
 import { GET as streamTicket } from './stream-token/route';
+import { GET as snapshot } from './snapshot/route';
 import { verifyStreamToken } from '@/lib/stream-token';
 
 const T0 = 1_700_000_000_000;
@@ -400,6 +401,46 @@ describe('GET /api/stream-token', () => {
 		expect(res.status).toBe(503);
 		expect(await res.json()).toEqual({
 			error: 'stream-unavailable',
+		});
+	});
+});
+
+describe('GET /api/snapshot', () => {
+	it('is 401 with no player', async () => {
+		const res = await snapshot(request('/api/snapshot'));
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual({
+			error: 'no-player',
+		});
+	});
+
+	it('is 404 for a cookie whose player no longer exists', async () => {
+		const res = await snapshot(
+			request('/api/snapshot', {
+				cookie: '5b6f1c1e-7a52-4c0e-9a0b-2f6a8f3f9c11',
+			}),
+		);
+		expect(res.status).toBe(404);
+	});
+
+	it('carries the state, the hour and the board, uncached', async () => {
+		const cookie = await newPlayerCookie();
+		const res = await snapshot(
+			request('/api/snapshot', {
+				cookie,
+			}),
+		);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+		expect(await res.json()).toEqual({
+			state: expect.objectContaining({
+				score: 0,
+				serverNow: T0,
+			}),
+			candles: [],
+			leaderboard: expect.objectContaining({
+				podium: [],
+			}),
 		});
 	});
 });
