@@ -2,7 +2,7 @@ import { VisuallyHidden } from '@astryxdesign/core/VisuallyHidden';
 import * as stylex from '@stylexjs/stylex';
 import { Download, Trophy } from 'lucide-react';
 import type { LeaderboardResponse, LeaderboardRow } from '@/lib/contracts';
-import { ordinal, placeSentence } from '@/lib/leaderboard';
+import { ordinal, placeSentence } from '@/lib/place';
 import { rateWords, scoreWords } from '@/lib/spoken';
 import { formatRate } from '@/lib/stats';
 import { EmptyMessage, Numeric, Panel, PanelHeader } from '@/components/ui';
