@@ -61,6 +61,7 @@ beforeEach(() => {
 	jar = new Map();
 	cookiesSet.length = 0;
 	vi.stubEnv('AUTH_SECRET', AUTH_SECRET);
+	vi.stubEnv('AUTH_URL', ORIGIN);
 	vi.stubEnv('AUTH_GOOGLE_ID', CLIENT_ID);
 	vi.stubEnv('AUTH_GOOGLE_SECRET', 'test-client-secret');
 	vi.spyOn(console, 'log').mockImplementation(() => {});
