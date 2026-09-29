@@ -79,11 +79,11 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 nvm use           # Node 24, from .nvmrc: the Astryx CLI that builds the theme needs >= 22.13
 npm install && npm --prefix infra install
 npm run dev:local  # http://localhost:3000 - the whole app, no AWS account needed
-npm test           # the app's unit tests, then the infra stack's: no network, a few seconds
+npm test           # type-check (app, e2e, infra), the app's unit tests, the store against DynamoDB Local (needs Java), then the infra stack's: no network
 npm run build      # next build; also proves the StyleX/Astryx atomic CSS compiles for production
 npm run format     # Prettier: tabs and single quotes
 npm run lint       # ESLint, two layout rules: braces on every if/else/loop, objects over lines
-npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java and the network)
+npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java, no network)
 npm run test:all   # both of the above
 ```
 
@@ -123,16 +123,16 @@ curl -X POST -H "x-cron-secret: $CRON_SECRET" localhost:3000/api/cron/resolve   
 
 ## Tests
 
-Fairness is the thing being demonstrated, so the tests carry the argument. `npm test` runs the app's and the infra stack's without any infrastructure; `npm run test:all` adds the browser accessibility checks:
+Fairness is the thing being demonstrated, so the tests carry the argument. `npm test` runs the app's and the infra stack's without any AWS account (the store's tests need Java, for DynamoDB Local); `npm run test:all` adds the browser accessibility checks:
 
 - **The rules:** no resolution before a minute or on an unchanged price, the price at the deadline settles a guess however late anyone asks (so waiting for a better moment finds nothing), a stale feed blocks it, and correct and wrong move the score by exactly one.
-- **Races:** two simultaneous guesses let exactly one through; reads racing each other, and the sweep racing a player's own read, settle a guess exactly once; two sign-ins racing merge once; a guess settling mid-merge is carried over rather than lost. They run over an in-memory store with DynamoDB's conditional semantics, and separate tests check that the real store's expressions encode those same conditions.
+- **Races:** two simultaneous guesses let exactly one through; reads racing each other, and the sweep racing a player's own read, settle a guess exactly once; two sign-ins racing merge once; a guess settling mid-merge is carried over rather than lost. They run over an in-memory store with DynamoDB's conditional semantics, and separate tests check that the real store's expressions encode those same conditions: against a mocked SDK for what is sent, and against DynamoDB Local for what a real engine does with it (the sign-in transaction, the sweep's and the board's index queries, the once-only writes).
+- **Sign-in:** the real Auth.js handlers against a fake Google: a token for another client, from another issuer, expired or without a subject is refused with no session and nothing written; so is a callback with a forged state or without its PKCE cookie; a valid one issues a session holding only `google:<sub>`. Auth.js does not check the id token's signature in this flow (the token comes from Google's token endpoint over TLS), so no test claims it.
 - **The edge:** a request body carrying a price or a timestamp is a 400; cookies are `httpOnly` and `SameSite=Lax`; no leaderboard response carries a player id.
 - **The stream:** what it sends and when, over the in-memory store and a fake clock (the whole screen on connect, state every second, a result within a second of settling, the board after a result, the hour only when it changes), and the ticket (one player, unforgeable, expiring).
 - **The screen:** every waiting and result state, the copy it announces, and the chart geometry, as pure functions.
-- **Accessibility:** `npm run test:a11y` runs axe-core in a real browser over the screen's states: first visit (desktop and phone), the chart inspector by keyboard, a guess on the live minute, a win and a loss - and Coinbase down, with no price ever fetched and with a stale one. It builds the app and runs it against DynamoDB Local in a separate `PlayersE2E` table, so your local players are untouched; the first run needs `npx playwright install chromium`.
-
-- **The infra stack:** CDK assertions against the synthesized template, and the sweep Lambda. They live in `infra/`, its own package, and `npm test` runs them after the app's.
+- **Accessibility:** `npm run test:a11y` runs axe-core in a real browser over the screen's states, at desktop width, 390 px and 320 px: first visit, a guess on the live minute, time up, a win and a loss, the game unreachable, a guess that did not go through, a signed-in player, the chart read by pointer and by keyboard - and Coinbase down, with no price ever fetched, with a stale one, and with a guess in play. Each state also checks that nothing scrolls sideways and what the one live region announces, and the keyboard journeys check tab order and that focus never falls to the page. axe skips the chart tooltip (it is hidden from assistive technology), so its contrast is checked directly. It builds the app and runs it against DynamoDB Local in a separate `PlayersE2E` table, so your local players are untouched, and against a fake Coinbase (`e2e/support/fake-coinbase.mjs`) so a blip or a 429 from the live API cannot block a deploy; `E2E_LIVE_COINBASE=1 npm run test:a11y` uses the real one. The first run needs `npx playwright install chromium`.
+- **The infra stack:** CDK assertions against the synthesized template (including that the DynamoDB Local table the tests run on has the same keys and indexes), and the sweep Lambda. They live in `infra/`, its own package, and `npm test` runs them after the app's.
 
 ## Deploying it
 

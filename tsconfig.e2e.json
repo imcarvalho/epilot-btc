@@ -1,0 +1,20 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"incremental": false,
+		"plugins": [],
+		"types": ["node"],
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": [
+		"e2e/**/*.ts",
+		"e2e/**/*.mjs",
+		"playwright.config.ts",
+		"test/**/*.ts",
+		"scripts/**/*.d.mts",
+		"src/lib/testing/vitest-context.d.ts"
+	],
+	"exclude": ["node_modules", "infra"]
+}

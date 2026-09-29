@@ -75,7 +75,7 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 
 ## Conventions
 
-- **Every test gates the deploy.** `amplify.yml` runs `npm test` (app and infra) and `npm run test:a11y` (axe, against the build it is about to ship) inside the Amplify build; a failure fails the build and nothing deploys. Keep them passing locally before pushing.
+- **Every test gates the deploy.** `amplify.yml` runs `npm test` (type-check of app, e2e and infra; app tests; the store against DynamoDB Local; infra) and `npm run test:a11y` (axe, against the build it is about to ship) inside the Amplify build; a failure fails the build and nothing deploys. Both need Java, neither needs the network: the a11y run uses a fake Coinbase (`E2E_COINBASE_URL`, test-only, like `E2E_PRICE_FEED_DOWN`). Keep them passing locally before pushing.
 - **Formatting: tabs and single quotes**, enforced by Prettier (`.prettierrc`). Run `npm run format` before committing; `npm run format:check` must pass.
 - **Braces on every `if`, `else` and loop body**, on their own lines - never `if (x) return y;`. Enforced by ESLint's `curly: all`.
 - **Every non-empty object literal broken over lines**, never `{ ask: false }` on one line: the braces and each property get their own lines, arguments and test expectations included. Enforced by `@stylistic/object-curly-newline` (`minProperties: 1`); Prettier keeps an expanded object expanded, so the two agree.
@@ -85,7 +85,7 @@ Note that 5 and 6 are one item in two parts: eligibility for the board is being 
 - **Route handlers on the Node runtime**, not the edge - they need the AWS SDK and the hosting role's credentials.
 - **Every write that must happen once is a DynamoDB conditional write.** Guess creation is conditioned on `attribute_not_exists(pendingGuess)`; resolution is conditioned on the pending guess id. Never a read-then-write.
 - **Counters move in the same write as the score.** Never recomputed from `history`, which is trimmed to 10 entries.
-- **Accessibility is not a later pass**, and it is tested: `npm run test:a11y` runs axe-core (WCAG and best-practice rules) over the screen's states in a real browser, colour contrast included, plus structure tests for what axe cannot see: the banner and `h1`, a heading per panel, and failures announced; and the screen with Coinbase down (`e2e/outage.spec.ts`, through the test-only `E2E_PRICE_FEED_DOWN` switch in `src/lib/deps.ts`). axe cannot judge text on a gradient, so the hero buttons' ink is not covered. Results announced through one `aria-live="polite"` region, no meaning carried by colour alone, confetti skipped under `prefers-reduced-motion`.
+- **Accessibility is not a later pass**, and it is tested: `npm run test:a11y` runs axe-core (WCAG and best-practice rules) over the screen's states in a real browser, colour contrast included, across desktop, 390 px and 320 px, plus structure tests for what axe cannot see: the banner and `h1`, a heading per panel, what the one live region says in each state, keyboard order and focus, and the chart tooltip's contrast (axe skips it, being `aria-hidden`); and the screen with Coinbase down (`e2e/outage.spec.ts`, through the test-only `E2E_PRICE_FEED_DOWN` switch in `src/lib/deps.ts`). axe cannot judge text on a gradient, so the hero buttons' ink is not covered. Results announced through one `aria-live="polite"` region, no meaning carried by colour alone, confetti skipped under `prefers-reduced-motion`.
 - **Copy comes from product spec §7.** It is written as full sentences because it is also what a screen reader announces. Do not paraphrase it.
 
 ## What is already here
@@ -157,4 +157,4 @@ There is no `package.json` yet, deliberately - the versions should be current at
 
 ## Definition of done
 
-Engineering spec §10. The short version: no client-supplied price or timestamp can affect an outcome and this is visible in the network tab; guess creation and resolution are each idempotent under concurrent calls; a guess abandoned by a closed browser still resolves; a stale feed blocks resolution and says so; sign-in rejects malformed, expired and wrongly-audienced tokens; the leaderboard and the sweep are both served from indexes rather than scans.
+Engineering spec §10. The short version: no client-supplied price or timestamp can affect an outcome and this is visible in the network tab; guess creation and resolution are each idempotent under concurrent calls; a guess abandoned by a closed browser still resolves; a stale feed blocks resolution and says so; sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks (`src/auth.test.ts`); the leaderboard and the sweep are both served from indexes rather than scans.
