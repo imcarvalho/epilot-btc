@@ -25,7 +25,9 @@ import {
 /** The screen with its price and its hour of candles in. */
 async function openGame(page: Page) {
 	await page.goto('/');
-	await expect(page.getByText(/Updated \d+s ago/)).toBeVisible({
+	await expect(
+		page.getByText(/^\$\d{1,3}(,\d{3})*\.\d{2}$/).first(),
+	).toBeVisible({
 		timeout: 30_000,
 	});
 	await expect(

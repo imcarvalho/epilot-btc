@@ -160,15 +160,14 @@ export function PriceCard({
 							Live · provisional
 						</p>
 					) : (
+						// Fresh, the price needs no caption: it moves every second on
+						// the stream. Stale, it says so.
+						priceStale &&
 						age !== null && (
 							<p
-								{...stylex.props(
-									styles.caption,
-									styles.updated,
-									priceStale && styles.stale,
-								)}
+								{...stylex.props(styles.caption, styles.updated, styles.stale)}
 							>
-								{priceStale ?? staleSentence(age)}
+								{staleSentence(age)}
 							</p>
 						)
 					)}
