@@ -132,8 +132,10 @@ export function useGame() {
 				} else if (res.status === 409) {
 					// Another tab got there first: its guess arrives on the stream.
 				} else if (res.status === 401) {
-					// The player needs re-establishing: the stream does that.
+					// The player needs re-establishing: the stream does that. This
+					// guess was not placed, so say so rather than drop it.
 					stream.retry();
+					setGuessError('failed');
 				} else {
 					setGuessError('failed');
 				}

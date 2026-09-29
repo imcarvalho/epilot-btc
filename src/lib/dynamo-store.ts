@@ -113,16 +113,32 @@ const isConditionFailure = (
 	error instanceof ConditionalCheckFailedException ||
 	(error as { name?: string })?.name === 'ConditionalCheckFailedException';
 
-/** A transaction cancelled because one of its conditions failed. */
+/** Reasons a transaction is cancelled that a fresh attempt can get past. */
+const RETRYABLE_REASONS = ['TransactionConflict', 'ThrottlingError'];
+
+/**
+ * A transaction that did not land and can be read and tried again: a
+ * condition failed (the record moved since it was read), or another
+ * transaction was touching one of its items - two sign-ins both adding to
+ * the one board total, a settle during a merge. Nothing was written.
+ */
 const isTransactionConflict = (error: unknown) => {
 	const e = error as {
 		name?: string;
 		CancellationReasons?: { Code?: string }[];
 	};
+	if (
+		e?.name === 'TransactionConflictException' ||
+		e?.name === 'TransactionInProgressException'
+	) {
+		return true;
+	}
 	return (
 		e?.name === 'TransactionCanceledException' &&
 		(e.CancellationReasons ?? []).some(
-			(r) => r.Code === 'ConditionalCheckFailed',
+			(r) =>
+				r.Code === 'ConditionalCheckFailed' ||
+				RETRYABLE_REASONS.includes(r.Code ?? ''),
 		)
 	);
 };
@@ -217,6 +233,7 @@ export class DynamoStore implements GameStore {
 	async createSignedInPlayer(
 		player: PlayerRecord,
 		replacing: PlayerRecord | null,
+		counted = false,
 	) {
 		try {
 			await this.client.send(
@@ -270,21 +287,25 @@ export class DynamoStore implements GameStore {
 									},
 								]
 							: []),
-						{
-							Update: {
-								TableName: this.tableName,
-								Key: {
-									playerId: BOARD_TOTAL_KEY,
-								},
-								UpdateExpression: 'ADD #total :one',
-								ExpressionAttributeNames: {
-									'#total': 'total',
-								},
-								ExpressionAttributeValues: {
-									':one': 1,
-								},
-							},
-						},
+						...(counted
+							? []
+							: [
+									{
+										Update: {
+											TableName: this.tableName,
+											Key: {
+												playerId: BOARD_TOTAL_KEY,
+											},
+											UpdateExpression: 'ADD #total :one',
+											ExpressionAttributeNames: {
+												'#total': 'total',
+											},
+											ExpressionAttributeValues: {
+												':one': 1,
+											},
+										},
+									},
+								]),
 					],
 				}),
 			);

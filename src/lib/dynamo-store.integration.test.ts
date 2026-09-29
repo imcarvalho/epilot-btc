@@ -95,6 +95,20 @@ describe('the sign-in transaction', () => {
 		await expect(store.getBoardTotal()).resolves.toBe(3);
 	});
 
+	it('writes back an account counted before without moving the total', async () => {
+		await store.createSignedInPlayer(signedIn('a'), null);
+		await expect(store.getBoardTotal()).resolves.toBe(1);
+
+		await expect(
+			store.createSignedInPlayer(signedIn('b'), null, true),
+		).resolves.toBe(true);
+
+		expect(await rawItem('google:b')).toMatchObject({
+			board: 'GLOBAL',
+		});
+		await expect(store.getBoardTotal()).resolves.toBe(1);
+	});
+
 	it('is refused, writing and counting nothing, when the account already exists', async () => {
 		await store.createSignedInPlayer(signedIn('a'), null);
 

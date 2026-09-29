@@ -13,9 +13,14 @@ export async function signInWithGoogle() {
 	});
 }
 
-/** Back to anonymous play (product spec §6.3). Nothing is deleted. */
+/**
+ * Back to anonymous play (product spec §6.3). Nothing is deleted. It clears
+ * the session and does not redirect: a same-page redirect would leave the
+ * screen and its stream mounted as the signed-in player, so the caller
+ * reloads the page instead.
+ */
 export async function signOutOfGoogle() {
 	await signOut({
-		redirectTo: '/',
+		redirect: false,
 	});
 }

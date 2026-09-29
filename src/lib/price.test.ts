@@ -5,6 +5,7 @@ import {
 	observedAt,
 	isStale,
 	PRICE_CACHE_MS,
+	PRICE_FAILURE_MS,
 	PRICE_STALE_MS,
 	PriceFetchError,
 	PRICE_URL,
@@ -196,6 +197,89 @@ describe('getGamePrice', () => {
 				now: () => T,
 			}),
 		).resolves.toBeNull();
+	});
+});
+
+describe('getGamePrice under load', () => {
+	const T = 1_700_000_000_000;
+
+	it('shares one read between callers that arrive while it is in flight', async () => {
+		const store = new MemoryStore();
+		const fetchPrice = vi.fn(async () => ({
+			price: 200,
+			time: T,
+		}));
+		const deps = {
+			store,
+			fetchPrice,
+			now: () => T,
+		};
+		const prices = await Promise.all([
+			getGamePrice(deps),
+			getGamePrice(deps),
+			getGamePrice(deps),
+		]);
+		expect(fetchPrice).toHaveBeenCalledTimes(1);
+		expect(prices).toEqual([
+			{
+				price: 200,
+				updatedAt: T,
+			},
+			{
+				price: 200,
+				updatedAt: T,
+			},
+			{
+				price: 200,
+				updatedAt: T,
+			},
+		]);
+	});
+
+	it('does not call Coinbase again for a moment after a failure, then tries again', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const store = new MemoryStore();
+		store.price = {
+			price: 100,
+			updatedAt: T - 60_000,
+		};
+		let clock = T;
+		const fetchPrice = vi.fn(async () => {
+			throw new PriceFetchError('down');
+		});
+		const deps = {
+			store,
+			fetchPrice,
+			now: () => clock,
+		};
+		await getGamePrice(deps);
+		clock = T + PRICE_FAILURE_MS - 1;
+		await expect(getGamePrice(deps)).resolves.toEqual({
+			price: 100,
+			updatedAt: T - 60_000,
+		});
+		expect(fetchPrice).toHaveBeenCalledTimes(1);
+		clock = T + PRICE_FAILURE_MS;
+		await getGamePrice(deps);
+		expect(fetchPrice).toHaveBeenCalledTimes(2);
+	});
+
+	it('reads again at once after a success', async () => {
+		const store = new MemoryStore();
+		let clock = T;
+		const fetchPrice = vi.fn(async () => ({
+			price: 200,
+			time: clock,
+		}));
+		const deps = {
+			store,
+			fetchPrice,
+			now: () => clock,
+		};
+		await getGamePrice(deps);
+		clock = T + PRICE_CACHE_MS;
+		await getGamePrice(deps);
+		expect(fetchPrice).toHaveBeenCalledTimes(2);
 	});
 });
 

@@ -8,6 +8,16 @@ import { signInWithGoogle, signOutOfGoogle } from '@/app/actions';
 import { BrandMark, PlayerChip, ScoreChip, SourceBadge } from '@/components/ui';
 import { styles } from './TopBar.styles';
 
+/**
+ * Sign out, then a full load of the page: the stream and the screen belong
+ * to the signed-in player until they are torn down, and a same-page redirect
+ * would keep both.
+ */
+async function signOutAndReload() {
+	await signOutOfGoogle();
+	window.location.assign('/');
+}
+
 export function TopBar({
 	player,
 	isLive,
@@ -39,9 +49,9 @@ export function TopBar({
 				) : (
 					<Skeleton width="min(320px, 80vw)" height={48} />
 				)}
-				{/* Plain forms posting to server actions: they work before hydration. */}
+				{/* Sign-in is a plain form posting to a server action, so it works before hydration; sign-out reloads the page after, so it needs the client. */}
 				{player?.signedIn ? (
-					<form action={signOutOfGoogle}>
+					<form action={signOutAndReload}>
 						<Button
 							type="submit"
 							label="Sign out"

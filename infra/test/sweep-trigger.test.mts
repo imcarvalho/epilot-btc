@@ -92,4 +92,66 @@ describe('sweep trigger', () => {
 			'x-cron-secret': 'new',
 		});
 	});
+
+	it('throws and logs a stalled line when due guesses wait on an unreadable price', async () => {
+		const lines: string[] = [];
+		const handler = createHandler({
+			url: URL,
+			getSecret: async () => 's3cret',
+			fetchImpl: async () =>
+				ok({
+					due: 3,
+					resolved: 0,
+					priceStale: true,
+				}),
+			log: (line) => lines.push(line),
+		});
+
+		await expect(
+			handler(
+				{},
+				{
+					awsRequestId: 'req-1',
+				},
+			),
+		).rejects.toThrow('sweep stalled');
+		const stalled = lines
+			.map((line) => JSON.parse(line))
+			.find((entry) => entry.event === 'sweep-stalled');
+		expect(stalled).toEqual({
+			event: 'sweep-stalled',
+			requestId: 'req-1',
+			due: 3,
+		});
+	});
+
+	it('logs the outcome of a healthy run with the request id', async () => {
+		const lines: string[] = [];
+		const handler = createHandler({
+			url: URL,
+			getSecret: async () => 's3cret',
+			fetchImpl: async () =>
+				ok({
+					due: 2,
+					resolved: 2,
+					priceStale: false,
+				}),
+			log: (line) => lines.push(line),
+		});
+
+		await handler(
+			{},
+			{
+				awsRequestId: 'req-2',
+			},
+		);
+		expect(JSON.parse(lines[0])).toEqual({
+			event: 'sweep-triggered',
+			requestId: 'req-2',
+			status: 200,
+			due: 2,
+			resolved: 2,
+			priceStale: false,
+		});
+	});
 });

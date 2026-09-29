@@ -5,6 +5,11 @@ export interface SweepTriggerDeps {
 	log?: (line: string) => void;
 }
 
-export function createHandler(deps: SweepTriggerDeps): () => Promise<unknown>;
+export type SweepTriggerHandler = (
+	event?: unknown,
+	context?: { awsRequestId?: string },
+) => Promise<unknown>;
 
-export const handler: () => Promise<unknown>;
+export function createHandler(deps: SweepTriggerDeps): SweepTriggerHandler;
+
+export const handler: SweepTriggerHandler;

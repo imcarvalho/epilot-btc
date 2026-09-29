@@ -119,38 +119,59 @@ describe('BtcGuessStack', () => {
 		expect(indexes).toHaveLength(2);
 	});
 
-	it('grants the SSR compute role read/write on the table and its indexes, nothing else', () => {
+	it('grants the SSR compute role item access on the table and only Query on its indexes', () => {
 		const template = synth();
 
 		template.resourceCountIs('AWS::IAM::ManagedPolicy', 1);
-		template.hasResourceProperties('AWS::IAM::ManagedPolicy', {
-			PolicyDocument: {
-				Statement: [
-					Match.objectLike({
-						Effect: 'Allow',
-						Action: Match.arrayWith([
-							'dynamodb:GetItem',
-							'dynamodb:PutItem',
-							'dynamodb:UpdateItem',
-							'dynamodb:Query',
-						]),
-					}),
-				],
-			},
-		});
-	});
-
-	it('scopes the policy to this table and its indexes, not a wildcard resource', () => {
-		const template = synth();
-
 		const [policy] = Object.values(
 			template.findResources('AWS::IAM::ManagedPolicy'),
 		);
-		const statement = policy.Properties.PolicyDocument.Statement[0];
-		const resources = statement.Resource as unknown[];
+		const statements = policy.Properties.PolicyDocument.Statement as Array<{
+			Action: string[] | string;
+			Resource: unknown;
+		}>;
 
-		expect(resources).toHaveLength(2);
-		expect(resources).not.toContain('*');
+		expect(statements).toHaveLength(2);
+		const [onTable, onIndexes] = statements;
+		expect(onTable.Action).toEqual([
+			'dynamodb:GetItem',
+			'dynamodb:PutItem',
+			'dynamodb:UpdateItem',
+			'dynamodb:DeleteItem',
+			'dynamodb:Query',
+		]);
+		expect(onIndexes.Action).toEqual('dynamodb:Query');
+		expect(JSON.stringify(onTable.Resource)).not.toContain('/index/');
+		expect(JSON.stringify(onIndexes.Resource)).toContain('/index/*');
+		expect(JSON.stringify(statements)).not.toContain('"*"');
+	});
+
+	it('alarms on a failing or stalled sweep', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+			Namespace: 'AWS/Lambda',
+			MetricName: 'Errors',
+			Threshold: 1,
+			EvaluationPeriods: 2,
+		});
+	});
+
+	it('counts price-feed failures from the stream logs and alarms on them', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::Logs::MetricFilter', {
+			MetricTransformations: [
+				Match.objectLike({
+					MetricName: 'PriceFeedFailures',
+					MetricNamespace: 'BtcGuess',
+				}),
+			],
+		});
+		template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+			Namespace: 'BtcGuess',
+			MetricName: 'PriceFeedFailures',
+		});
 	});
 
 	it('destroys the table on stack teardown - this is a take-home exercise, not production', () => {

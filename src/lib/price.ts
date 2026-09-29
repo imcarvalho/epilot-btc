@@ -145,9 +145,28 @@ export async function fetchFreshPrice({
 }
 
 /**
+ * How long a failed read is remembered: while Coinbase is down, requests
+ * inside this window are served the last known price without calling it
+ * again, so an outage does not multiply the calls (each one retries for
+ * several seconds).
+ */
+export const PRICE_FAILURE_MS = PRICE_CACHE_MS;
+
+interface ReadState {
+	/** The read in progress, shared by every caller that arrives meanwhile. */
+	inFlight: Promise<CachedPrice | null> | null;
+	/** When the last read failed, on the server's clock. */
+	failedAt: number | null;
+}
+
+/** Per store, so each process shares its reads and separate stores (tests) never do. */
+const reads = new WeakMap<GameStore, ReadState>();
+
+/**
  * The current game price for the screen: the cached one while it is fresh,
- * otherwise a new fetch. Returns the last known price if the fetch fails, and
- * null only if there has never been one.
+ * otherwise a new fetch, shared by every caller while it is in flight and not
+ * repeated for `PRICE_FAILURE_MS` after it fails. Returns the last known
+ * price if the fetch fails, and null only if there has never been one.
  */
 export async function getGamePrice(
 	deps: PriceDeps,
@@ -156,7 +175,35 @@ export async function getGamePrice(
 	if (cached && deps.now() - cached.updatedAt < PRICE_CACHE_MS) {
 		return cached;
 	}
-	return (await fetchFreshPrice(deps)) ?? cached;
+
+	let state = reads.get(deps.store);
+	if (!state) {
+		state = {
+			inFlight: null,
+			failedAt: null,
+		};
+		reads.set(deps.store, state);
+	}
+	if (state.inFlight) {
+		return (await state.inFlight) ?? cached;
+	}
+	if (
+		state.failedAt !== null &&
+		deps.now() - state.failedAt < PRICE_FAILURE_MS
+	) {
+		return cached;
+	}
+
+	const read = state;
+	read.inFlight = fetchFreshPrice(deps)
+		.then((fresh) => {
+			read.failedAt = fresh ? null : deps.now();
+			return fresh;
+		})
+		.finally(() => {
+			read.inFlight = null;
+		});
+	return (await read.inFlight) ?? cached;
 }
 
 export function isStale(price: CachedPrice | null, now: number): boolean {

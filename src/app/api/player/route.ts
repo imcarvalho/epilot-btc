@@ -27,7 +27,9 @@ export async function POST(request: NextRequest) {
 	// A live session whose record is gone: recreate the account rather than
 	// fall back to an anonymous player the session would never read.
 	if (existingId?.startsWith('google:')) {
-		await signIn(deps, existingId.slice('google:'.length), null);
+		await signIn(deps, existingId.slice('google:'.length), null, {
+			rejoin: true,
+		});
 		const player = await deps.store.getPlayer(existingId);
 		return json(
 			{

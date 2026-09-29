@@ -48,7 +48,13 @@ declare module '@auth/core/jwt' {
 	}
 }
 
-/** Sliding: a returning player stays signed in (§6.2). */
+/**
+ * Fixed, not sliding: the cookie is issued at sign-in and lasts this long.
+ * Auth.js only re-issues a JWT session cookie when a proxy or its own
+ * session endpoint handles the request, and `auth()` in a route handler
+ * drops the refreshed cookie, so nothing here would extend it. After 30 days
+ * the player signs in again and gets the same record back (§6.2).
+ */
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /**

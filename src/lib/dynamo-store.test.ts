@@ -315,6 +315,21 @@ describe('DynamoStore', () => {
 			expect(items.map((i) => Object.keys(i)[0])).toEqual(['Put', 'Update']);
 		});
 
+		it('leaves the board total out when the account was counted before', async () => {
+			ddb.on(TransactWriteCommand).resolves({});
+			await store.createSignedInPlayer(
+				{
+					...newPlayerRecord('google:b', 'SolemnOtter', T),
+					onBoard: true,
+				},
+				null,
+				true,
+			);
+			const items =
+				ddb.commandCalls(TransactWriteCommand)[0].args[0].input.TransactItems!;
+			expect(items.map((i) => Object.keys(i)[0])).toEqual(['Put']);
+		});
+
 		it('returns false when a condition cancels the transaction, and rethrows anything else', async () => {
 			ddb.on(TransactWriteCommand).rejects(
 				Object.assign(new Error('cancelled'), {
@@ -327,6 +342,33 @@ describe('DynamoStore', () => {
 							Code: 'ConditionalCheckFailed',
 						},
 					],
+				}),
+			);
+			await expect(store.createSignedInPlayer(account, anon)).resolves.toBe(
+				false,
+			);
+
+			// Another transaction is touching one of the items: nothing was
+			// written, and the caller reads and tries again.
+			ddb.on(TransactWriteCommand).rejects(
+				Object.assign(new Error('cancelled'), {
+					name: 'TransactionCanceledException',
+					CancellationReasons: [
+						{
+							Code: 'None',
+						},
+						{
+							Code: 'TransactionConflict',
+						},
+					],
+				}),
+			);
+			await expect(store.createSignedInPlayer(account, anon)).resolves.toBe(
+				false,
+			);
+			ddb.on(TransactWriteCommand).rejects(
+				Object.assign(new Error('in flight'), {
+					name: 'TransactionConflictException',
 				}),
 			);
 			await expect(store.createSignedInPlayer(account, anon)).resolves.toBe(

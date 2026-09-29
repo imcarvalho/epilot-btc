@@ -65,11 +65,17 @@ export interface GameStore {
 	 * the same transaction deletes the anonymous record it was promoted from,
 	 * conditioned on that record being unchanged since it was read - so a
 	 * double click cannot merge twice, and a guess settling mid-merge is not
-	 * lost. False, with nothing written, if any condition fails.
+	 * lost. False, with nothing written, if any condition fails or another
+	 * transaction was touching the same items: the caller reads and tries
+	 * again.
+	 *
+	 * `counted` is for a record that vanished after being counted: it is
+	 * written back without moving the total, which never goes down.
 	 */
 	createSignedInPlayer(
 		player: PlayerRecord,
 		replacing: PlayerRecord | null,
+		counted?: boolean,
 	): Promise<boolean>;
 
 	/** Conditional on the player existing with no guess pending (rule R3). */

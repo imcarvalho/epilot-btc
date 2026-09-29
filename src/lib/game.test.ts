@@ -15,7 +15,7 @@ import {
 	type GameDeps,
 } from './game';
 import { getLeaderboard } from './leaderboard';
-import { PRICE_STALE_MS } from './price';
+import { PRICE_FAILURE_MS, PRICE_STALE_MS } from './price';
 import type { PricePoint } from './settlement';
 import { MemoryStore } from './testing/memory-store';
 
@@ -398,6 +398,7 @@ describe('resolving on read', () => {
 		expect(state!.pendingGuess).not.toBeNull();
 
 		setFeed(true);
+		advance(PRICE_FAILURE_MS);
 		const recovered = await getState(deps, playerId);
 		expect(recovered).toMatchObject({
 			priceStale: false,
@@ -666,6 +667,44 @@ describe('signing in (§6.2)', () => {
 		const account = t.store.players.get('google:sub-1')!;
 		expect(account.wins + account.losses).toBe(2);
 		expect(account.pendingGuess).toBeNull();
+	});
+
+	it('retries when a transaction conflicts with another, and lands once', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		t.store.signInConflicts = 2;
+
+		await expect(signIn(t.deps, 'sub-1', anon.playerId)).resolves.toBe(
+			'promoted',
+		);
+		expect(t.store.signInConflicts).toBe(0);
+		expect(t.store.boardTotal).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.has(anon.playerId)).toBe(false);
+	});
+
+	it('gives up, writing nothing, when the conflicts do not stop', async () => {
+		const t = setup();
+		t.store.signInConflicts = 100;
+		await expect(signIn(t.deps, 'sub-1', null)).rejects.toThrow(
+			'sign-in kept conflicting',
+		);
+		expect(t.store.players.has('google:sub-1')).toBe(false);
+		expect(t.store.boardTotal).toBe(0);
+	});
+
+	it('writes a rejoining account back without moving the board total', async () => {
+		const t = setup();
+		await signIn(t.deps, 'sub-1', null);
+		t.store.players.delete('google:sub-1');
+
+		await expect(
+			signIn(t.deps, 'sub-1', null, {
+				rejoin: true,
+			}),
+		).resolves.toBe('created');
+		expect(t.store.players.get('google:sub-1')!.onBoard).toBe(true);
+		expect(t.store.boardTotal).toBe(1);
 	});
 
 	it('ignores an id that is not anonymous', async () => {

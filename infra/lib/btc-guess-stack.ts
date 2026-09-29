@@ -12,6 +12,12 @@ import {
 	ProjectionType,
 	Table,
 } from 'aws-cdk-lib/aws-dynamodb';
+import {
+	Alarm,
+	ComparisonOperator,
+	Metric,
+	TreatMissingData,
+} from 'aws-cdk-lib/aws-cloudwatch';
 import { Effect, ManagedPolicy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import {
 	Code,
@@ -22,7 +28,12 @@ import {
 	Runtime,
 } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import {
+	FilterPattern,
+	LogGroup,
+	MetricFilter,
+	RetentionDays,
+} from 'aws-cdk-lib/aws-logs';
 import { Schedule, ScheduleExpression } from 'aws-cdk-lib/aws-scheduler';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-scheduler-targets';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -40,6 +51,34 @@ export const STREAM_SECRET_PARAMETER = '/btc-guess/stream-secret';
 
 /** The repository root: the stream function is bundled from the app's own source. */
 const APP_ROOT = path.join(__dirname, '..', '..');
+
+/**
+ * What the app may do with the table. Item actions apply to the table only;
+ * an index can only be read, so it gets `Query` and nothing that would look
+ * like a write.
+ */
+function tableAccessStatements(table: Table): PolicyStatement[] {
+	return [
+		new PolicyStatement({
+			effect: Effect.ALLOW,
+			actions: [
+				'dynamodb:GetItem',
+				'dynamodb:PutItem',
+				'dynamodb:UpdateItem',
+				// First sign-in deletes the anonymous item it promotes, inside a
+				// TransactWriteItems - which IAM authorises per item action.
+				'dynamodb:DeleteItem',
+				'dynamodb:Query',
+			],
+			resources: [table.tableArn],
+		}),
+		new PolicyStatement({
+			effect: Effect.ALLOW,
+			actions: ['dynamodb:Query'],
+			resources: [`${table.tableArn}/index/*`],
+		}),
+	];
+}
 
 export interface BtcGuessStackProps extends StackProps {
 	/** Full URL of the deployed `POST /api/cron/resolve` route. */
@@ -122,21 +161,7 @@ export class BtcGuessStack extends Stack {
 			{
 				description:
 					'Least-privilege read/write access to the Players table and its indexes, for the Amplify SSR compute role',
-				statements: [
-					new PolicyStatement({
-						effect: Effect.ALLOW,
-						actions: [
-							'dynamodb:GetItem',
-							'dynamodb:PutItem',
-							'dynamodb:UpdateItem',
-							// First sign-in deletes the anonymous item it promotes, inside a
-							// TransactWriteItems - which IAM authorises per item action.
-							'dynamodb:DeleteItem',
-							'dynamodb:Query',
-						],
-						resources: [table.tableArn, `${table.tableArn}/index/*`],
-					}),
-				],
+				statements: tableAccessStatements(table),
 			},
 		);
 
@@ -173,6 +198,25 @@ export class BtcGuessStack extends Stack {
 			}),
 		});
 		cronSecret.grantRead(sweepTrigger);
+
+		// §8 observability. A stalled sweep (due guesses, no readable price)
+		// makes the trigger throw, so it counts in the function's Errors, and
+		// so does any other failed sweep. Price-fetch failures are logged by
+		// the stream function and counted from its log group. Alarms have no
+		// action yet: who gets told, and how, is not decided.
+		new Alarm(this, 'SweepFailingAlarm', {
+			alarmDescription:
+				'The sweep failed or is stalled on an unreadable price: guesses left by closed browsers are not resolving',
+			metric: sweepTrigger.metricErrors({
+				period: Duration.minutes(5),
+				statistic: 'Sum',
+			}),
+			threshold: 1,
+			evaluationPeriods: 2,
+			datapointsToAlarm: 2,
+			comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+			treatMissingData: TreatMissingData.NOT_BREACHING,
+		});
 
 		new Schedule(this, 'SweepSchedule', {
 			description:
@@ -226,19 +270,36 @@ export class BtcGuessStack extends Stack {
 			}),
 		});
 		streamSecret.grantRead(gameStream);
-		gameStream.addToRolePolicy(
-			new PolicyStatement({
-				effect: Effect.ALLOW,
-				actions: [
-					'dynamodb:GetItem',
-					'dynamodb:PutItem',
-					'dynamodb:UpdateItem',
-					'dynamodb:DeleteItem',
-					'dynamodb:Query',
-				],
-				resources: [table.tableArn, `${table.tableArn}/index/*`],
-			}),
-		);
+		tableAccessStatements(table).forEach((statement) => {
+			gameStream.addToRolePolicy(statement);
+		});
+
+		const feedFailures = new Metric({
+			namespace: 'BtcGuess',
+			metricName: 'PriceFeedFailures',
+			statistic: 'Sum',
+			period: Duration.minutes(5),
+		});
+		new MetricFilter(this, 'PriceFeedFailuresFilter', {
+			logGroup: gameStream.logGroup,
+			metricNamespace: 'BtcGuess',
+			metricName: 'PriceFeedFailures',
+			filterPattern: FilterPattern.any(
+				FilterPattern.stringValue('$.event', '=', 'price-fetch-failed'),
+				FilterPattern.stringValue('$.event', '=', 'tape-fetch-failed'),
+			),
+			metricValue: '1',
+		});
+		new Alarm(this, 'PriceFeedFailingAlarm', {
+			alarmDescription:
+				'Coinbase reads keep failing in the game stream: the screen shows the delayed-feed state and nothing resolves',
+			metric: feedFailures,
+			threshold: 5,
+			evaluationPeriods: 2,
+			datapointsToAlarm: 2,
+			comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+			treatMissingData: TreatMissingData.NOT_BREACHING,
+		});
 
 		// Public, like the site: the stream checks its own signed token.
 		const streamUrl = gameStream.addFunctionUrl({

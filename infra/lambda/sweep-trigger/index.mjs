@@ -27,7 +27,8 @@ export function createHandler({
 	/** @type {string | undefined} */
 	let secret;
 
-	return async function handler() {
+	return async function handler(_event, context) {
+		const requestId = context?.awsRequestId;
 		secret ??= await getSecret();
 
 		const res = await fetchImpl(url, {
@@ -50,14 +51,32 @@ export function createHandler({
 			throw new Error(`sweep responded ${res.status}: ${body.slice(0, 200)}`);
 		}
 
+		const result = JSON.parse(body);
 		log(
 			JSON.stringify({
 				event: 'sweep-triggered',
+				requestId,
 				status: res.status,
-				result: body,
+				due: result.due,
+				resolved: result.resolved,
+				priceStale: result.priceStale,
 			}),
 		);
-		return JSON.parse(body);
+
+		// The route answers 200 when the feed is unreadable, since nothing is
+		// wrong with the request. Here it is a failure: due guesses are
+		// waiting on a price, so it counts as an error and trips the alarm.
+		if (result.priceStale === true) {
+			log(
+				JSON.stringify({
+					event: 'sweep-stalled',
+					requestId,
+					due: result.due,
+				}),
+			);
+			throw new Error(`sweep stalled: ${result.due} guesses wait on a price`);
+		}
+		return result;
 	};
 }
 

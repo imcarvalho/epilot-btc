@@ -472,4 +472,20 @@ describe('signed in', () => {
 			onBoard: true,
 		});
 	});
+
+	it('does not count a recreated account in the board total again', async () => {
+		await signIn(deps(), 'sub-1', null);
+		expect(store.boardTotal).toBe(1);
+		store.players.delete('google:sub-1');
+		session = {
+			playerId: 'google:sub-1',
+		};
+		await createPlayer(
+			request('/api/player', {
+				method: 'POST',
+			}),
+		);
+		expect(store.players.has('google:sub-1')).toBe(true);
+		expect(store.boardTotal).toBe(1);
+	});
 });

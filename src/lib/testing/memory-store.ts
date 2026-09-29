@@ -36,6 +36,12 @@ export class MemoryStore implements GameStore {
 	 * that counts a player twice, or not at all, sees the counter be wrong.
 	 */
 	boardTotal = 0;
+	/**
+	 * How many sign-in transactions are cancelled by a conflict before one
+	 * may land, as DynamoDB cancels one that touches an item another is
+	 * writing. Nothing is written by a cancelled one.
+	 */
+	signInConflicts = 0;
 
 	async getPlayer(playerId: string) {
 		await tick();
@@ -55,8 +61,13 @@ export class MemoryStore implements GameStore {
 	async createSignedInPlayer(
 		player: PlayerRecord,
 		replacing: PlayerRecord | null,
+		counted = false,
 	) {
 		await tick();
+		if (this.signInConflicts > 0) {
+			this.signInConflicts--;
+			return false;
+		}
 		if (this.players.has(player.playerId)) {
 			return false;
 		}
@@ -72,7 +83,9 @@ export class MemoryStore implements GameStore {
 			this.players.delete(replacing.playerId);
 		}
 		this.players.set(player.playerId, structuredClone(player));
-		this.boardTotal++;
+		if (!counted) {
+			this.boardTotal++;
+		}
 		return true;
 	}
 

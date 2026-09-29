@@ -81,8 +81,14 @@ export async function createAnonymousPlayer(
 	return player;
 }
 
-/** Conflicts are retried this many times: a guess settling mid-merge, a double click. */
-const SIGN_IN_ATTEMPTS = 3;
+/**
+ * Conflicts are retried this many times: a guess settling mid-merge, a
+ * double click, other sign-ins adding to the one board total at the same
+ * moment. Each retry waits a little longer, with jitter, so those sign-ins
+ * do not all collide again.
+ */
+const SIGN_IN_ATTEMPTS = 5;
+const SIGN_IN_BACKOFF_MS = 25;
 
 /**
  * Signs a Google account in, carrying this browser's anonymous player over
@@ -92,14 +98,27 @@ const SIGN_IN_ATTEMPTS = 3;
  * Joining the board happens here and only here: the signed-in record is
  * written with the `board` attribute and counted in the total in the same
  * transaction.
+ *
+ * `rejoin` is for a session whose record has gone missing: it was counted
+ * when it first joined, so writing it back leaves the total alone. The
+ * total only ever moves for a player's first join.
  */
 export async function signIn(
 	deps: GameDeps,
 	googleSub: string,
 	anonId: string | null,
+	options: { rejoin?: boolean } = {},
 ): Promise<SignInOutcome> {
 	const playerId = `google:${googleSub}`;
 	for (let attempt = 0; attempt < SIGN_IN_ATTEMPTS; attempt++) {
+		if (attempt > 0) {
+			await new Promise((resolve) => {
+				setTimeout(
+					resolve,
+					SIGN_IN_BACKOFF_MS * attempt * (0.5 + (deps.random ?? Math.random)()),
+				);
+			});
+		}
 		const [account, anon] = await Promise.all([
 			deps.store.getPlayer(playerId),
 			anonId?.startsWith('anon:') ? deps.store.getPlayer(anonId) : null,
@@ -122,7 +141,13 @@ export async function signIn(
 					...newPlayerRecord(playerId, generateName(deps.random), now),
 					onBoard: true,
 				};
-		if (await deps.store.createSignedInPlayer(player, anon)) {
+		if (
+			await deps.store.createSignedInPlayer(
+				player,
+				anon,
+				options.rejoin ?? false,
+			)
+		) {
 			console.log(
 				JSON.stringify({
 					event: 'signed-in',
@@ -365,6 +390,12 @@ export async function sweep(deps: GameDeps): Promise<SweepResult> {
 	);
 	const tape = await readTape(deps, oldest);
 	if (!tape) {
+		console.error(
+			JSON.stringify({
+				event: 'sweep-stalled',
+				due: due.length,
+			}),
+		);
 		return {
 			due: due.length,
 			resolved: 0,
