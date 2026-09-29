@@ -83,7 +83,7 @@ async function fetchTicket(): Promise<StreamTicket> {
  *
  * The stream is opened with a short-lived ticket from the web tier, because
  * it lives on its own domain where this site's cookies do not go. Whenever
- * it ends - its 15-minute lifetime, a network drop, the ticket expiring
+ * it ends - its two-minute lifetime, a network drop, the ticket expiring
  * under a native retry - it is closed and reopened with a fresh ticket,
  * backing off from a second to half a minute while it keeps failing. It is
  * closed while the tab is hidden, which also frees one of the few streams

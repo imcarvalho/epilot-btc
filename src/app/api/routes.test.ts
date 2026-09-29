@@ -351,7 +351,9 @@ describe('GET /api/stream-token', () => {
 		expect(res.headers.get('cache-control')).toBe('no-store');
 		const { url, token } = await res.json();
 		expect(url).toBe('https://stream.example/');
-		expect(verifyStreamToken(token, 'stream-secret', clock)).toMatch(/^anon:/);
+		expect(verifyStreamToken(token, 'stream-secret', clock)?.playerId).toMatch(
+			/^anon:/,
+		);
 	});
 
 	it('is 401 without a player', async () => {
@@ -404,7 +406,7 @@ describe('signed in', () => {
 		const res = await streamTicket(request('/api/stream-token', init));
 		const { token, signIn } = await res.json();
 		return {
-			playerId: verifyStreamToken(token, 'stream-secret', clock),
+			playerId: verifyStreamToken(token, 'stream-secret', clock)?.playerId,
 			signIn,
 			res,
 		};
