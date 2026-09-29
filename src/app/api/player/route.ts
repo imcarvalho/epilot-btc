@@ -61,12 +61,17 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	const ip = clientIpFrom(
-		request.headers.get('x-forwarded-for'),
-		Number(process.env.TRUSTED_PROXY_HOPS) || 1,
-	);
-	// No address (only outside CloudFront: local development and the tests)
-	// means nothing to count against.
+	// The forwarded address is only worth counting behind CloudFront. When the
+	// app is served locally (LOCAL_STREAM, set by dev:local and the e2e
+	// servers) Next fills the header in from the local socket, so every
+	// caller would be one address and the tests would hit the limit.
+	const ip = process.env.LOCAL_STREAM
+		? null
+		: clientIpFrom(
+				request.headers.get('x-forwarded-for'),
+				Number(process.env.TRUSTED_PROXY_HOPS) || 1,
+			);
+	// No address means nothing to count against.
 	if (ip) {
 		const subject = hashIp(
 			ip,

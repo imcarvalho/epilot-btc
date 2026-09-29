@@ -188,6 +188,14 @@ describe('POST /api/player', () => {
 			expect(res.status).toBe(200);
 		});
 
+		it('does not count callers of a locally served app, where the header is the local socket', async () => {
+			vi.stubEnv('LOCAL_STREAM', '1');
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit + 5; i++) {
+				expect((await from('127.0.0.1')).status).toBe(201);
+			}
+			expect(store.slots.size).toBe(0);
+		});
+
 		it('starts again in the next hour', async () => {
 			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
 				await from('203.0.113.7');
