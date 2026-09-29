@@ -323,6 +323,15 @@ test.describe('by keyboard', () => {
 		});
 		await expect(guess).toBeChecked();
 
+		// The group names the chart it swaps, in either view.
+		const toggle = page.getByRole('radiogroup', {
+			name: 'Chart view',
+		});
+		await expect(toggle).toHaveAttribute('aria-controls', 'price-chart');
+		await expect(
+			page.locator('#price-chart').getByRole('slider'),
+		).toBeVisible();
+
 		await guess.focus();
 		await page.keyboard.press('ArrowLeft');
 		await expect(hour).toBeChecked();
@@ -337,6 +346,11 @@ test.describe('by keyboard', () => {
 		await expect(guess).toBeChecked();
 		await expect(
 			page.getByRole('slider', {
+				name: 'This guess, second by second',
+			}),
+		).toBeVisible();
+		await expect(
+			page.locator('#price-chart').getByRole('slider', {
 				name: 'This guess, second by second',
 			}),
 		).toBeVisible();

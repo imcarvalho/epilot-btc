@@ -8,6 +8,9 @@ export const styles = stylex.create({
 		margin: 0,
 		maxWidth: '32rem',
 	},
+	chart: {
+		minWidth: 0,
+	},
 	header: {
 		alignItems: 'flex-end',
 		display: 'flex',

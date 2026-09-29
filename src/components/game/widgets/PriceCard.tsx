@@ -21,6 +21,9 @@ import { styles } from './PriceCard.styles';
 
 export type ChartView = 'hour' | 'minute';
 
+/** What the view toggle controls: whichever chart is showing. */
+const CHART_ID = 'price-chart';
+
 const WORD = {
 	up: 'Higher',
 	down: 'Lower',
@@ -174,6 +177,7 @@ export function PriceCard({
 					{guess && (
 						<SegmentedControl
 							label="Chart view"
+							aria-controls={CHART_ID}
 							value={view}
 							onChange={(v) => onViewChange(v as ChartView)}
 							size="sm"
@@ -185,11 +189,13 @@ export function PriceCard({
 				</div>
 			</div>
 
-			{showMinute && guess && now !== null ? (
-				<MinuteChart guess={guess} live={live} now={now} />
-			) : (
-				<HourChart state={candles} lock={lock} hasPrice={figure !== null} />
-			)}
+			<div id={CHART_ID} {...stylex.props(styles.chart)}>
+				{showMinute && guess && now !== null ? (
+					<MinuteChart guess={guess} live={live} now={now} />
+				) : (
+					<HourChart state={candles} lock={lock} hasPrice={figure !== null} />
+				)}
+			</div>
 		</Panel>
 	);
 }
