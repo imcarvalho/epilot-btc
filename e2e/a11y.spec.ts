@@ -10,10 +10,11 @@
  *
  * axe's best-practice rules run too (one h1, landmarks). What no scanner can
  * see - that a landmark is where it belongs, that a failure is announced -
- * is checked by the structure tests at the end.
+ * is checked by the structure tests at the end. The states after a guess
+ * (in play, a result, time up, errors, signed in) are in states.spec.ts.
  */
 
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { expectNoViolations } from './support/axe';
 import { expectNoSidewaysScroll, openGame } from './support/screen';
 import {
@@ -35,16 +36,13 @@ test('first visit: the empty history, the board, both buttons ready', async ({
 	await expectNoViolations(page);
 });
 
-test('first visit, at phone width', async ({ page }) => {
-	await page.setViewportSize({
-		width: 390,
-		height: 844,
-	});
-	await openGame(page);
-	await expectNoViolations(page);
-});
-
-test('at 320 px, nothing scrolls sideways and history prices are whole (WCAG 1.4.10)', async ({
+/**
+ * The critical path at the narrowest width (320 px is the strictest, so 390
+ * is covered by it): the first visit, a settled guess whose history prices
+ * are drawn whole, and a guess in play. Each step must pass axe and need no
+ * sideways scroll (WCAG 1.4.10).
+ */
+test('at 320 px, the critical path: first visit, a result, a guess in play', async ({
 	page,
 }) => {
 	await page.setViewportSize({
@@ -53,6 +51,7 @@ test('at 320 px, nothing scrolls sideways and history prices are whole (WCAG 1.4
 	});
 	await openGame(page);
 	await expectNoSidewaysScroll(page);
+	await expectNoViolations(page);
 
 	// A settled guess, so the history has a row with both its prices.
 	await lockGuessAgo(await playerIdOf(page), 'up', 55_000);
@@ -80,21 +79,7 @@ test('at 320 px, nothing scrolls sideways and history prices are whole (WCAG 1.4
 		),
 	).toBe(true);
 	await expectNoViolations(page);
-});
 
-test('the chart inspector, reached by keyboard', async ({ page }) => {
-	await openGame(page);
-	const inspector = page.getByRole('slider', {
-		name: 'Last hour, minute by minute',
-	});
-	await inspector.focus();
-	await page.keyboard.press('ArrowLeft');
-	await expect(inspector).toHaveAttribute('aria-valuetext', /opened at/);
-	await expectNoViolations(page);
-});
-
-test('a guess in play, on the live minute', async ({ page }) => {
-	await openGame(page);
 	await page
 		.getByRole('button', {
 			name: /Higher/,
@@ -107,24 +92,20 @@ test('a guess in play, on the live minute', async ({ page }) => {
 	).toBeVisible({
 		timeout: 30_000,
 	});
+	await expectNoSidewaysScroll(page);
 	await expectNoViolations(page);
 });
 
-for (const [direction, headline] of [
-	['up', 'Correct.'],
-	['down', 'Not this time.'],
-] as const) {
-	test(`the result: ${headline}`, async ({ page }) => {
-		await openGame(page);
-		// A guess five seconds from its minute, at a price the market has left.
-		await lockGuessAgo(await playerIdOf(page), direction, 55_000);
-		await page.reload();
-		await expect(page.getByText(headline).first()).toBeVisible({
-			timeout: 30_000,
-		});
-		await expectNoViolations(page);
+test('the chart inspector, reached by keyboard', async ({ page }) => {
+	await openGame(page);
+	const inspector = page.getByRole('slider', {
+		name: 'Last hour, minute by minute',
 	});
-}
+	await inspector.focus();
+	await page.keyboard.press('ArrowLeft');
+	await expect(inspector).toHaveAttribute('aria-valuetext', /opened at/);
+	await expectNoViolations(page);
+});
 
 test('a guess settled while away: said once, then idle', async ({ page }) => {
 	await openGame(page);
@@ -225,7 +206,7 @@ test.describe('structure a screen reader navigates by', () => {
 		await setCachedCandles(null);
 	});
 
-	test('a banner with the page title, then the main content', async ({
+	test('landmarks: a banner with the page title, the main content, a region with a heading per panel', async ({
 		page,
 	}) => {
 		await openGame(page);
@@ -243,10 +224,7 @@ test.describe('structure a screen reader navigates by', () => {
 				level: 1,
 			}),
 		).toHaveCount(0);
-	});
 
-	test('every panel is a region with a heading', async ({ page }) => {
-		await openGame(page);
 		for (const name of [
 			'Bitcoin · US Dollar',
 			'Leaderboard',
@@ -265,134 +243,10 @@ test.describe('structure a screen reader navigates by', () => {
 		}
 	});
 
-	test('the countdown is a timer, and the chosen button reads as a sentence', async ({
-		page,
-	}) => {
-		await openGame(page);
-		await expect(
-			page.getByRole('button', {
-				name: 'Higher, in 60 seconds',
-			}),
-		).toBeVisible();
-		await page
-			.getByRole('button', {
-				name: /Higher/,
-			})
-			.click();
-		await expect(page.getByRole('timer').first()).toBeVisible();
-		await expect(
-			page.getByRole('button', {
-				name: 'Higher, your guess is in play',
-			}),
-		).toBeDisabled();
-	});
-
-	test('a guess made by keyboard keeps focus on its button, and the hint is still reachable', async ({
-		page,
-	}) => {
-		await openGame(page);
-		await page
-			.getByRole('button', {
-				name: 'Higher, in 60 seconds',
-			})
-			.focus();
-		await page.keyboard.press('Enter');
-		await expect(
-			page.getByRole('button', {
-				name: 'Higher, your guess is in play',
-			}),
-		).toBeFocused();
-		await page.keyboard.press('Tab');
-		await expect(
-			page.getByRole('button', {
-				name: 'Lower, one guess at a time',
-			}),
-		).toBeFocused();
-	});
-
-	test('when the control holding focus goes away at the result, focus lands on the result', async ({
-		page,
-	}) => {
-		await openGame(page);
-		await lockGuessAgo(await playerIdOf(page), 'up', 55_000);
-		await page.reload();
-		// The view toggle exists only while a guess is in play.
-		const toggle = page.getByRole('radio', {
-			name: 'This guess',
-		});
-		await toggle.focus();
-		await expect(toggle).toBeFocused();
-		await expect(page.getByText('Correct.').first()).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(toggle).toHaveCount(0);
-		await expect(page.locator(':focus')).toContainText('Correct.');
-	});
-
-	test('a guess that does not go through is announced, every time', async ({
-		page,
-	}) => {
-		await openGame(page);
-		await page.route('**/api/guess', (route) =>
-			route.fulfill({
-				status: 500,
-				body: '{}',
-			}),
-		);
-		// Record every text the one announcer is given: a screen reader speaks
-		// on each change, so what is recorded is what is heard.
-		await page.evaluate(() => {
-			const region = document.querySelector('main > [role="status"]')!;
-			const said: string[] = [];
-			(window as unknown as { said: string[] }).said = said;
-			new MutationObserver(() => {
-				if (region.textContent) {
-					said.push(region.textContent);
-				}
-			}).observe(region, {
-				childList: true,
-				characterData: true,
-				subtree: true,
-			});
-		});
-		const higher = page.getByRole('button', {
-			name: /Higher/,
-		});
-		const message = 'That guess did not go through. Try again.';
-		for (let attempt = 1; attempt <= 2; attempt++) {
-			await higher.click();
-			await expect
-				.poll(() =>
-					page.evaluate(() => (window as unknown as { said: string[] }).said),
-				)
-				.toEqual(Array(attempt).fill(message));
-		}
-	});
-
 	// A list item's aria-label is not reliably read (NVDA in browse mode reads
 	// the content), so each row has to read as a sentence from its content:
-	// arrows and signs hidden, words in their place.
-	test('a history row reads as a sentence from its own content', async ({
-		page,
-	}) => {
-		await openGame(page);
-		await lockGuessAgo(await playerIdOf(page), 'up', 55_000);
-		await page.reload();
-		await expect(page.getByText('Correct.').first()).toBeVisible({
-			timeout: 30_000,
-		});
-		const row = page
-			.getByRole('region', {
-				name: 'Your last guesses',
-			})
-			.getByRole('listitem')
-			.first();
-		await expect(row).not.toHaveAttribute('aria-label');
-		expect(await row.ariaSnapshot()).toMatch(
-			/^- listitem: \d{2}:\d{2} ?, Higher [\d,]+\.\d{2} to [\d,]+\.\d{2} correct plus 1$/,
-		);
-	});
-
+	// arrows and signs hidden, words in their place. The history row is
+	// checked in states.spec.ts, after a result.
 	test('a board row reads as a sentence from its own content', async ({
 		page,
 	}) => {
