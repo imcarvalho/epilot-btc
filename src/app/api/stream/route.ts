@@ -5,7 +5,7 @@ import {
 	REFUSAL_STATUS,
 	renewWhileSleeping,
 } from '@/stream/admission';
-import { formatEvent, runGameStream } from '@/stream/game-stream';
+import { formatEvent, retryFrame, runGameStream } from '@/stream/game-stream';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 			open = false;
 		},
 		async start(controller) {
-			controller.enqueue(encoder.encode('retry: 1000\n\n'));
+			controller.enqueue(encoder.encode(retryFrame()));
 			try {
 				await runGameStream(
 					deps,

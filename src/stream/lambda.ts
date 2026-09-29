@@ -15,11 +15,11 @@
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { getDeps } from '@/lib/deps';
 import { admitStream, REFUSAL_STATUS, renewWhileSleeping } from './admission';
-import { formatEvent, runGameStream } from './game-stream';
+import { formatEvent, retryFrame, runGameStream } from './game-stream';
 
 interface StreamifyResponse {
 	write(chunk: string): boolean;
-	end(): void;
+	end(callback?: () => void): void;
 	on(event: 'close' | 'error', listener: () => void): void;
 }
 
@@ -103,16 +103,22 @@ export const handler = awslambda.streamifyResponse(async (event, raw) => {
 	raw.on('close', () => {
 		open = false;
 	});
+	// A write after the client has gone must not throw out of the handler.
+	raw.on('error', () => {
+		open = false;
+	});
 
-	// Reconnect a second after the stream ends or drops.
-	stream.write('retry: 1000\n\n');
 	try {
+		// Reconnect after a jittered wait if the stream ends or drops.
+		stream.write(retryFrame());
 		await runGameStream(
 			deps,
 			playerId,
 			{
 				send: (event) => {
-					stream.write(formatEvent(event));
+					if (open) {
+						stream.write(formatEvent(event));
+					}
 				},
 				isOpen: () => open && lease.isHeld(),
 			},
@@ -124,8 +130,31 @@ export const handler = awslambda.streamifyResponse(async (event, raw) => {
 				),
 			},
 		);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				event: 'stream-failed',
+				error: String(error),
+			}),
+		);
 	} finally {
+		// Free the stream slot first (it never throws), then always end the
+		// response and wait for it to flush before returning: the runtime
+		// freezes the function when the handler resolves.
 		await lease.release();
+		await endStream(stream);
 	}
-	stream.end();
 });
+
+/** Ends the response and resolves once it has been flushed or has failed. */
+function endStream(stream: StreamifyResponse): Promise<void> {
+	return new Promise((resolve) => {
+		try {
+			stream.on('close', resolve);
+			stream.on('error', resolve);
+			stream.end(resolve);
+		} catch {
+			resolve();
+		}
+	});
+}

@@ -12,6 +12,7 @@
 		"prebuild": "npm run theme",
 		"build": "next build",
 		"start": "next start",
+		"pretypecheck": "npm run theme",
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json && npm --prefix infra run build",
 		"test": "npm run typecheck && vitest run && npm --prefix infra test",
 		"format": "prettier --write .",

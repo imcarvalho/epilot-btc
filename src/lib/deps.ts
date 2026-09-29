@@ -21,6 +21,7 @@ import type { GameDeps } from './game';
 import { fetchTickerPrice } from './price';
 import { fetchHourCandles } from './hour-candles';
 import { fetchTape } from './settlement';
+import { createSharedTape } from './shared-tape';
 
 let deps: GameDeps | undefined;
 
@@ -42,6 +43,12 @@ export function getDeps(): GameDeps {
 		}),
 	);
 
+	// One tape read per process, shared by every stream and the sweep.
+	const sharedTape = createSharedTape({
+		fetchTape,
+		now: () => Date.now(),
+	});
+
 	deps = {
 		store: new DynamoStore(client, tableName),
 		fetchPrice: process.env.E2E_PRICE_FEED_DOWN
@@ -53,7 +60,7 @@ export function getDeps(): GameDeps {
 			? async () => {
 					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');
 				}
-			: (from) => fetchTape(from),
+			: (from) => sharedTape(from),
 		fetchCandles: process.env.E2E_PRICE_FEED_DOWN
 			? async () => {
 					throw new Error('price feed down (E2E_PRICE_FEED_DOWN)');

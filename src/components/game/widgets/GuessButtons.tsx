@@ -13,7 +13,8 @@ function buttonFor(
 	if (
 		phase?.kind === 'locked' ||
 		phase?.kind === 'time-up' ||
-		phase?.kind === 'stale'
+		phase?.kind === 'stale' ||
+		phase?.kind === 'delayed'
 	) {
 		return phase.guess.direction === direction
 			? {

@@ -23,6 +23,7 @@ import {
 } from './price';
 import type { Candle } from './candles';
 import { applyResolution } from './scoring';
+import { TapeBackoffError } from './shared-tape';
 import { deadlineOf, settleAgainstTape, type PricePoint } from './settlement';
 import type { CachedPrice, GameStore, PlayerRecord } from './store';
 
@@ -92,7 +93,7 @@ const SIGN_IN_BACKOFF_MS = 25;
 
 /**
  * Signs a Google account in, carrying this browser's anonymous player over
- * once. Every path ends in a conditional write, so two sign-ins racing each
+ * once - its name and any guess in play, not its score (§6.2). Every path ends in a conditional write, so two sign-ins racing each
  * other (a double click, two tabs) merge once and the loser re-reads.
  *
  * Joining the board happens here and only here: the signed-in record is
@@ -130,12 +131,16 @@ export async function signIn(
 		}
 
 		const now = deps.now();
+		// The board counts only what is earned while signed in (§6.2), so the
+		// anonymous record brings its name, its age and any guess in play, and
+		// no score, counters or history: those start at zero. A guess still
+		// pending settles after this write, so it counts.
 		const player: PlayerRecord = anon
 			? {
-					...anon,
-					playerId,
+					...newPlayerRecord(playerId, anon.publicName, now),
+					pendingGuess: anon.pendingGuess,
+					createdAt: anon.createdAt,
 					onBoard: true,
-					updatedAt: now,
 				}
 			: {
 					...newPlayerRecord(playerId, generateName(deps.random), now),
@@ -172,12 +177,16 @@ async function readTape(
 	try {
 		return await deps.fetchTape(from);
 	} catch (error) {
-		console.error(
-			JSON.stringify({
-				event: 'tape-fetch-failed',
-				error: String(error),
-			}),
-		);
+		// Backing off is the shared read declining to call Coinbase again, not
+		// a new failure: the attempt that failed has already been logged.
+		if (!(error instanceof TapeBackoffError)) {
+			console.error(
+				JSON.stringify({
+					event: 'tape-fetch-failed',
+					error: String(error),
+				}),
+			);
+		}
 		return null;
 	}
 }
@@ -251,6 +260,7 @@ function toStateResponse(
 	player: PlayerRecord,
 	price: CachedPrice | null,
 	now: number,
+	settlementDelayed: boolean,
 ): StateResponse {
 	return {
 		publicName: player.publicName,
@@ -265,6 +275,7 @@ function toStateResponse(
 		price: price?.price ?? null,
 		priceUpdatedAt: price?.updatedAt ?? null,
 		priceStale: isStale(price, now),
+		settlementDelayed,
 		serverNow: now,
 		pendingGuess: player.pendingGuess,
 		lastResult: player.history[0] ?? null,
@@ -286,14 +297,17 @@ export async function getState(
 	// The tape is read only once the minute is up: before then there is
 	// nothing it could settle.
 	const deadline = found.pendingGuess ? deadlineOf(found.pendingGuess) : null;
+	const dueFrom = deadline !== null && deps.now() >= deadline ? deadline : null;
 	const [price, tape] = await Promise.all([
 		getGamePrice(deps),
-		deadline !== null && deps.now() >= deadline
-			? readTape(deps, deadline)
-			: null,
+		dueFrom !== null ? readTape(deps, dueFrom) : null,
 	]);
 	const { player } = await settleIfDue(deps, found, tape);
-	return toStateResponse(player, price, deps.now());
+	// Due but no tape: the history could not be read, whatever the ticker
+	// says. A guess that settled or raced away has no pending guess left.
+	const settlementDelayed =
+		dueFrom !== null && tape === null && player.pendingGuess !== null;
+	return toStateResponse(player, price, deps.now(), settlementDelayed);
 }
 
 export type PlaceGuessResult =

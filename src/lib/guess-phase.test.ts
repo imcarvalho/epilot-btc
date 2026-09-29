@@ -10,6 +10,7 @@ import {
 	guessPhase,
 	lockedSentence,
 	resultSentence,
+	SETTLEMENT_DELAYED,
 	staleSentence,
 	TIME_UP,
 } from './guess-phase';
@@ -44,6 +45,7 @@ const state = (over: Partial<StateResponse> = {}): StateResponse => ({
 	price: 100_000,
 	priceUpdatedAt: T0,
 	priceStale: false,
+	settlementDelayed: false,
 	serverNow: T0,
 	pendingGuess: null,
 	lastResult: null,
@@ -137,6 +139,46 @@ describe('guessPhase', () => {
 			guess: pending,
 			ageMs: 25_000,
 		});
+	});
+
+	it('says settlement is delayed when the ticker is fine but the trade history cannot be read', () => {
+		expect(
+			guessPhase(
+				state({
+					pendingGuess: pending,
+					settlementDelayed: true,
+				}),
+				T0 + 65_000,
+				'g1',
+			),
+		).toEqual({
+			kind: 'delayed',
+			guess: pending,
+		});
+	});
+
+	it('prefers the stale feed to a delayed settlement, and counts down through either', () => {
+		expect(
+			guessPhase(
+				state({
+					pendingGuess: pending,
+					priceStale: true,
+					settlementDelayed: true,
+				}),
+				T0 + 65_000,
+				'g1',
+			).kind,
+		).toBe('stale');
+		expect(
+			guessPhase(
+				state({
+					pendingGuess: pending,
+					settlementDelayed: true,
+				}),
+				T0 + 30_000,
+				'g1',
+			).kind,
+		).toBe('locked');
 	});
 
 	it('keeps counting down on a stale feed: the minute is not affected, only the resolution', () => {
@@ -357,6 +399,12 @@ describe('waiting sentences', () => {
 
 	it('says the minute is up but the price has not moved', () => {
 		expect(TIME_UP).toBe('Time is up - waiting for the price to change.');
+	});
+
+	it('says settlement is delayed and the guess stays in play', () => {
+		expect(SETTLEMENT_DELAYED).toBe(
+			'Settlement delayed. Your guess stays in play and settles as soon as the market history can be read.',
+		);
 	});
 
 	it('says the feed is behind and nothing settles on it', () => {

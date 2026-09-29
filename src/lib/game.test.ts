@@ -15,6 +15,7 @@ import {
 	type GameDeps,
 } from './game';
 import { getLeaderboard } from './leaderboard';
+import { createSharedTape } from './shared-tape';
 import { PRICE_FAILURE_MS, PRICE_STALE_MS } from './price';
 import type { PricePoint } from './settlement';
 import { MemoryStore } from './testing/memory-store';
@@ -34,6 +35,8 @@ function setup(initialPrice = 100_000) {
 		},
 	];
 	let feedUp = true;
+	// The trade history alone: the ticker can be healthy while it is not.
+	let tapeUp = true;
 	// How long a ticker read takes, on the server's clock.
 	let latency = 0;
 	let ids = 0;
@@ -56,7 +59,7 @@ function setup(initialPrice = 100_000) {
 			};
 		},
 		fetchTape: vi.fn(async (from: number) => {
-			if (!feedUp) {
+			if (!feedUp || !tapeUp) {
 				throw new Error('feed down');
 			}
 			// Like Coinbase: from the last trade at or before `from` to now.
@@ -77,6 +80,7 @@ function setup(initialPrice = 100_000) {
 			});
 		},
 		setFeed: (up: boolean) => (feedUp = up),
+		setTape: (up: boolean) => (tapeUp = up),
 		setLatency: (ms: number) => (latency = ms),
 	};
 }
@@ -105,6 +109,7 @@ describe('a new player', () => {
 			},
 			price: 100_000,
 			priceStale: false,
+			settlementDelayed: false,
 			pendingGuess: null,
 			lastResult: null,
 			history: [],
@@ -407,6 +412,75 @@ describe('resolving on read', () => {
 		});
 	});
 
+	it('reports a delayed settlement when the ticker is healthy but the trade history cannot be read', async () => {
+		const { deps, advance, setMarket, setTape } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		await placeGuess(deps, playerId, 'up');
+
+		setMarket(100_010);
+		setTape(false);
+		advance(60_000);
+		const state = await getState(deps, playerId);
+		expect(state).toMatchObject({
+			priceStale: false,
+			settlementDelayed: true,
+			score: 0,
+		});
+		expect(state!.pendingGuess).not.toBeNull();
+		expect(console.error).toHaveBeenCalledWith(
+			expect.stringContaining('"event":"tape-fetch-failed"'),
+		);
+
+		setTape(true);
+		const recovered = await getState(deps, playerId);
+		expect(recovered).toMatchObject({
+			settlementDelayed: false,
+			score: 1,
+			pendingGuess: null,
+		});
+	});
+
+	it('does not report a delay during the minute, or with nothing in play', async () => {
+		const { deps, advance, setTape } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		setTape(false);
+		await expect(getState(deps, playerId)).resolves.toMatchObject({
+			settlementDelayed: false,
+		});
+		setTape(true);
+		await placeGuess(deps, playerId, 'up');
+		setTape(false);
+		advance(30_000);
+		await expect(getState(deps, playerId)).resolves.toMatchObject({
+			settlementDelayed: false,
+		});
+	});
+
+	it('with a shared read, keeps saying so while it backs off, and calls Coinbase once', async () => {
+		const { deps, advance, setTape } = setup(100_000);
+		const shared = createSharedTape({
+			fetchTape: deps.fetchTape,
+			now: deps.now,
+		});
+		const sharedDeps: GameDeps = {
+			...deps,
+			fetchTape: shared,
+		};
+		const { playerId } = await createAnonymousPlayer(sharedDeps);
+		await placeGuess(sharedDeps, playerId, 'up');
+		setTape(false);
+		advance(60_000);
+
+		for (let i = 0; i < 3; i++) {
+			await expect(getState(sharedDeps, playerId)).resolves.toMatchObject({
+				priceStale: false,
+				settlementDelayed: true,
+			});
+		}
+		expect(deps.fetchTape).toHaveBeenCalledTimes(1);
+		expect(console.error).toHaveBeenCalledTimes(1);
+	});
+
 	it('resolves exactly once when several reads race', async () => {
 		const { deps, store, advance, setMarket } = setup(100_000);
 		const { playerId } = await createAnonymousPlayer(deps);
@@ -547,7 +621,7 @@ describe('signing in (§6.2)', () => {
 		return anon;
 	}
 
-	it('promotes the anonymous player: score, history and the pending guess move across', async () => {
+	it('promotes the anonymous player: name and pending guess move across, score and history start again', async () => {
 		const t = setup();
 		const anon = await anonWithHistory(t);
 
@@ -558,16 +632,69 @@ describe('signing in (§6.2)', () => {
 		const state = await getState(t.deps, 'google:sub-1');
 		expect(state).toMatchObject({
 			publicName: anon.publicName,
-			score: 1,
+			score: 0,
 			stats: {
-				wins: 1,
+				wins: 0,
+				losses: 0,
+				currentStreak: 0,
+				bestStreak: 0,
 			},
 			pendingGuess: {
 				direction: 'down',
 			},
 		});
-		expect(state!.history).toHaveLength(1);
+		expect(state!.history).toHaveLength(0);
 		expect(t.store.players.has(anon.playerId)).toBe(false);
+	});
+
+	it('does not carry the anonymous score onto the board', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		expect(t.store.players.get(anon.playerId)!.score).toBe(1);
+		await signIn(t.deps, 'sub-1', anon.playerId);
+
+		const board = await getLeaderboard(t.deps, 'google:sub-1');
+		expect(board.podium[0]).toMatchObject({
+			score: 0,
+			isYou: true,
+		});
+		expect(await t.store.countAboveOnBoard(0)).toBe(0);
+	});
+
+	it('leaves anonymous results off the board, and counts results after sign-in', async () => {
+		const t = setup();
+		const anon = await createAnonymousPlayer(t.deps);
+		await placeGuess(t.deps, anon.playerId, 'up');
+		t.advance(60_000);
+		t.setMarket(100_010);
+		await getState(t.deps, anon.playerId);
+		expect(t.store.players.get(anon.playerId)).toMatchObject({
+			score: 1,
+			onBoard: false,
+		});
+		expect(t.store.boardTotal).toBe(0);
+
+		await signIn(t.deps, 'sub-1', anon.playerId);
+		const account = () => t.store.players.get('google:sub-1')!;
+		expect(account().score).toBe(0);
+
+		await placeGuess(t.deps, 'google:sub-1', 'up');
+		t.advance(60_000);
+		t.setMarket(100_020);
+		await getState(t.deps, 'google:sub-1');
+		// Score, wins, streak and history move in the one settle write.
+		expect(account()).toMatchObject({
+			score: 1,
+			wins: 1,
+			losses: 0,
+			currentStreak: 1,
+		});
+		expect(account().history).toHaveLength(1);
+		expect(t.store.boardTotal).toBe(1);
+		const board = await getLeaderboard(t.deps, 'google:sub-1');
+		expect(board.podium[0]).toMatchObject({
+			score: 1,
+		});
 	});
 
 	it('puts the signed-in player on the board, counted once', async () => {
@@ -581,7 +708,7 @@ describe('signing in (§6.2)', () => {
 			isEligible: true,
 		});
 		expect(board.podium[0]).toMatchObject({
-			score: 1,
+			score: 0,
 			isYou: true,
 		});
 	});
@@ -596,7 +723,12 @@ describe('signing in (§6.2)', () => {
 		await expect(sweep(t.deps)).resolves.toMatchObject({
 			resolved: 1,
 		});
-		expect(t.store.players.get('google:sub-1')!.score).toBe(2);
+		// Settled after sign-in, so it counts: the account's only point.
+		expect(t.store.players.get('google:sub-1')).toMatchObject({
+			score: 1,
+			wins: 1,
+			losses: 0,
+		});
 	});
 
 	it('keeps an existing account as it is, and leaves the anonymous record alone', async () => {
@@ -609,7 +741,7 @@ describe('signing in (§6.2)', () => {
 		await expect(signIn(t.deps, 'sub-1', second.playerId)).resolves.toBe(
 			'kept-existing',
 		);
-		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 		expect(t.store.players.get(second.playerId)!.score).toBe(1);
 	});
 
@@ -642,7 +774,7 @@ describe('signing in (§6.2)', () => {
 		expect(outcomes.sort()).toEqual(['promoted', 'returning']);
 		const board = await getLeaderboard(t.deps, 'google:sub-1');
 		expect(board.total).toBe(1);
-		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 	});
 
 	it('retries when the anonymous record changes mid-merge, losing nothing', async () => {
@@ -665,7 +797,9 @@ describe('signing in (§6.2)', () => {
 		expect(outcome).toBe('promoted');
 		expect(merge).toHaveBeenCalledTimes(2);
 		const account = t.store.players.get('google:sub-1')!;
-		expect(account.wins + account.losses).toBe(2);
+		// Both guesses settled before the account existed, so neither counts.
+		expect(account.wins + account.losses).toBe(0);
+		expect(account.score).toBe(0);
 		expect(account.pendingGuess).toBeNull();
 	});
 
@@ -679,7 +813,7 @@ describe('signing in (§6.2)', () => {
 		);
 		expect(t.store.signInConflicts).toBe(0);
 		expect(t.store.boardTotal).toBe(1);
-		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 		expect(t.store.players.has(anon.playerId)).toBe(false);
 	});
 

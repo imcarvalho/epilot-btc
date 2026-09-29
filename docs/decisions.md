@@ -20,7 +20,7 @@ A short log of the choices that would otherwise be invisible in the code, with t
 
 **Sparse indexes for both access patterns the main table cannot serve.** The leaderboard queries players eligible for the board; the sweep queries players with a guess outstanding. In both cases the attribute is written only when it applies, so the index holds the working set and the rule is enforced by the data rather than by a filter.
 
-**Anonymous first, sign-in as an upgrade.** A first-time visitor guesses immediately. Signing in carries the anonymous score over, once, under a conditional write. Identity is never a gate on playing.
+**Anonymous first, sign-in as an upgrade.** A first-time visitor guesses immediately. Signing in carries the anonymous name and any guess in play over, once, under a conditional write, but not the score: the board counts only what is earned while signed in, because anonymous scores can be farmed with free cookies. Identity is never a gate on playing.
 
 **Generated names as the public identity for everyone.** Nobody is asked to invent a username, and a signed-in player's real Google name never reaches a leaderboard response.
 

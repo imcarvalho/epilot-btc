@@ -33,6 +33,26 @@ export interface StreamOptions {
 
 const STREAM_TICK_MS = 1_000;
 
+/**
+ * A tick that throws (a DynamoDB throttle or timeout, say) sends nothing and
+ * the loop carries on; this many in a row means the store is really down, and
+ * the stream ends so the browser reconnects and shows its own state.
+ */
+export const MAX_CONSECUTIVE_FAILED_TICKS = 5;
+
+const RETRY_HINT_MIN_MS = 1_000;
+const RETRY_HINT_SPREAD_MS = 2_000;
+
+/**
+ * The `retry:` line a stream opens with: how long a native `EventSource`
+ * waits before reconnecting. Jittered, so streams that all drop together do
+ * not all come back together.
+ */
+export function retryFrame(random: () => number = Math.random): string {
+	const ms = RETRY_HINT_MIN_MS + Math.floor(random() * RETRY_HINT_SPREAD_MS);
+	return `retry: ${ms}\n\n`;
+}
+
 /** One SSE frame. `data` is one line of JSON, so it never needs splitting. */
 export function formatEvent({ type, data }: StreamEvent): string {
 	return `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -50,6 +70,9 @@ export function formatEvent({ type, data }: StreamEvent): string {
  * - `leaderboard` at once, and again whenever a result lands or the player
  *   signs in, which are the only things that move it for them.
  * - `gone`, and the stream ends, if the player no longer exists.
+ *
+ * A failed tick is logged (`stream-tick-failed`) and skipped; the stream ends
+ * only after `MAX_CONSECUTIVE_FAILED_TICKS` in a row.
  */
 export async function runGameStream(
 	deps: GameDeps,
@@ -62,44 +85,63 @@ export async function runGameStream(
 	// When the hour sent last was fetched; 0 once "no hour" has been said.
 	let candlesAt: number | null = null;
 
+	let failedTicks = 0;
+
 	while (sink.isOpen() && deps.now() - started < lifetimeMs) {
-		const [state, candles] = await Promise.all([
-			getState(deps, playerId),
-			getHourCandles(deps),
-		]);
-		if (!state) {
+		try {
+			const [state, candles] = await Promise.all([
+				getState(deps, playerId),
+				getHourCandles(deps),
+			]);
+			if (!state) {
+				sink.send({
+					type: 'gone',
+					data: null,
+				});
+				return;
+			}
 			sink.send({
-				type: 'gone',
-				data: null,
+				type: 'state',
+				data: state,
 			});
-			return;
-		}
-		sink.send({
-			type: 'state',
-			data: state,
-		});
 
-		const key = `${state.lastResult?.id ?? ''}|${state.signedIn}`;
-		if (key !== boardKey) {
-			boardKey = key;
-			sink.send({
-				type: 'leaderboard',
-				data: await getLeaderboard(deps, playerId),
-			});
-		}
+			const key = `${state.lastResult?.id ?? ''}|${state.signedIn}`;
+			if (key !== boardKey) {
+				const board = await getLeaderboard(deps, playerId);
+				// Only after it is read, so a failed read is tried again next tick.
+				boardKey = key;
+				sink.send({
+					type: 'leaderboard',
+					data: board,
+				});
+			}
 
-		if (candles && candles.updatedAt !== candlesAt) {
-			candlesAt = candles.updatedAt;
-			sink.send({
-				type: 'candles',
-				data: candles.candles,
-			});
-		} else if (!candles && candlesAt === null) {
-			candlesAt = 0;
-			sink.send({
-				type: 'candles',
-				data: null,
-			});
+			if (candles && candles.updatedAt !== candlesAt) {
+				candlesAt = candles.updatedAt;
+				sink.send({
+					type: 'candles',
+					data: candles.candles,
+				});
+			} else if (!candles && candlesAt === null) {
+				candlesAt = 0;
+				sink.send({
+					type: 'candles',
+					data: null,
+				});
+			}
+			failedTicks = 0;
+		} catch (error) {
+			failedTicks += 1;
+			console.error(
+				JSON.stringify({
+					event: 'stream-tick-failed',
+					consecutive: failedTicks,
+					error: String(error),
+				}),
+			);
+			if (failedTicks >= MAX_CONSECUTIVE_FAILED_TICKS) {
+				return;
+			}
 		}
 
 		await sleep(tickMs);

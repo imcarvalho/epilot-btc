@@ -8,6 +8,7 @@ import type {
 	StateResponse,
 	StreamTicket,
 } from '@/lib/contracts';
+import { toServerTime } from '@/lib/server-clock';
 
 export type CandlesState =
 	| { kind: 'loading' }
@@ -101,6 +102,9 @@ export function useStream(): GameStream {
 	const [now, setNow] = useState(() => Date.now());
 	const connect = useRef<() => void>(() => {});
 	const failures = useRef(0);
+	// Server time minus local time, from the latest state: the chart's window
+	// ends on the server's clock, like the candles and guesses it plots.
+	const clockOffset = useRef(0);
 
 	useEffect(() => {
 		let source: EventSource | null = null;
@@ -131,7 +135,7 @@ export function useStream(): GameStream {
 				MAX_BACKOFF_MS,
 				1_000 * 2 ** (failures.current - 1),
 			);
-			timer = setTimeout(open, backoff * (0.5 + Math.random() * 0.5));
+			timer = setTimeout(open, backoff * (1 + Math.random()));
 		};
 
 		const open = async () => {
@@ -164,10 +168,11 @@ export function useStream(): GameStream {
 				const state = JSON.parse((e as MessageEvent).data) as StateResponse;
 				failures.current = 0;
 				setLastStateAt(Date.now());
+				clockOffset.current = state.serverNow - Date.now();
 				setStatus({
 					kind: 'ready',
 					state,
-					clockOffset: state.serverNow - Date.now(),
+					clockOffset: clockOffset.current,
 				});
 			});
 			es.addEventListener('candles', (e) => {
@@ -177,7 +182,7 @@ export function useStream(): GameStream {
 						? {
 								kind: 'ready',
 								candles,
-								windowEnd: Date.now(),
+								windowEnd: toServerTime(Date.now(), clockOffset.current),
 							}
 						: current.kind === 'ready'
 							? current
