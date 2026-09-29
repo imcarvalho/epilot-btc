@@ -242,7 +242,7 @@ test('signed in, just now: the notice, the sign-out button, your own row, and di
 
 	await expect(
 		page.getByText(
-			'Signed in. Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.',
+			'Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.',
 		),
 	).toBeVisible();
 	await expect(

@@ -2,14 +2,16 @@
  * What the screen says after a sign-in (product spec §6.3, §7): the score
  * starting again is said in a sentence, and so is finding an account that
  * already had one - the spec asks for that plainly, never a silent swap. A first
- * sign-in also says why the player has a random name and where it shows.
+ * sign-in leads with why the player has a random name and where it shows, then
+ * says what happened to the score on a line of its own (the banner keeps the
+ * line break).
  */
 
 import type { SignInOutcome } from './contracts';
 
-/** Said after a first sign-in, once the player's generated name is known. */
+/** Leads a first sign-in's notice, once the player's generated name is known. */
 function welcome(name: string): string {
-	return ` Welcome, ${name}. To protect your privacy we gave you a random name. It is how you appear on the leaderboard, and your Google name is never shown.`;
+	return `Welcome, ${name}. To protect your privacy we gave you a random name. It is how you appear on the leaderboard, and your Google name is never shown.`;
 }
 
 /**
@@ -25,11 +27,11 @@ export function signInSentence(
 		case 'promoted':
 			return name === null
 				? null
-				: `Signed in. Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.${welcome(name)}`;
+				: `${welcome(name)}\nYour score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.`;
 		case 'created':
 			return name === null
 				? null
-				: `Signed in. Your score now follows you to any device.${welcome(name)}`;
+				: `${welcome(name)}\nYour score now follows you to any device.`;
 		case 'kept-existing':
 			return 'Signed in. This is the score saved to your account. The one played on this browser is kept apart, and comes back if you sign out.';
 		case 'returning':

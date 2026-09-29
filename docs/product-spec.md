@@ -245,8 +245,8 @@ Decisions worth stating:
 - Loss: *"Not this time. The price went down. Score 1."*
 - Returning to a settled guess: *"While you were away: your up guess was correct. +1."*, or *"While you were away: your down guess was wrong. -1."* - in the result banner, said once, and not again on the next visit.
 - Sign-in prompt, the top bar's button: *"Sign in to save your score"*
-- Signed in, an anonymous player promoted: *"Signed in. Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device."*
-- Signed in, a fresh account: *"Signed in. Your score now follows you to any device."* - and, after either of the two first-sign-in notices above, the welcome: *"Welcome, AudaciousRaccoon. To protect your privacy we gave you a random name. It is how you appear on the leaderboard, and your Google name is never shown."* Said once, in the same notice, and not for an account that already existed.
+- First sign-in, an anonymous player promoted: the same welcome, and on a new line *"Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device."*
+- First sign-in, a fresh account: *"Welcome, AudaciousRaccoon. To protect your privacy we gave you a random name. It is how you appear on the leaderboard, and your Google name is never shown."* and, on a new line, *"Your score now follows you to any device."* The welcome comes first and there is no "Signed in." before it. It is said once, in the same notice, and not for an account that already existed.
 - Signed in to an account that already had a score: *"Signed in. This is the score saved to your account. The one played on this browser is kept apart, and comes back if you sign out."*
 - First visit, signed in: *"You are AudaciousRaccoon. Your score is kept with your account."*
 - Leaderboard, empty: *"No one on the board yet."* with *"Sign in and the first correct guess puts you at the top of it."*

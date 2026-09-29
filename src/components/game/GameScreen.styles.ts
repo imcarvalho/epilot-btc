@@ -2,6 +2,10 @@ import * as stylex from '@stylexjs/stylex';
 import { palette } from '@/components/ui/tokens.stylex';
 
 export const styles = stylex.create({
+	// A sign-in notice can have more than one line, split by a line break in its copy.
+	notice: {
+		whiteSpace: 'pre-line',
+	},
 	page: {
 		backgroundColor: 'var(--color-background-body)',
 		backgroundImage: `radial-gradient(ellipse 60% 40% at 0% 0%, ${palette.pageGlow}, transparent 70%)`,

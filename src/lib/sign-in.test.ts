@@ -3,16 +3,20 @@ import { signInSentence } from './sign-in';
 describe('signInSentence', () => {
 	it('says the score now travels, for a fresh account', () => {
 		expect(signInSentence('created', 'SolemnOtter')).toMatch(
-			/^Signed in\. Your score now follows you to any device\./,
+			/\nYour score now follows you to any device\.$/,
 		);
 	});
 
 	it('welcomes a first sign-in by name and says why the name is random', () => {
 		for (const outcome of ['created', 'promoted'] as const) {
 			expect(signInSentence(outcome, 'SolemnOtter')).toMatch(
-				/ Welcome, SolemnOtter\. To protect your privacy we gave you a random name\. It is how you appear on the leaderboard, and your Google name is never shown\.$/,
+				/^Welcome, SolemnOtter\. To protect your privacy we gave you a random name\. It is how you appear on the leaderboard, and your Google name is never shown\.\n/,
 			);
 		}
+	});
+
+	it('no longer opens a first sign-in with "Signed in."', () => {
+		expect(signInSentence('created', 'SolemnOtter')).not.toMatch(/Signed in/);
 	});
 
 	it('waits for the name rather than say half of the welcome', () => {
@@ -22,7 +26,7 @@ describe('signInSentence', () => {
 
 	it('says plainly that the score starts again when an anonymous player was promoted', () => {
 		expect(signInSentence('promoted', 'SolemnOtter')).toMatch(
-			/^Signed in\. Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device\./,
+			/\nYour score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device\.$/,
 		);
 	});
 

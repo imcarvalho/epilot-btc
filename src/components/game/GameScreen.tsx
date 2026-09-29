@@ -142,7 +142,7 @@ export function GameScreen() {
 							{notice && (
 								<Banner
 									status={signInSeen === 'kept-existing' ? 'info' : 'success'}
-									title={notice}
+									title={<span {...stylex.props(styles.notice)}>{notice}</span>}
 									isDismissable
 									onDismiss={() => setNoticeOpen(false)}
 									dismissLabel="Dismiss"
