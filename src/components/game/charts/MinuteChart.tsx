@@ -6,6 +6,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { shownIndex, type Inspection } from '@/lib/chart-inspect';
 import type { PendingGuess } from '@/lib/contracts';
 import { buildMinuteChart, standing } from '@/lib/live-minute';
+import { minuteTintPercent } from '@/lib/minute-tint';
 import {
 	Axis,
 	CHART_HEIGHT,
@@ -35,6 +36,12 @@ const plain = new Intl.NumberFormat('en-US', {
  * locked. The shaded area between them is the margin the player is winning
  * or losing by, and the axis is the countdown. Any second can be read back
  * through the inspector, by pointer or keyboard.
+ *
+ * The plot's background drifts from the card colour to a dark red-brown as
+ * the minute runs out, from the same server clock as the countdown. It is
+ * decoration only (nothing announces it; the countdown carries the time), and
+ * everything drawn over it holds its contrast across the whole mix
+ * (`src/lib/minute-tint.test.ts`).
  *
  * Indicative, and it says so: the result is settled on the server against
  * the trade at the deadline, which may differ by a few cents.
@@ -90,7 +97,14 @@ export function MinuteChart({
 
 	return (
 		<div {...stylex.props(frame.wrap)}>
-			<div ref={ref} {...stylex.props(frame.plot)}>
+			<div
+				ref={ref}
+				{...stylex.props(
+					frame.plot,
+					styles.tinted,
+					styles.tint(minuteTintPercent(guess.createdAt, now)),
+				)}
+			>
 				{chart && last ? (
 					<svg
 						width={width}
