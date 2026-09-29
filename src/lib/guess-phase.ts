@@ -17,6 +17,7 @@ export type GuessPhase =
 	| { kind: 'locked'; guess: PendingGuess; secondsLeft: number }
 	| { kind: 'time-up'; guess: PendingGuess }
 	| { kind: 'stale'; guess: PendingGuess; ageMs: number }
+	| { kind: 'delayed'; guess: PendingGuess }
 	| { kind: 'result'; result: ResolvedGuess; score: number }
 	| { kind: 'away-result'; result: ResolvedGuess; score: number };
 
@@ -59,6 +60,14 @@ export function guessPhase(
 				kind: 'stale',
 				guess,
 				ageMs: now - (state.priceUpdatedAt ?? now),
+			};
+		}
+		// The ticker is fine but the trade history that settles the guess
+		// cannot be read: the stale price is not the reason, so say this one.
+		if (state.settlementDelayed) {
+			return {
+				kind: 'delayed',
+				guess,
 			};
 		}
 		return {
@@ -129,6 +138,14 @@ export const TIME_UP = 'Time is up - waiting for the price to change.';
 export function staleSentence(age: string): string {
 	return `Price feed delayed. Last updated ${age}. Nothing is settled until it catches up.`;
 }
+
+/**
+ * A guess is past its deadline and the market history that settles it cannot
+ * be read, though the price feed itself is fine (product spec §7, engineering
+ * spec §3). The guess stays in play.
+ */
+export const SETTLEMENT_DELAYED =
+	'Settlement delayed. Your guess stays in play and settles as soon as the market history can be read.';
 
 /**
  * A guess that settled while the player was away (product spec §7), without

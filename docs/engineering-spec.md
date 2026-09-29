@@ -197,6 +197,8 @@ Both take the same conditional write, so a guess resolves exactly once even when
 
 If the trade history cannot be read, no resolution happens and the guess stays pending; the next read, a second later, tries again. On screen this is the delayed-feed state: the cached ticker price older than the freshness threshold (15 s) is what the API reports as delayed, and the screen stops offering guesses; a guess is refused on its own terms whenever the fresh read it locks in at fails (section 5). Resolving against a guessed-at price would be unfair, and it is an obvious thing for a reviewer to probe.
 
+The trade history can fail while the ticker works, so the delayed feed is not the only way a guess can be held up. The tape read is shared like the game price is (`src/lib/shared-tape.ts`): one read per process however many streams and sweeps want it, in flight shared, its result served for a second, and after a failure not repeated for two seconds, so an outage costs one attempt a couple of seconds rather than one per waiting player. A read is only shared with a reader it covers: it must reach back at least as far as that reader's deadline, and it must have begun at or after it (a tape read before the deadline cannot show the price standing at it). Anyone else reads for themselves, so the oldest deadline in play is always served. When a guess is past its deadline and the read fails or is backing off, `StateResponse.settlementDelayed` is true and the screen says so (product spec section 7); the guess stays pending and settles on the first read that succeeds. `priceStale` still wins when both hold, since its sentence already says nothing settles. The failed attempt is logged once as `tape-fetch-failed`; callers refused during the back-off are not logged again.
+
 ### 3.1 How the browser learns the outcome: one server stream
 
 The server pushes. Each open tab holds one **Server-Sent Events** stream, and everything the screen shows arrives on it; the browser sends nothing on it. The one call the player makes is `POST /api/guess`. The browser never talks to Coinbase: every price, trade and candle is read server-side (section 5).
@@ -462,7 +464,7 @@ What it pulls in, and must be set up first:
 - [ ] No client-supplied price or timestamp can affect an outcome, verifiable in the network tab.
 - [ ] Guess creation and resolution are each idempotent under concurrent calls.
 - [ ] A guess left behind by a closed browser resolves within a minute of becoming resolvable.
-- [ ] A stale price feed blocks resolution and is reported as such.
+- [ ] A stale price feed blocks resolution and is reported as such, and so is a trade history that cannot be read while the ticker works (`settlementDelayed`); the tape is read once per process, not once per waiting player.
 - [ ] Sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks; the anonymous merge is single-shot.
 - [ ] The leaderboard and the sweep are both served from indexes rather than scans, and no response carries a real name or an IP address.
 - [ ] Tests pass in CI; README covers the design, how to run it and how to deploy it.

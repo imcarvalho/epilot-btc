@@ -23,6 +23,7 @@ import {
 } from './price';
 import type { Candle } from './candles';
 import { applyResolution } from './scoring';
+import { TapeBackoffError } from './shared-tape';
 import { deadlineOf, settleAgainstTape, type PricePoint } from './settlement';
 import type { CachedPrice, GameStore, PlayerRecord } from './store';
 
@@ -172,12 +173,16 @@ async function readTape(
 	try {
 		return await deps.fetchTape(from);
 	} catch (error) {
-		console.error(
-			JSON.stringify({
-				event: 'tape-fetch-failed',
-				error: String(error),
-			}),
-		);
+		// Backing off is the shared read declining to call Coinbase again, not
+		// a new failure: the attempt that failed has already been logged.
+		if (!(error instanceof TapeBackoffError)) {
+			console.error(
+				JSON.stringify({
+					event: 'tape-fetch-failed',
+					error: String(error),
+				}),
+			);
+		}
 		return null;
 	}
 }
@@ -251,6 +256,7 @@ function toStateResponse(
 	player: PlayerRecord,
 	price: CachedPrice | null,
 	now: number,
+	settlementDelayed: boolean,
 ): StateResponse {
 	return {
 		publicName: player.publicName,
@@ -265,6 +271,7 @@ function toStateResponse(
 		price: price?.price ?? null,
 		priceUpdatedAt: price?.updatedAt ?? null,
 		priceStale: isStale(price, now),
+		settlementDelayed,
 		serverNow: now,
 		pendingGuess: player.pendingGuess,
 		lastResult: player.history[0] ?? null,
@@ -286,14 +293,17 @@ export async function getState(
 	// The tape is read only once the minute is up: before then there is
 	// nothing it could settle.
 	const deadline = found.pendingGuess ? deadlineOf(found.pendingGuess) : null;
+	const dueFrom = deadline !== null && deps.now() >= deadline ? deadline : null;
 	const [price, tape] = await Promise.all([
 		getGamePrice(deps),
-		deadline !== null && deps.now() >= deadline
-			? readTape(deps, deadline)
-			: null,
+		dueFrom !== null ? readTape(deps, dueFrom) : null,
 	]);
 	const { player } = await settleIfDue(deps, found, tape);
-	return toStateResponse(player, price, deps.now());
+	// Due but no tape: the history could not be read, whatever the ticker
+	// says. A guess that settled or raced away has no pending guess left.
+	const settlementDelayed =
+		dueFrom !== null && tape === null && player.pendingGuess !== null;
+	return toStateResponse(player, price, deps.now(), settlementDelayed);
 }
 
 export type PlaceGuessResult =

@@ -15,6 +15,7 @@ import {
 	type GameDeps,
 } from './game';
 import { getLeaderboard } from './leaderboard';
+import { createSharedTape } from './shared-tape';
 import { PRICE_FAILURE_MS, PRICE_STALE_MS } from './price';
 import type { PricePoint } from './settlement';
 import { MemoryStore } from './testing/memory-store';
@@ -34,6 +35,8 @@ function setup(initialPrice = 100_000) {
 		},
 	];
 	let feedUp = true;
+	// The trade history alone: the ticker can be healthy while it is not.
+	let tapeUp = true;
 	// How long a ticker read takes, on the server's clock.
 	let latency = 0;
 	let ids = 0;
@@ -56,7 +59,7 @@ function setup(initialPrice = 100_000) {
 			};
 		},
 		fetchTape: vi.fn(async (from: number) => {
-			if (!feedUp) {
+			if (!feedUp || !tapeUp) {
 				throw new Error('feed down');
 			}
 			// Like Coinbase: from the last trade at or before `from` to now.
@@ -77,6 +80,7 @@ function setup(initialPrice = 100_000) {
 			});
 		},
 		setFeed: (up: boolean) => (feedUp = up),
+		setTape: (up: boolean) => (tapeUp = up),
 		setLatency: (ms: number) => (latency = ms),
 	};
 }
@@ -105,6 +109,7 @@ describe('a new player', () => {
 			},
 			price: 100_000,
 			priceStale: false,
+			settlementDelayed: false,
 			pendingGuess: null,
 			lastResult: null,
 			history: [],
@@ -405,6 +410,75 @@ describe('resolving on read', () => {
 			score: 1,
 			pendingGuess: null,
 		});
+	});
+
+	it('reports a delayed settlement when the ticker is healthy but the trade history cannot be read', async () => {
+		const { deps, advance, setMarket, setTape } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		await placeGuess(deps, playerId, 'up');
+
+		setMarket(100_010);
+		setTape(false);
+		advance(60_000);
+		const state = await getState(deps, playerId);
+		expect(state).toMatchObject({
+			priceStale: false,
+			settlementDelayed: true,
+			score: 0,
+		});
+		expect(state!.pendingGuess).not.toBeNull();
+		expect(console.error).toHaveBeenCalledWith(
+			expect.stringContaining('"event":"tape-fetch-failed"'),
+		);
+
+		setTape(true);
+		const recovered = await getState(deps, playerId);
+		expect(recovered).toMatchObject({
+			settlementDelayed: false,
+			score: 1,
+			pendingGuess: null,
+		});
+	});
+
+	it('does not report a delay during the minute, or with nothing in play', async () => {
+		const { deps, advance, setTape } = setup(100_000);
+		const { playerId } = await createAnonymousPlayer(deps);
+		setTape(false);
+		await expect(getState(deps, playerId)).resolves.toMatchObject({
+			settlementDelayed: false,
+		});
+		setTape(true);
+		await placeGuess(deps, playerId, 'up');
+		setTape(false);
+		advance(30_000);
+		await expect(getState(deps, playerId)).resolves.toMatchObject({
+			settlementDelayed: false,
+		});
+	});
+
+	it('with a shared read, keeps saying so while it backs off, and calls Coinbase once', async () => {
+		const { deps, advance, setTape } = setup(100_000);
+		const shared = createSharedTape({
+			fetchTape: deps.fetchTape,
+			now: deps.now,
+		});
+		const sharedDeps: GameDeps = {
+			...deps,
+			fetchTape: shared,
+		};
+		const { playerId } = await createAnonymousPlayer(sharedDeps);
+		await placeGuess(sharedDeps, playerId, 'up');
+		setTape(false);
+		advance(60_000);
+
+		for (let i = 0; i < 3; i++) {
+			await expect(getState(sharedDeps, playerId)).resolves.toMatchObject({
+				priceStale: false,
+				settlementDelayed: true,
+			});
+		}
+		expect(deps.fetchTape).toHaveBeenCalledTimes(1);
+		expect(console.error).toHaveBeenCalledTimes(1);
 	});
 
 	it('resolves exactly once when several reads race', async () => {
