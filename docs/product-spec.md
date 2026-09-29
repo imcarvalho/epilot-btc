@@ -132,6 +132,7 @@ Waiting is not one state, and the player is never left guessing which one they a
 | Under a minute | Countdown running |
 | A minute passed, price has not moved | Countdown at 0, with *"Time is up - waiting for the price to change"* |
 | Price feed is behind | *"Price feed delayed. Last updated 25s ago. Nothing is settled until it catches up."* |
+| Price is fine, the history that settles the guess cannot be read | *"Settlement delayed. Your guess stays in play and settles as soon as the market history can be read."* |
 
 The second is the brief's own rule made visible. The third is ours: a stale price never decides anything, which protects the player from a result that was not really earned.
 
@@ -231,6 +232,7 @@ Decisions worth stating:
 - Waiting: *"Locked at $X. 47s to go."* with the live gap beside it, for example *"+$12 so far"*.
 - Countdown at zero: *"Time is up - waiting for the price to change."*
 - Stale feed: *"Price feed delayed. Last updated 25s ago. Nothing is settled until it catches up."*
+- Past the minute, price feed fine, but the market history that settles the guess cannot be read: *"Settlement delayed. Your guess stays in play and settles as soon as the market history can be read."* - the stale-feed sentence wins if both hold.
 - Stale feed, no guess in play: the buttons go quiet with *"waiting for the price"*, and the strip says *"Price feed delayed. Nothing can be locked in until it catches up."* - a guess is refused before it is tried, not after.
 - The price comes back with no guess in play: *"The price is back. You can guess again."* - announced once, as the delay was.
 - No price has ever reached the game: *"The price is unavailable right now. Nothing can be guessed until it returns."*
