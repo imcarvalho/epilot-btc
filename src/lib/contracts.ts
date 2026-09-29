@@ -137,7 +137,9 @@ export type ApiErrorCode =
 	| 'guess-pending'
 	| 'price-unavailable'
 	| 'stream-unavailable'
-	| 'unauthorized';
+	| 'unauthorized'
+	| 'rate-limited'
+	| 'server-error';
 
 export interface ApiError {
 	error: ApiErrorCode;

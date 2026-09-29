@@ -588,3 +588,39 @@ describe('DynamoStore', () => {
 		});
 	});
 });
+
+describe('takeSlot', () => {
+	const slot = {
+		key: 'RATE#price-read##1700000000',
+		limit: 3,
+		expiresAt: 1_700_000_061,
+	};
+
+	it('adds one atomically, conditioned on the counter being under its limit, with a ttl', async () => {
+		ddb.on(UpdateCommand).resolves({});
+		await expect(store.takeSlot(slot)).resolves.toBe(true);
+
+		const input = ddb.commandCalls(UpdateCommand)[0].args[0].input;
+		expectPlaceholdersToMatch(input);
+		expect(input.Key).toEqual({
+			playerId: slot.key,
+		});
+		expect(input.UpdateExpression).toBe('ADD #count :one SET #ttl = :ttl');
+		expect(input.ConditionExpression).toBe(
+			'attribute_not_exists(#count) OR #count < :limit',
+		);
+		expect(input.ExpressionAttributeValues).toEqual({
+			':one': 1,
+			':limit': 3,
+			':ttl': 1_700_000_061,
+		});
+	});
+
+	it('reports a full counter as false, and rethrows anything else', async () => {
+		ddb.on(UpdateCommand).rejects(conditionFailed());
+		await expect(store.takeSlot(slot)).resolves.toBe(false);
+
+		ddb.on(UpdateCommand).rejects(new Error('throttled'));
+		await expect(store.takeSlot(slot)).rejects.toThrow('throttled');
+	});
+});

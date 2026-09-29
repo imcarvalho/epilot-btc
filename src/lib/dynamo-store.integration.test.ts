@@ -380,3 +380,34 @@ describe('the once-only writes', () => {
 		expect((await store.getPlayer('anon:1'))!.score).toBe(1);
 	});
 });
+
+describe('the rate-limit counters (takeSlot)', () => {
+	const slot = (key: string, limit = 3) => ({
+		key,
+		limit,
+		expiresAt: 4_000_000_000,
+	});
+
+	it('grants exactly the limit under a race, then refuses, and sets the ttl', async () => {
+		const results = await Promise.all(
+			Array.from(
+				{
+					length: 8,
+				},
+				() => store.takeSlot(slot('RATE#test##1')),
+			),
+		);
+
+		expect(results.filter(Boolean)).toHaveLength(3);
+		expect(await rawItem('RATE#test##1')).toMatchObject({
+			count: 3,
+			ttl: 4_000_000_000,
+		});
+	});
+
+	it('counts each key on its own', async () => {
+		await store.takeSlot(slot('RATE#test##1', 1));
+		await expect(store.takeSlot(slot('RATE#test##1', 1))).resolves.toBe(false);
+		await expect(store.takeSlot(slot('RATE#test##2', 1))).resolves.toBe(true);
+	});
+});

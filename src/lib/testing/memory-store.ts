@@ -11,6 +11,7 @@
 
 import type { PendingGuess } from '../contracts';
 import type { Scoreboard } from '../scoring';
+import type { RateSlot } from '../rate-limit';
 import type {
 	BoardEntry,
 	CachedCandles,
@@ -133,6 +134,19 @@ export class MemoryStore implements GameStore {
 			.sort((a, b) => a.pendingGuess!.createdAt - b.pendingGuess!.createdAt)
 			.slice(0, limit)
 			.map((p) => structuredClone(p));
+	}
+
+	/** Rate-limit counters by key, as DynamoDB holds them: `takeSlot` is one atomic step. */
+	slots = new Map<string, number>();
+
+	async takeSlot({ key, limit }: RateSlot) {
+		await tick();
+		const count = this.slots.get(key) ?? 0;
+		if (count >= limit) {
+			return false;
+		}
+		this.slots.set(key, count + 1);
+		return true;
 	}
 
 	async getCachedPrice() {

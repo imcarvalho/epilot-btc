@@ -8,6 +8,7 @@
 
 import type { PendingGuess } from './contracts';
 import type { Candle } from './candles';
+import type { RateSlot } from './rate-limit';
 import type { Scoreboard } from './scoring';
 
 export interface PlayerRecord extends Scoreboard {
@@ -99,6 +100,13 @@ export interface GameStore {
 
 	/** Players whose pending guess was created at or before `cutoff`, from the sparse index (§3.2). */
 	listDueGuesses(cutoff: number, limit: number): Promise<PlayerRecord[]>;
+
+	/**
+	 * Counts one request against a rate-limit counter, atomically: adds one
+	 * unless the counter is already at its limit. True if the request got a
+	 * slot. The counter item expires at `slot.expiresAt` (epoch seconds).
+	 */
+	takeSlot(slot: RateSlot): Promise<boolean>;
 
 	getCachedPrice(): Promise<CachedPrice | null>;
 

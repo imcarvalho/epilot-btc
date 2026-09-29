@@ -7,6 +7,7 @@
 import { NextRequest } from 'next/server';
 import type { GameDeps } from '@/lib/game';
 import { signIn } from '@/lib/game';
+import { PLAYER_CREATE_RATE } from '@/lib/rate-limit';
 import { MemoryStore } from '@/lib/testing/memory-store';
 import { POST as createPlayer } from './player/route';
 import { POST as guess } from './guess/route';
@@ -139,6 +140,61 @@ describe('POST /api/player', () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get('set-cookie')).toBeNull();
 		expect(store.players.size).toBe(1);
+	});
+
+	describe('the per-IP limit on creation', () => {
+		const from = (ip: string, cookie?: string) =>
+			createPlayer(
+				request('/api/player', {
+					method: 'POST',
+					cookie,
+					headers: {
+						'x-forwarded-for': `6.6.6.6, ${ip}`,
+					},
+				}),
+			);
+
+		it('refuses with 429 after the limit, counting the trusted hop rather than what the client sent', async () => {
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
+				expect((await from('203.0.113.7')).status).toBe(201);
+			}
+			const res = await from('203.0.113.7');
+			expect(res.status).toBe(429);
+			expect(await res.json()).toEqual({
+				error: 'rate-limited',
+			});
+			expect(res.headers.get('set-cookie')).toBeNull();
+			expect(store.players.size).toBe(PLAYER_CREATE_RATE.limit);
+		});
+
+		it('counts each address separately, and stores only a hash of it', async () => {
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
+				await from('203.0.113.7');
+			}
+			expect((await from('203.0.113.8')).status).toBe(201);
+			const keys = [...store.slots.keys()].join(' ');
+			expect(keys).not.toContain('203.0.113');
+		});
+
+		it('never blocks a player who already has a valid cookie', async () => {
+			const cookie = (await from('203.0.113.7')).cookies.get(
+				'btc_player',
+			)!.value;
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
+				await from('203.0.113.7');
+			}
+			expect((await from('203.0.113.7')).status).toBe(429);
+			const res = await from('203.0.113.7', cookie);
+			expect(res.status).toBe(200);
+		});
+
+		it('starts again in the next hour', async () => {
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
+				await from('203.0.113.7');
+			}
+			clock += PLAYER_CREATE_RATE.windowMs;
+			expect((await from('203.0.113.7')).status).toBe(201);
+		});
 	});
 
 	it('replaces a cookie whose player no longer exists', async () => {

@@ -6,12 +6,26 @@ import {
 	PLAYER_COOKIE,
 	playerCookieOptions,
 } from '@/lib/identity';
-import { json, playerIdFrom } from '../respond';
+import { clientIpFrom, hashIp } from '@/lib/client-ip';
+import { PLAYER_CREATE_RATE, rateSlot } from '@/lib/rate-limit';
+import { error, json, playerIdFrom } from '../respond';
 
 /**
  * First contact (engineering spec §6.1): issues an anonymous player and sets
- * its id as an `httpOnly` cookie. Idempotent for a browser that already has
- * a live player, so calling it twice never forks one player into two.
+ * its id as an `httpOnly` cookie.
+ *
+ * Idempotent for a browser that already has a live player: calling it again
+ * with that cookie returns the same player and creates nothing, and is never
+ * counted against the per-IP limit. Two concurrent first visits with no
+ * cookie are a different case and are not made idempotent: nothing links
+ * them, so they legitimately create two players, and whichever response the
+ * browser stores last (its Set-Cookie wins) is the player it keeps; the other
+ * is orphaned and expires after 30 days. The client shares one in-flight
+ * creation per tab, so this only happens across tabs.
+ *
+ * Creation - and only creation - is limited per client IP
+ * (`PLAYER_CREATE_RATE`, §8): identities are free, so this is what stops one
+ * machine minting them without bound.
  */
 export async function POST(request: NextRequest) {
 	const deps = getDeps();
@@ -31,12 +45,42 @@ export async function POST(request: NextRequest) {
 			rejoin: true,
 		});
 		const player = await deps.store.getPlayer(existingId);
+		if (!player) {
+			console.error(
+				JSON.stringify({
+					event: 'player-rejoin-missing',
+				}),
+			);
+			return error('server-error', 500);
+		}
 		return json(
 			{
-				publicName: player!.publicName,
+				publicName: player.publicName,
 			},
 			201,
 		);
+	}
+
+	const ip = clientIpFrom(
+		request.headers.get('x-forwarded-for'),
+		Number(process.env.TRUSTED_PROXY_HOPS) || 1,
+	);
+	// No address (only outside CloudFront: local development and the tests)
+	// means nothing to count against.
+	if (ip) {
+		const subject = hashIp(
+			ip,
+			process.env.STREAM_SECRET ?? process.env.AUTH_SECRET ?? 'btc-guess',
+		);
+		const slot = rateSlot(PLAYER_CREATE_RATE, subject, deps.now());
+		if (!(await deps.store.takeSlot(slot))) {
+			console.error(
+				JSON.stringify({
+					event: 'player-create-limited',
+				}),
+			);
+			return error('rate-limited', 429);
+		}
 	}
 
 	const player = await createAnonymousPlayer(deps);

@@ -18,6 +18,7 @@
 
 import { z } from 'zod';
 import { coinbaseUrl } from './coinbase';
+import { PRICE_READ_RATE, rateSlot } from './rate-limit';
 import type { CachedPrice, GameStore } from './store';
 
 export const PRICE_URL = coinbaseUrl('ticker');
@@ -142,6 +143,43 @@ export async function fetchFreshPrice({
 		);
 		return null;
 	}
+}
+
+/**
+ * How old a read may be and still lock a guess: a quarter of a second. The
+ * lock price is never older than this (compare "never the cache", which can
+ * be a second old, or fifteen while Coinbase fails), and `createdAt` stays
+ * the time that price stood, so the minute still runs from the locked trade.
+ * It exists so a burst of guesses shares reads instead of each costing a
+ * Coinbase call (§5, "Bounding Coinbase calls").
+ */
+export const LOCK_PRICE_REUSE_MS = 250;
+
+/**
+ * The price a guess locks at, with Coinbase calls bounded whatever the number
+ * of players: a read under `LOCK_PRICE_REUSE_MS` old is reused; otherwise a
+ * fresh read is made if the global per-second cap (`PRICE_READ_RATE`) has a
+ * slot left; otherwise null, and the guess is refused like a failed read.
+ */
+export async function lockPrice(deps: PriceDeps): Promise<CachedPrice | null> {
+	const cached = await deps.store.getCachedPrice();
+	if (cached) {
+		const age = deps.now() - cached.updatedAt;
+		if (age >= 0 && age <= LOCK_PRICE_REUSE_MS) {
+			return cached;
+		}
+	}
+
+	const slot = rateSlot(PRICE_READ_RATE, '', deps.now());
+	if (!(await deps.store.takeSlot(slot))) {
+		console.error(
+			JSON.stringify({
+				event: 'price-read-capped',
+			}),
+		);
+		return null;
+	}
+	return fetchFreshPrice(deps);
 }
 
 /**

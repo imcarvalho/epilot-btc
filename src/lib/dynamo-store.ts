@@ -31,6 +31,7 @@ import {
 	type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
 import type { PendingGuess } from './contracts';
+import type { RateSlot } from './rate-limit';
 import type { Scoreboard } from './scoring';
 import type {
 	BoardEntry,
@@ -440,6 +441,39 @@ export class DynamoStore implements GameStore {
 			}),
 		);
 		return Items.map(toPlayer);
+	}
+
+	async takeSlot({ key, limit, expiresAt }: RateSlot) {
+		// One atomic add, refused by the condition once the counter is full: the
+		// count is exact however many instances race for the last slot.
+		try {
+			await this.client.send(
+				new UpdateCommand({
+					TableName: this.tableName,
+					Key: {
+						playerId: key,
+					},
+					UpdateExpression: 'ADD #count :one SET #ttl = :ttl',
+					ConditionExpression:
+						'attribute_not_exists(#count) OR #count < :limit',
+					ExpressionAttributeNames: {
+						'#count': 'count',
+						'#ttl': 'ttl',
+					},
+					ExpressionAttributeValues: {
+						':one': 1,
+						':limit': limit,
+						':ttl': expiresAt,
+					},
+				}),
+			);
+			return true;
+		} catch (error) {
+			if (isConditionFailure(error)) {
+				return false;
+			}
+			throw error;
+		}
 	}
 
 	async getCachedPrice() {

@@ -15,12 +15,7 @@ import type { Direction } from './resolve-guess';
 import { GUESS_WINDOW_MS } from './resolve-guess';
 import type { PendingGuess, SignInOutcome, StateResponse } from './contracts';
 import { generateName } from './names';
-import {
-	fetchFreshPrice,
-	getGamePrice,
-	isStale,
-	type PriceQuote,
-} from './price';
+import { lockPrice, getGamePrice, isStale, type PriceQuote } from './price';
 import type { Candle } from './candles';
 import { applyResolution } from './scoring';
 import { deadlineOf, settleAgainstTape, type PricePoint } from './settlement';
@@ -306,8 +301,10 @@ export type PlaceGuessResult =
  * `POST /api/guess`. The caller supplies a direction and nothing else; the
  * price it is locked at and the time it starts are both the server's.
  *
- * The price is read from the market for this request, never from the cache,
- * and a failed read refuses the guess rather than falling back: a price even
+ * The price is read from the market for this request or, at most a quarter
+ * of a second old, from another guess's read (`lockPrice`), never from the
+ * screen's cache. A failed read, or one the global cap on Coinbase calls
+ * has no slot for, refuses the guess rather than falling back: a price even
  * a few seconds old is one the player may already have seen the market move
  * away from (§5, "The locked price"). `createdAt` is when that price stood,
  * so the deadline is exactly a minute after the locked trade.
@@ -331,7 +328,7 @@ export async function placeGuess(
 		};
 	}
 
-	const price = await fetchFreshPrice(deps);
+	const price = await lockPrice(deps);
 	if (!price) {
 		return {
 			kind: 'price-unavailable',
