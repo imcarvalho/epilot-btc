@@ -15,6 +15,7 @@ import {
 	type GameDeps,
 } from './game';
 import { getLeaderboard } from './leaderboard';
+import { ADJECTIVES, ANIMALS } from './names';
 import { createSharedTape } from './shared-tape';
 import { PRICE_FAILURE_MS, PRICE_STALE_MS } from './price';
 import type { PricePoint } from './settlement';
@@ -104,6 +105,9 @@ beforeEach(() => {
 	vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
+// `random: () => 0` in `setup` draws the first word of each list.
+const FIRST_NAME = `${ADJECTIVES[0]}${ANIMALS[0]}`;
+
 describe('a new player', () => {
 	it('starts at 0 with a generated name and nothing pending (R7)', async () => {
 		const { deps } = setup();
@@ -112,7 +116,7 @@ describe('a new player', () => {
 
 		const state = await getState(deps, player.playerId);
 		expect(state).toMatchObject({
-			publicName: 'AudaciousBadger',
+			publicName: FIRST_NAME,
 			score: 0,
 			stats: {
 				wins: 0,
@@ -819,7 +823,7 @@ describe('signing in (§6.2)', () => {
 		expect(t.store.players.get('google:sub-1')).toMatchObject({
 			score: 0,
 			onBoard: true,
-			publicName: 'AudaciousBadger',
+			publicName: FIRST_NAME,
 		});
 	});
 
