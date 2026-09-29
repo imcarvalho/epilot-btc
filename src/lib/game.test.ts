@@ -621,7 +621,7 @@ describe('signing in (§6.2)', () => {
 		return anon;
 	}
 
-	it('promotes the anonymous player: score, history and the pending guess move across', async () => {
+	it('promotes the anonymous player: name and pending guess move across, score and history start again', async () => {
 		const t = setup();
 		const anon = await anonWithHistory(t);
 
@@ -632,16 +632,69 @@ describe('signing in (§6.2)', () => {
 		const state = await getState(t.deps, 'google:sub-1');
 		expect(state).toMatchObject({
 			publicName: anon.publicName,
-			score: 1,
+			score: 0,
 			stats: {
-				wins: 1,
+				wins: 0,
+				losses: 0,
+				currentStreak: 0,
+				bestStreak: 0,
 			},
 			pendingGuess: {
 				direction: 'down',
 			},
 		});
-		expect(state!.history).toHaveLength(1);
+		expect(state!.history).toHaveLength(0);
 		expect(t.store.players.has(anon.playerId)).toBe(false);
+	});
+
+	it('does not carry the anonymous score onto the board', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		expect(t.store.players.get(anon.playerId)!.score).toBe(1);
+		await signIn(t.deps, 'sub-1', anon.playerId);
+
+		const board = await getLeaderboard(t.deps, 'google:sub-1');
+		expect(board.podium[0]).toMatchObject({
+			score: 0,
+			isYou: true,
+		});
+		expect(await t.store.countAboveOnBoard(0)).toBe(0);
+	});
+
+	it('leaves anonymous results off the board, and counts results after sign-in', async () => {
+		const t = setup();
+		const anon = await createAnonymousPlayer(t.deps);
+		await placeGuess(t.deps, anon.playerId, 'up');
+		t.advance(60_000);
+		t.setMarket(100_010);
+		await getState(t.deps, anon.playerId);
+		expect(t.store.players.get(anon.playerId)).toMatchObject({
+			score: 1,
+			onBoard: false,
+		});
+		expect(t.store.boardTotal).toBe(0);
+
+		await signIn(t.deps, 'sub-1', anon.playerId);
+		const account = () => t.store.players.get('google:sub-1')!;
+		expect(account().score).toBe(0);
+
+		await placeGuess(t.deps, 'google:sub-1', 'up');
+		t.advance(60_000);
+		t.setMarket(100_020);
+		await getState(t.deps, 'google:sub-1');
+		// Score, wins, streak and history move in the one settle write.
+		expect(account()).toMatchObject({
+			score: 1,
+			wins: 1,
+			losses: 0,
+			currentStreak: 1,
+		});
+		expect(account().history).toHaveLength(1);
+		expect(t.store.boardTotal).toBe(1);
+		const board = await getLeaderboard(t.deps, 'google:sub-1');
+		expect(board.podium[0]).toMatchObject({
+			score: 1,
+		});
 	});
 
 	it('puts the signed-in player on the board, counted once', async () => {
@@ -655,7 +708,7 @@ describe('signing in (§6.2)', () => {
 			isEligible: true,
 		});
 		expect(board.podium[0]).toMatchObject({
-			score: 1,
+			score: 0,
 			isYou: true,
 		});
 	});
@@ -670,7 +723,12 @@ describe('signing in (§6.2)', () => {
 		await expect(sweep(t.deps)).resolves.toMatchObject({
 			resolved: 1,
 		});
-		expect(t.store.players.get('google:sub-1')!.score).toBe(2);
+		// Settled after sign-in, so it counts: the account's only point.
+		expect(t.store.players.get('google:sub-1')).toMatchObject({
+			score: 1,
+			wins: 1,
+			losses: 0,
+		});
 	});
 
 	it('keeps an existing account as it is, and leaves the anonymous record alone', async () => {
@@ -683,7 +741,7 @@ describe('signing in (§6.2)', () => {
 		await expect(signIn(t.deps, 'sub-1', second.playerId)).resolves.toBe(
 			'kept-existing',
 		);
-		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 		expect(t.store.players.get(second.playerId)!.score).toBe(1);
 	});
 
@@ -716,7 +774,7 @@ describe('signing in (§6.2)', () => {
 		expect(outcomes.sort()).toEqual(['promoted', 'returning']);
 		const board = await getLeaderboard(t.deps, 'google:sub-1');
 		expect(board.total).toBe(1);
-		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 	});
 
 	it('retries when the anonymous record changes mid-merge, losing nothing', async () => {
@@ -739,7 +797,9 @@ describe('signing in (§6.2)', () => {
 		expect(outcome).toBe('promoted');
 		expect(merge).toHaveBeenCalledTimes(2);
 		const account = t.store.players.get('google:sub-1')!;
-		expect(account.wins + account.losses).toBe(2);
+		// Both guesses settled before the account existed, so neither counts.
+		expect(account.wins + account.losses).toBe(0);
+		expect(account.score).toBe(0);
 		expect(account.pendingGuess).toBeNull();
 	});
 
@@ -753,7 +813,7 @@ describe('signing in (§6.2)', () => {
 		);
 		expect(t.store.signInConflicts).toBe(0);
 		expect(t.store.boardTotal).toBe(1);
-		expect(t.store.players.get('google:sub-1')!.score).toBe(1);
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 		expect(t.store.players.has(anon.playerId)).toBe(false);
 	});
 
