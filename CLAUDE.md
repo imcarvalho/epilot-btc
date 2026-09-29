@@ -36,7 +36,7 @@ These are settled. The reasoning is in the specs; this is the index.
 | Hosting | Amplify Hosting for the web tier; CDK for table, indexes, the stream Lambda, scheduler, IAM | eng §8 |
 | Region | eu-central-1 | eng §2 |
 | Store | DynamoDB, one item per player, price cached in its own item | eng §2 |
-| Resolution | Pure `resolveGuess()` against the price at the deadline (last Coinbase trade at or before `createdAt + 60 s`), two triggers (the stream's state read every second, scheduled sweep), stale-price guard at 15 s | eng §3, §3.1, §3.2 |
+| Resolution | Pure `resolveGuess()` against the price at the deadline (last Coinbase trade at or before `createdAt + 60 s`, settled only once a later trade is on the tape), two triggers (the stream's state read every second, scheduled sweep), stale-price guard at 15 s | eng §3, §3.1, §3.2 |
 | Streaming | One Server-Sent Events stream per tab, from a Lambda Function URL in `RESPONSE_STREAM` mode (Amplify buffers responses and cuts them at 30 s), opened with a 60 s signed ticket from `GET /api/stream-token`. Everything the screen shows arrives on it; `POST /api/guess` is the one call the player makes. About nine players at once (Lambda concurrency 10), accepted as a known limitation | eng §3.1, §11 |
 | Identity | Anonymous `httpOnly` cookie first; Google sign-in via Auth.js as an upgrade, merging the anonymous record once | eng §6.1, §6.2, §6.5 |
 | Public identity | Server-generated `AdjectiveAnimal` name. No country, no flags | eng §6.3, product §6.6 |

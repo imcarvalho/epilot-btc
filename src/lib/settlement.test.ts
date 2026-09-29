@@ -27,7 +27,11 @@ const at = (offset: number, price: number): PricePoint => ({
 describe('settleAgainstTape', () => {
 	it('settles against the last trade at or before the deadline', () => {
 		expect(
-			settleAgainstTape(up, [at(-3_000, 100_020), at(-1_000, 100_010)]),
+			settleAgainstTape(up, [
+				at(-3_000, 100_020),
+				at(-1_000, 100_010),
+				at(500, 99_000),
+			]),
 		).toEqual({
 			resolved: true,
 			delta: 1,
@@ -37,14 +41,38 @@ describe('settleAgainstTape', () => {
 	});
 
 	it('counts a trade exactly at the deadline', () => {
-		expect(settleAgainstTape(up, [at(-1_000, 100_010), at(0, 99_990)])).toEqual(
-			{
-				resolved: true,
-				delta: -1,
-				price: 99_990,
-				at: DEADLINE,
-			},
-		);
+		expect(
+			settleAgainstTape(up, [
+				at(-1_000, 100_010),
+				at(0, 99_990),
+				at(500, 100_500),
+			]),
+		).toEqual({
+			resolved: true,
+			delta: -1,
+			price: 99_990,
+			at: DEADLINE,
+		});
+	});
+
+	it('waits for a trade after the deadline before settling', () => {
+		// Read a moment after the deadline: a trade made just before it may not
+		// be on the tape yet, so the last one shown is not yet the anchor.
+		const early = [at(-3_000, 100_020), at(-1_000, 100_010)];
+		expect(settleAgainstTape(up, early)).toEqual({
+			resolved: false,
+		});
+		// A second later the missing trade is there, and a later one with it:
+		// the anchor is final, and it is not the one the early read would have
+		// used.
+		expect(
+			settleAgainstTape(up, [...early, at(-100, 99_990), at(300, 100_050)]),
+		).toEqual({
+			resolved: true,
+			delta: -1,
+			price: 99_990,
+			at: DEADLINE,
+		});
 	});
 
 	it('ignores every trade after the deadline once the price had moved', () => {

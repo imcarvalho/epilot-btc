@@ -88,7 +88,7 @@ const SIGN_IN_BACKOFF_MS = 25;
 
 /**
  * Signs a Google account in, carrying this browser's anonymous player over
- * once - its name and any guess in play, not its score (§6.2). Every path ends in a conditional write, so two sign-ins racing each
+ * once - its name and any guess still in its minute, not its score (§6.2). Every path ends in a conditional write, so two sign-ins racing each
  * other (a double click, two tabs) merge once and the loser re-reads.
  *
  * Joining the board happens here and only here: the signed-in record is
@@ -127,13 +127,21 @@ export async function signIn(
 
 		const now = deps.now();
 		// The board counts only what is earned while signed in (§6.2), so the
-		// anonymous record brings its name, its age and any guess in play, and
-		// no score, counters or history: those start at zero. A guess still
-		// pending settles after this write, so it counts.
+		// anonymous record brings its name, its age and any guess still in its
+		// minute, and no score, counters or history: those start at zero. A
+		// guess carried over settles after this write, so it counts.
+		//
+		// A guess past its deadline stays behind, and goes with the anonymous
+		// record: its outcome is already on the market for anyone to read, so
+		// carrying it would let a player sign in only when it had won.
+		const carried =
+			anon?.pendingGuess && now < deadlineOf(anon.pendingGuess)
+				? anon.pendingGuess
+				: null;
 		const player: PlayerRecord = anon
 			? {
 					...newPlayerRecord(playerId, anon.publicName, now),
-					pendingGuess: anon.pendingGuess,
+					pendingGuess: carried,
 					createdAt: anon.createdAt,
 					onBoard: true,
 				}

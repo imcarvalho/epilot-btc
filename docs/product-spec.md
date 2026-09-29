@@ -59,7 +59,7 @@ One screen throughout; what changes is what it offers and what it says. Three th
 
 - **Waiting has three shapes**, and only one of them is the countdown.
 - **Leaving is safe:** the guess settles anyway and the result is waiting on the way back.
-- **Sign-in sits off to the side.** It is reachable from the game, never in front of it, and it carries the anonymous player's name and any guess in play, but the score starts again from zero (6.3).
+- **Sign-in sits off to the side.** It is reachable from the game, never in front of it, and it carries the anonymous player's name and a guess still in its minute, but the score starts again from zero (6.3).
 
 The Mermaid source is in `flows/00-user-flow.mmd`.
 
@@ -143,7 +143,7 @@ A first-time visitor guesses immediately. No account, no email, nothing asked. T
 
 Signing in with Google is offered as a benefit, never a gate: the button says what it does and what it is for, **"Sign in to save your score"**, and the reason is keeping that score across devices. Once signed in, score, streak and history follow them from laptop to phone and survive clearing the browser - counted from the moment they sign in.
 
-- **Playing anonymously and then signing in keeps the name and any guess in play, but the score starts again from zero.** The board counts only what is earned while signed in: anonymous players are free to make in any number, so a score built before signing in proves nothing. The screen says so plainly rather than resetting it silently. Trying the game first costs those first points, and nothing else.
+- **Playing anonymously and then signing in keeps the name and a guess still in its minute, but the score starts again from zero.** The board counts only what is earned while signed in: anonymous players are free to make in any number, so a score built before signing in proves nothing. The screen says so plainly rather than resetting it silently. Trying the game first costs those first points, and nothing else. A guess whose minute has already run out stays behind with the anonymous score: its result can already be read off the market, so carrying it would let anyone sign in only when it had won.
 - **Signing in on a device that already has an account shows the saved score**, and says so plainly rather than silently replacing what was on screen.
 - **Signing out** returns the player to anonymous play. Nothing is deleted.
 - **We ask for the minimum:** no email, no contacts, no calendar. Just enough to know it is the same person.
@@ -265,7 +265,7 @@ These are also what a screen reader announces, which is why they are written as 
 - [ ] Correct adds 1, wrong subtracts 1, and the score may go negative.
 - [ ] The three waiting situations are distinguishable on screen.
 - [ ] Closing the browser and coming back preserves score, history and any pending guess, which settles while away.
-- [ ] Playing anonymously and then signing in keeps the name and any guess in play and starts the score at zero, with a sentence saying so; signing in on a second device shows the same state.
+- [ ] Playing anonymously and then signing in keeps the name and a guess still in its minute and starts the score at zero, with a sentence saying so; signing in on a second device shows the same state.
 - [ ] The scoreboard's success rate and streaks match the history, with an empty state before the first result.
 - [ ] A first visit shows a full chart, both buttons active, a plain `0` score with no rate or streak beside it, and two empty cards that say what will fill them.
 - [ ] Every player has a generated name from the first visit.

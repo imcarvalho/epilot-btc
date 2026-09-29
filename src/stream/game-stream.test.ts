@@ -36,7 +36,15 @@ function setup() {
 			price: market,
 			time: clock,
 		}),
-		fetchTape: async () => tape.filter((t) => t.time <= clock),
+		// Ends with a trade at the current price as the read is made: the
+		// market keeps trading whether or not the price moves.
+		fetchTape: async () => [
+			...tape.filter((t) => t.time < clock),
+			{
+				time: clock,
+				price: market,
+			},
+		],
 		fetchCandles: vi.fn(async (now: number) => [
 			{
 				time: now - 60_000,
@@ -136,8 +144,9 @@ describe('the game stream', () => {
 		const settled = states.findIndex(
 			(e) => e.type === 'state' && e.data.pendingGuess === null,
 		);
-		// One read a second, and the first read after the minute settles it.
-		expect(settled).toBe(60);
+		// One read a second. The read at the deadline itself cannot settle it
+		// (no trade after the deadline is on the tape yet); the next one does.
+		expect(settled).toBe(61);
 		expect(states[settled]).toMatchObject({
 			data: {
 				score: 1,

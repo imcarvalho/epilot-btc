@@ -22,6 +22,12 @@ import { MemoryStore } from './testing/memory-store';
 
 const T0 = 1_700_000_000_000;
 
+/**
+ * How long after the deadline a read is made: long enough for the tape to
+ * show a trade after it, without which nothing settles (settlement.ts).
+ */
+const TRADE_AFTER_MS = 500;
+
 function setup(initialPrice = 100_000) {
 	const store = new MemoryStore();
 	let clock = T0;
@@ -62,9 +68,17 @@ function setup(initialPrice = 100_000) {
 			if (!feedUp || !tapeUp) {
 				throw new Error('feed down');
 			}
-			// Like Coinbase: from the last trade at or before `from` to now.
+			// Like Coinbase: from the last trade at or before `from` to now,
+			// ending with a trade at the current price as the read is made (the
+			// market keeps trading whether or not the price moves).
 			const start = tape.findLastIndex((t) => t.time <= from);
-			return tape.slice(Math.max(start, 0)).filter((t) => t.time <= clock);
+			return [
+				...tape.slice(Math.max(start, 0)).filter((t) => t.time < clock),
+				{
+					time: clock,
+					price: market,
+				},
+			];
 		}),
 	};
 
@@ -267,6 +281,7 @@ describe('resolving on read', () => {
 
 		advance(60_000);
 		setMarket(100_010);
+		advance(TRADE_AFTER_MS);
 		const state = await getState(deps, playerId);
 		expect(state).toMatchObject({
 			score: 1,
@@ -294,6 +309,7 @@ describe('resolving on read', () => {
 
 		advance(60_000);
 		setMarket(99_990);
+		advance(TRADE_AFTER_MS);
 		const state = await getState(deps, playerId);
 		expect(state).toMatchObject({
 			score: -1,
@@ -432,6 +448,7 @@ describe('resolving on read', () => {
 		);
 
 		setTape(true);
+		advance(TRADE_AFTER_MS);
 		const recovered = await getState(deps, playerId);
 		expect(recovered).toMatchObject({
 			settlementDelayed: false,
@@ -487,6 +504,7 @@ describe('resolving on read', () => {
 		await placeGuess(deps, playerId, 'up');
 		advance(60_000);
 		setMarket(100_010);
+		advance(TRADE_AFTER_MS);
 
 		const states = await Promise.all(
 			[1, 2, 3].map(() => getState(deps, playerId)),
@@ -507,6 +525,7 @@ describe('resolving on read', () => {
 		await placeGuess(deps, playerId, 'up');
 		advance(60_000);
 		setMarket(100_010);
+		advance(TRADE_AFTER_MS);
 		await getState(deps, playerId);
 
 		const next = await placeGuess(deps, playerId, 'down');
@@ -616,6 +635,7 @@ describe('signing in (§6.2)', () => {
 		await placeGuess(t.deps, anon.playerId, 'up');
 		t.advance(60_000);
 		t.setMarket((rising += 10));
+		t.advance(TRADE_AFTER_MS);
 		await getState(t.deps, anon.playerId);
 		await placeGuess(t.deps, anon.playerId, 'down');
 		return anon;
@@ -667,6 +687,7 @@ describe('signing in (§6.2)', () => {
 		await placeGuess(t.deps, anon.playerId, 'up');
 		t.advance(60_000);
 		t.setMarket(100_010);
+		t.advance(TRADE_AFTER_MS);
 		await getState(t.deps, anon.playerId);
 		expect(t.store.players.get(anon.playerId)).toMatchObject({
 			score: 1,
@@ -681,6 +702,7 @@ describe('signing in (§6.2)', () => {
 		await placeGuess(t.deps, 'google:sub-1', 'up');
 		t.advance(60_000);
 		t.setMarket(100_020);
+		t.advance(TRADE_AFTER_MS);
 		await getState(t.deps, 'google:sub-1');
 		// Score, wins, streak and history move in the one settle write.
 		expect(account()).toMatchObject({
@@ -720,6 +742,7 @@ describe('signing in (§6.2)', () => {
 
 		t.advance(60_000);
 		t.setMarket(99_000);
+		t.advance(TRADE_AFTER_MS);
 		await expect(sweep(t.deps)).resolves.toMatchObject({
 			resolved: 1,
 		});
@@ -729,6 +752,42 @@ describe('signing in (§6.2)', () => {
 			wins: 1,
 			losses: 0,
 		});
+	});
+
+	it('carries a guess signed in with a moment of its minute left', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		t.advance(59_999);
+
+		await signIn(t.deps, 'sub-1', anon.playerId);
+		expect(t.store.players.get('google:sub-1')!.pendingGuess).toMatchObject({
+			direction: 'down',
+		});
+	});
+
+	it('leaves behind a guess past its deadline, whose outcome can already be read', async () => {
+		const t = setup();
+		const anon = await anonWithHistory(t);
+		// The tab is closed, the minute runs out and the price has fallen: the
+		// down guess has won, and nothing has settled it yet.
+		t.advance(60_000);
+		t.setMarket(99_000);
+		t.advance(TRADE_AFTER_MS);
+
+		await expect(signIn(t.deps, 'sub-1', anon.playerId)).resolves.toBe(
+			'promoted',
+		);
+		expect(t.store.players.get('google:sub-1')).toMatchObject({
+			publicName: anon.publicName,
+			pendingGuess: null,
+			score: 0,
+		});
+		// It went with the anonymous record, so there is nothing to settle.
+		expect(t.store.players.has(anon.playerId)).toBe(false);
+		await expect(sweep(t.deps)).resolves.toMatchObject({
+			due: 0,
+		});
+		expect(t.store.players.get('google:sub-1')!.score).toBe(0);
 	});
 
 	it('keeps an existing account as it is, and leaves the anonymous record alone', async () => {
@@ -782,6 +841,7 @@ describe('signing in (§6.2)', () => {
 		const anon = await anonWithHistory(t);
 		t.advance(60_000);
 		t.setMarket(99_000);
+		t.advance(TRADE_AFTER_MS);
 
 		// The sweep settles the pending guess between sign-in's read and its
 		// write, so the first merge is refused and sign-in has to read again.

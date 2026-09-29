@@ -46,8 +46,13 @@ export function deadlineOf(guess: Pick<Guess, 'createdAt'>): number {
 
 /**
  * Settles a guess against a tape of prices in time order. The tape must reach
- * back to the deadline; one that does not settles nothing, since the price at
- * the deadline is then unknown.
+ * back to the deadline, and past it: one that does not reach back settles
+ * nothing, since the price at the deadline is then unknown, and neither does
+ * one with nothing after the deadline. A tape read a moment after the
+ * deadline may not yet show a trade made just before it, and settling on
+ * the trade before that would let the moment of the read choose the
+ * outcome. A later trade on the tape means every trade up to the deadline is
+ * already on it, so the anchor is final.
  */
 export function settleAgainstTape(
 	guess: Guess,
@@ -59,7 +64,7 @@ export function settleAgainstTape(
 	for (let i = 0; i < tape.length && tape[i].time <= deadline; i++) {
 		anchor = i;
 	}
-	if (anchor === -1) {
+	if (anchor === -1 || anchor === tape.length - 1) {
 		return {
 			resolved: false,
 		};

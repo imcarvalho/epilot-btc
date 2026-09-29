@@ -72,8 +72,9 @@ export interface StateResponse {
 /**
  * What first sign-in did with the browser's anonymous player (§6.2):
  *
- * - `promoted`: no account yet, so the anonymous record became it - score,
- *   counters, history and any pending guess - and the anonymous item is gone;
+ * - `promoted`: no account yet, so the anonymous record became it - its name
+ *   and any guess still in its minute, with the score, counters and history
+ *   starting at zero - and the anonymous item is gone;
  * - `kept-existing`: the account already existed, so it wins and the
  *   anonymous record is left as it was (never summed: that would let anyone
  *   farm points in incognito windows and merge them in). The UI says so;
