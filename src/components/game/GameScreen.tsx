@@ -91,11 +91,17 @@ export function GameScreen() {
 	// What a sign-in did is reported once, by the stream's ticket; hold it
 	// until the player dismisses it.
 	const [signInSeen, setSignInSeen] = useState<SignInOutcome | null>(null);
-	const [notice, setNotice] = useState<string | null>(null);
+	const [noticeOpen, setNoticeOpen] = useState(false);
 	if (signIn && signIn !== signInSeen) {
 		setSignInSeen(signIn);
-		setNotice(signInSentence(signIn));
+		setNoticeOpen(true);
 	}
+	// Derived, because a first sign-in's welcome names the player, and the
+	// name arrives with the game state.
+	const notice =
+		noticeOpen && signInSeen
+			? signInSentence(signInSeen, state?.publicName ?? null)
+			: null;
 
 	// Failures are shown on screen, and heard: through the same announcer.
 	const failure =
@@ -138,7 +144,7 @@ export function GameScreen() {
 									status={signInSeen === 'kept-existing' ? 'info' : 'success'}
 									title={notice}
 									isDismissable
-									onDismiss={() => setNotice(null)}
+									onDismiss={() => setNoticeOpen(false)}
 									dismissLabel="Dismiss"
 								/>
 							)}
