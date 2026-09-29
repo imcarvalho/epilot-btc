@@ -32,7 +32,20 @@ export const styles = stylex.create({
 			[NARROW]: 'var(--spacing-3)',
 		},
 	},
+	// On a phone the score has a row of its own, and sits in the middle of it.
 	score: {
+		display: {
+			default: null,
+			[NARROW]: 'flex',
+		},
+		flexBasis: {
+			default: null,
+			[NARROW]: '100%',
+		},
+		justifyContent: {
+			default: null,
+			[NARROW]: 'center',
+		},
 		order: {
 			default: 1,
 			[NARROW]: 2,

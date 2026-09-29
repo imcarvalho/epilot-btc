@@ -84,6 +84,10 @@ export function GameScreen() {
 		!priceBlocked &&
 		!guessError;
 
+	// A result on a phone reads best right under the chart it is about.
+	const showingResult =
+		phase?.kind === 'result' || phase?.kind === 'away-result';
+
 	// What a sign-in did is reported once, by the stream's ticket; hold it
 	// until the player dismisses it.
 	const [signInSeen, setSignInSeen] = useState<SignInOutcome | null>(null);
@@ -146,6 +150,7 @@ export function GameScreen() {
 									{...stylex.props(
 										styles.strip,
 										prompting && styles.stripAfter,
+										showingResult && styles.stripUnderChart,
 									)}
 								>
 									<GuessStrip
@@ -177,12 +182,14 @@ export function GameScreen() {
 												: true
 									}
 								/>
-								<GuessButtons
-									phase={phase}
-									onGuess={placeGuess}
-									priceBlocked={priceBlocked}
-									isBusy={isPlacing}
-								/>
+								<div {...stylex.props(styles.buttons)}>
+									<GuessButtons
+										phase={phase}
+										onGuess={placeGuess}
+										priceBlocked={priceBlocked}
+										isBusy={isPlacing}
+									/>
+								</div>
 							</div>
 
 							<div {...stylex.props(styles.panels)}>

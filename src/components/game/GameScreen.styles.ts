@@ -10,7 +10,11 @@ export const styles = stylex.create({
 	column: {
 		display: 'flex',
 		flexDirection: 'column',
-		gap: 'var(--spacing-5)',
+		// On a phone the header's last row (the score) sits as far from the content as from the row above it (the top bar's row gap).
+		gap: {
+			default: 'var(--spacing-5)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
 		marginInline: 'auto',
 		maxWidth: 1440,
 		paddingBlock: {
@@ -52,11 +56,25 @@ export const styles = stylex.create({
 		},
 		outlineWidth: 2,
 	},
-	// Visual order only: the strip is not in the tab order.
+	// Visual order only: the strip is not in the tab order. On a phone the
+	// chart is 0, a result sits under it at 1, the buttons are 2 and a bare
+	// prompt comes after them at 3.
 	stripAfter: {
 		order: {
 			default: 0,
+			'@media (max-width: 640px)': 3,
+		},
+	},
+	stripUnderChart: {
+		order: {
+			default: 0,
 			'@media (max-width: 640px)': 1,
+		},
+	},
+	buttons: {
+		order: {
+			default: 0,
+			'@media (max-width: 640px)': 2,
 		},
 	},
 	retry: {
