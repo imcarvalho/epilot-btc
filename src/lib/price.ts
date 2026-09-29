@@ -17,10 +17,10 @@
  */
 
 import { z } from 'zod';
+import { coinbaseUrl } from './coinbase';
 import type { CachedPrice, GameStore } from './store';
 
-export const PRICE_URL =
-	'https://api.exchange.coinbase.com/products/BTC-USD/ticker';
+export const PRICE_URL = coinbaseUrl('ticker');
 
 /**
  * How long one fetched price serves every request and every stream: a

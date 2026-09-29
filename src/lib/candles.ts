@@ -10,6 +10,7 @@
 
 import { z } from 'zod';
 import { niceTicks, type YTick } from './axis';
+import { coinbaseUrl } from './coinbase';
 
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
@@ -30,7 +31,7 @@ export function candlesUrl(now: number): string {
 		start: new Date(now - HOUR_MS).toISOString(),
 		end: new Date(now).toISOString(),
 	});
-	return `https://api.exchange.coinbase.com/products/BTC-USD/candles?${params}`;
+	return `${coinbaseUrl('candles')}?${params}`;
 }
 
 // Coinbase: [time (s), low, high, open, close, volume], newest first.

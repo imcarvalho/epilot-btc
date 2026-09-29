@@ -15,6 +15,9 @@ import type { Page } from '@playwright/test';
 
 const TABLE = 'PlayersE2E';
 
+/** How many players `seedBoard` puts on the board. */
+const SEEDED_BOARD_SIZE = 4;
+
 const db = DynamoDBDocumentClient.from(
 	new DynamoDBClient({
 		endpoint: `http://localhost:${process.env.DYNAMODB_LOCAL_PORT ?? 8765}`,
@@ -38,14 +41,16 @@ export async function playerIdOf(page: Page): Promise<string> {
 }
 
 /**
- * Gives the player a guess locked `ageMs` ago at a price of $1, so any real
- * price has moved from it: it settles as soon as the minute is up - a win
- * for `up`, a loss for `down`.
+ * Gives the player a guess locked `ageMs` ago at a price of $1 unless told
+ * otherwise, so any real price has moved from it: it settles as soon as the
+ * minute is up - a win for `up`, a loss for `down`. Locked at the price the
+ * market is holding, it does not settle: the price has not changed.
  */
 export async function lockGuessAgo(
 	playerId: string,
 	direction: 'up' | 'down',
 	ageMs: number,
+	priceAtGuess = 1,
 ): Promise<void> {
 	const createdAt = Date.now() - ageMs;
 	await db.send(
@@ -60,7 +65,7 @@ export async function lockGuessAgo(
 				':guess': {
 					id: `e2e-${createdAt}`,
 					direction,
-					priceAtGuess: 1,
+					priceAtGuess,
 					createdAt,
 				},
 				':at': createdAt,
@@ -106,11 +111,58 @@ export async function seedBoard(): Promise<void> {
 			TableName: TABLE,
 			Item: {
 				playerId: 'BOARD#GLOBAL',
-				total: seeds.length,
+				total: SEEDED_BOARD_SIZE,
 			},
 		}),
 	);
 	// The podium cache would otherwise hide the seeds for up to ten seconds.
+	await db.send(
+		new DeleteCommand({
+			TableName: TABLE,
+			Key: {
+				playerId: 'BOARD#PODIUM',
+			},
+		}),
+	);
+}
+
+/**
+ * A signed-in player on the board, below the four `seedBoard` puts there,
+ * so their own row shows under the podium. `seedBoard` runs first: the total
+ * it writes is one more once this player is counted.
+ */
+export async function seedSignedInPlayer(
+	sub: string,
+	{ score }: { score: number },
+): Promise<void> {
+	await db.send(
+		new PutCommand({
+			TableName: TABLE,
+			Item: {
+				playerId: `google:${sub}`,
+				publicName: 'E2ESignedIn',
+				board: 'GLOBAL',
+				score,
+				wins: Math.max(score, 0),
+				losses: Math.max(-score, 0),
+				currentStreak: 0,
+				previousStreak: 0,
+				bestStreak: 0,
+				history: [],
+				createdAt: 0,
+				updatedAt: 0,
+			},
+		}),
+	);
+	await db.send(
+		new PutCommand({
+			TableName: TABLE,
+			Item: {
+				playerId: 'BOARD#GLOBAL',
+				total: SEEDED_BOARD_SIZE + 1,
+			},
+		}),
+	);
 	await db.send(
 		new DeleteCommand({
 			TableName: TABLE,
@@ -132,21 +184,25 @@ export async function setCachedPrice(
 		updatedAt: number;
 	} | null,
 ): Promise<void> {
+	if (cached) {
+		await db.send(
+			new PutCommand({
+				TableName: TABLE,
+				Item: {
+					playerId: 'PRICE#BTCUSD',
+					...cached,
+				},
+			}),
+		);
+		return;
+	}
 	await db.send(
-		cached
-			? new PutCommand({
-					TableName: TABLE,
-					Item: {
-						playerId: 'PRICE#BTCUSD',
-						...cached,
-					},
-				})
-			: new DeleteCommand({
-					TableName: TABLE,
-					Key: {
-						playerId: 'PRICE#BTCUSD',
-					},
-				}),
+		new DeleteCommand({
+			TableName: TABLE,
+			Key: {
+				playerId: 'PRICE#BTCUSD',
+			},
+		}),
 	);
 }
 
@@ -162,29 +218,33 @@ export async function setCachedCandles(
 		updatedAt: number;
 	} | null,
 ): Promise<void> {
+	if (cached) {
+		await db.send(
+			new PutCommand({
+				TableName: TABLE,
+				Item: {
+					playerId: 'CANDLES#BTCUSD',
+					candles: cached.rows
+						.map(([time, low, high, open, close]) => ({
+							time: time * 1000,
+							low,
+							high,
+							open,
+							close,
+						}))
+						.sort((a, b) => a.time - b.time),
+					updatedAt: cached.updatedAt,
+				},
+			}),
+		);
+		return;
+	}
 	await db.send(
-		cached
-			? new PutCommand({
-					TableName: TABLE,
-					Item: {
-						playerId: 'CANDLES#BTCUSD',
-						candles: cached.rows
-							.map(([time, low, high, open, close]) => ({
-								time: time * 1000,
-								low,
-								high,
-								open,
-								close,
-							}))
-							.sort((a, b) => a.time - b.time),
-						updatedAt: cached.updatedAt,
-					},
-				})
-			: new DeleteCommand({
-					TableName: TABLE,
-					Key: {
-						playerId: 'CANDLES#BTCUSD',
-					},
-				}),
+		new DeleteCommand({
+			TableName: TABLE,
+			Key: {
+				playerId: 'CANDLES#BTCUSD',
+			},
+		}),
 	);
 }

@@ -9,7 +9,13 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoViolations } from './support/axe';
-import { setCachedCandles, setCachedPrice } from './support/db';
+import {
+	lockGuessAgo,
+	playerIdOf,
+	setCachedCandles,
+	setCachedPrice,
+} from './support/db';
+import { announced, expectNoSidewaysScroll } from './support/screen';
 import { OUTAGE_URL, startOutageServer } from './support/outage';
 
 let stopServer: () => void;
@@ -98,5 +104,40 @@ test('the feed goes quiet: the last price stays, marked delayed', async ({
 		}),
 	).toBeVisible();
 	await expectGuessingPaused(page);
+	await expectNoViolations(page);
+});
+
+test('the feed goes quiet with a guess in play: it waits, and says why, everywhere', async ({
+	page,
+}) => {
+	await setCachedPrice({
+		price: 80_000,
+		updatedAt: Date.now() - 5 * 60_000,
+	});
+	await openDuringOutage(page);
+	// A guess whose minute ran out while the feed was behind.
+	await lockGuessAgo(await playerIdOf(page), 'up', 61_000, 80_000);
+	await page.reload();
+
+	const sentence =
+		'Price feed delayed. Last updated 5 min ago. Nothing is settled until it catches up.';
+	await expect(
+		page
+			.getByText(sentence, {
+				exact: true,
+			})
+			.and(page.locator(':not([role="status"])'))
+			.first(),
+	).toBeVisible({
+		timeout: 30_000,
+	});
+	await expect(announced(page)).toHaveText(sentence);
+	// Nothing settled: the guess is still in play, and the score has not moved.
+	await expect(
+		page.getByRole('button', {
+			name: 'Higher, your guess is in play',
+		}),
+	).toBeVisible();
+	await expectNoSidewaysScroll(page);
 	await expectNoViolations(page);
 });

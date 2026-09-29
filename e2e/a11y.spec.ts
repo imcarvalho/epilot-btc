@@ -15,29 +15,13 @@
 
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoViolations } from './support/axe';
+import { expectNoSidewaysScroll, openGame } from './support/screen';
 import {
 	lockGuessAgo,
 	playerIdOf,
 	seedBoard,
 	setCachedCandles,
 } from './support/db';
-
-/** The screen with its price and its hour of candles in. */
-async function openGame(page: Page) {
-	await page.goto('/');
-	await expect(
-		page.getByText(/^\$\d{1,3}(,\d{3})*\.\d{2}$/).first(),
-	).toBeVisible({
-		timeout: 30_000,
-	});
-	await expect(
-		page.getByRole('slider', {
-			name: 'Last hour, minute by minute',
-		}),
-	).toBeVisible({
-		timeout: 30_000,
-	});
-}
 
 test.beforeAll(async () => {
 	await seedBoard();
@@ -59,15 +43,6 @@ test('first visit, at phone width', async ({ page }) => {
 	await openGame(page);
 	await expectNoViolations(page);
 });
-
-/** Nothing wider than the viewport, so nothing needs a sideways scroll. */
-async function expectNoSidewaysScroll(page: Page) {
-	expect(
-		await page.evaluate(
-			() => document.documentElement.scrollWidth <= window.innerWidth,
-		),
-	).toBe(true);
-}
 
 test('at 320 px, nothing scrolls sideways and history prices are whole (WCAG 1.4.10)', async ({
 	page,

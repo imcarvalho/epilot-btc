@@ -18,6 +18,7 @@
  */
 
 import { z } from 'zod';
+import { coinbaseUrl } from './coinbase';
 import { parseCandles, MINUTE_MS } from './candles';
 import { GUESS_WINDOW_MS, resolveGuess, type Guess } from './resolve-guess';
 
@@ -81,10 +82,8 @@ export function settleAgainstTape(
 	};
 }
 
-export const TRADES_URL =
-	'https://api.exchange.coinbase.com/products/BTC-USD/trades';
-const CANDLES_URL =
-	'https://api.exchange.coinbase.com/products/BTC-USD/candles';
+export const TRADES_URL = coinbaseUrl('trades');
+const CANDLES_URL = coinbaseUrl('candles');
 
 /** Coinbase's largest page of trades. */
 const TRADE_PAGE = 1000;
