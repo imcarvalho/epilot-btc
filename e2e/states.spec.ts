@@ -182,7 +182,9 @@ for (const [where, width, height] of VIEWPORTS) {
 			await openGame(page);
 
 			await expect(
-				page.getByText('Signed in. Your score now follows you to any device.'),
+				page.getByText(
+					'Signed in. Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.',
+				),
 			).toBeVisible();
 			await expect(
 				page.getByRole('button', {
