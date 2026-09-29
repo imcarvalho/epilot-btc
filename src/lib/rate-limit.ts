@@ -5,11 +5,8 @@
  * is exact across every runtime instance, which a counter in memory could
  * not be.
  *
- * Two limits use it:
- *
- * - fresh price reads for guesses, global: Coinbase's public limit is shared
- *   by every player, so what protects it has to be shared too;
- * - new anonymous players, per client IP.
+ * One limit uses it: fresh price reads for guesses, global. Coinbase's public
+ * limit is shared by every player, so what protects it has to be shared too.
  */
 
 /** A limit over fixed windows: at most `limit` slots in each `windowMs`. */
@@ -67,14 +64,4 @@ export const PRICE_READ_RATE: RateLimit = {
 	name: 'price-read',
 	limit: 3,
 	windowMs: 1_000,
-};
-
-/**
- * New anonymous players per client IP. Generous enough for a shared office
- * or event network, small enough that one machine cannot mint thousands.
- */
-export const PLAYER_CREATE_RATE: RateLimit = {
-	name: 'player-create',
-	limit: 20,
-	windowMs: 60 * 60 * 1_000,
 };

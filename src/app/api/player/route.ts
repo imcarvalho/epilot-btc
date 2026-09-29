@@ -6,8 +6,6 @@ import {
 	PLAYER_COOKIE,
 	playerCookieOptions,
 } from '@/lib/identity';
-import { clientIpFrom, hashIp } from '@/lib/client-ip';
-import { PLAYER_CREATE_RATE, rateSlot } from '@/lib/rate-limit';
 import { error, json, playerIdFrom } from '../respond';
 
 /**
@@ -15,17 +13,16 @@ import { error, json, playerIdFrom } from '../respond';
  * its id as an `httpOnly` cookie.
  *
  * Idempotent for a browser that already has a live player: calling it again
- * with that cookie returns the same player and creates nothing, and is never
- * counted against the per-IP limit. Two concurrent first visits with no
+ * with that cookie returns the same player and creates nothing. Two concurrent first visits with no
  * cookie are a different case and are not made idempotent: nothing links
  * them, so they legitimately create two players, and whichever response the
  * browser stores last (its Set-Cookie wins) is the player it keeps; the other
  * is orphaned and expires after 30 days. The client shares one in-flight
  * creation per tab, so this only happens across tabs.
  *
- * Creation - and only creation - is limited per client IP
- * (`PLAYER_CREATE_RATE`, §8): identities are free, so this is what stops one
- * machine minting them without bound.
+ * Creation is not rate-limited: an anonymous player is one small item that
+ * expires on its own, and what bounds the game's shared resources is the
+ * limits on the Coinbase reads and on the streams, not on identities.
  */
 export async function POST(request: NextRequest) {
 	const deps = getDeps();
@@ -59,33 +56,6 @@ export async function POST(request: NextRequest) {
 			},
 			201,
 		);
-	}
-
-	// The forwarded address is only worth counting behind CloudFront. When the
-	// app is served locally (LOCAL_STREAM, set by dev:local and the e2e
-	// servers) Next fills the header in from the local socket, so every
-	// caller would be one address and the tests would hit the limit.
-	const ip = process.env.LOCAL_STREAM
-		? null
-		: clientIpFrom(
-				request.headers.get('x-forwarded-for'),
-				Number(process.env.TRUSTED_PROXY_HOPS) || 1,
-			);
-	// No address means nothing to count against.
-	if (ip) {
-		const subject = hashIp(
-			ip,
-			process.env.STREAM_SECRET ?? process.env.AUTH_SECRET ?? 'btc-guess',
-		);
-		const slot = rateSlot(PLAYER_CREATE_RATE, subject, deps.now());
-		if (!(await deps.store.takeSlot(slot))) {
-			console.error(
-				JSON.stringify({
-					event: 'player-create-limited',
-				}),
-			);
-			return error('rate-limited', 429);
-		}
 	}
 
 	const player = await createAnonymousPlayer(deps);

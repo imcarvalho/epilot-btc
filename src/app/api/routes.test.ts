@@ -7,7 +7,6 @@
 import { NextRequest } from 'next/server';
 import type { GameDeps } from '@/lib/game';
 import { signIn } from '@/lib/game';
-import { PLAYER_CREATE_RATE } from '@/lib/rate-limit';
 import { MemoryStore } from '@/lib/testing/memory-store';
 import { POST as createPlayer } from './player/route';
 import { POST as guess } from './guess/route';
@@ -142,116 +141,20 @@ describe('POST /api/player', () => {
 		expect(store.players.size).toBe(1);
 	});
 
-	describe('the per-IP limit on creation', () => {
-		const from = (ip: string, cookie?: string) =>
+	it('creates two players for two concurrent first visits with no cookie', async () => {
+		const first = () =>
 			createPlayer(
 				request('/api/player', {
 					method: 'POST',
-					cookie,
-					headers: {
-						'x-forwarded-for': `6.6.6.6, ${ip}`,
-					},
 				}),
 			);
-
-		it('refuses with 429 after the limit, counting the trusted hop rather than what the client sent', async () => {
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
-				expect((await from('203.0.113.7')).status).toBe(201);
-			}
-			const res = await from('203.0.113.7');
-			expect(res.status).toBe(429);
-			expect(await res.json()).toEqual({
-				error: 'rate-limited',
-			});
-			expect(res.headers.get('set-cookie')).toBeNull();
-			expect(store.players.size).toBe(PLAYER_CREATE_RATE.limit);
-		});
-
-		it('counts each address separately, and stores only a hash of it', async () => {
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
-				await from('203.0.113.7');
-			}
-			expect((await from('203.0.113.8')).status).toBe(201);
-			const keys = [...store.slots.keys()].join(' ');
-			expect(keys).not.toContain('203.0.113');
-		});
-
-		it('never blocks a player who already has a valid cookie', async () => {
-			const cookie = (await from('203.0.113.7')).cookies.get(
-				'btc_player',
-			)!.value;
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
-				await from('203.0.113.7');
-			}
-			expect((await from('203.0.113.7')).status).toBe(429);
-			const res = await from('203.0.113.7', cookie);
-			expect(res.status).toBe(200);
-		});
-
-		it('does not count callers of a locally served app, where the header is the local socket', async () => {
-			vi.stubEnv('LOCAL_STREAM', '1');
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit + 5; i++) {
-				expect((await from('127.0.0.1')).status).toBe(201);
-			}
-			expect(store.slots.size).toBe(0);
-		});
-
-		it('counts nothing when the request carries no forwarded address, which is the limit failing open', async () => {
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit + 5; i++) {
-				const res = await createPlayer(
-					request('/api/player', {
-						method: 'POST',
-					}),
-				);
-				expect(res.status).toBe(201);
-			}
-			expect(store.slots.size).toBe(0);
-			expect(store.players.size).toBe(PLAYER_CREATE_RATE.limit + 5);
-		});
-
-		it('counts the address TRUSTED_PROXY_HOPS from the right, when more of our proxies sit in front', async () => {
-			vi.stubEnv('TRUSTED_PROXY_HOPS', '2');
-			const behindTwo = (ip: string) =>
-				createPlayer(
-					request('/api/player', {
-						method: 'POST',
-						headers: {
-							'x-forwarded-for': `${ip}, 10.0.0.1`,
-						},
-					}),
-				);
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
-				expect((await behindTwo('203.0.113.7')).status).toBe(201);
-			}
-			expect((await behindTwo('203.0.113.7')).status).toBe(429);
-			expect((await behindTwo('203.0.113.8')).status).toBe(201);
-		});
-
-		it('creates two players for two concurrent first visits with no cookie, and each counts against the limit', async () => {
-			const [first, second] = await Promise.all([
-				from('203.0.113.7'),
-				from('203.0.113.7'),
-			]);
-			expect(first.status).toBe(201);
-			expect(second.status).toBe(201);
-			expect(first.cookies.get('btc_player')!.value).not.toBe(
-				second.cookies.get('btc_player')!.value,
-			);
-			expect(store.players.size).toBe(2);
-			const counted = [...store.slots.values()].reduce(
-				(total, count) => total + Number(count),
-				0,
-			);
-			expect(counted).toBe(2);
-		});
-
-		it('starts again in the next hour', async () => {
-			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
-				await from('203.0.113.7');
-			}
-			clock += PLAYER_CREATE_RATE.windowMs;
-			expect((await from('203.0.113.7')).status).toBe(201);
-		});
+		const [a, b] = await Promise.all([first(), first()]);
+		expect(a.status).toBe(201);
+		expect(b.status).toBe(201);
+		expect(a.cookies.get('btc_player')!.value).not.toBe(
+			b.cookies.get('btc_player')!.value,
+		);
+		expect(store.players.size).toBe(2);
 	});
 
 	it('replaces a cookie whose player no longer exists', async () => {

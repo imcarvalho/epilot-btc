@@ -145,7 +145,6 @@ export type ApiErrorCode =
 	| 'price-unavailable'
 	| 'stream-unavailable'
 	| 'unauthorized'
-	| 'rate-limited'
 	| 'server-error';
 
 export interface ApiError {
