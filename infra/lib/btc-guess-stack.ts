@@ -34,7 +34,11 @@ import {
 	MetricFilter,
 	RetentionDays,
 } from 'aws-cdk-lib/aws-logs';
-import { Schedule, ScheduleExpression } from 'aws-cdk-lib/aws-scheduler';
+import {
+	Schedule,
+	ScheduleExpression,
+	ScheduleGroup,
+} from 'aws-cdk-lib/aws-scheduler';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-scheduler-targets';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -218,15 +222,53 @@ export class BtcGuessStack extends Stack {
 			treatMissingData: TreatMissingData.NOT_BREACHING,
 		});
 
+		// The account's Lambda concurrency limit is 10 and AWS requires 100
+		// unreserved, so nothing can be reserved for the sweep (§8, §11). It
+		// shares the pool with the streams, and the only protection is what
+		// follows: streams end after two minutes, the schedule retries a
+		// throttled run, and both a throttle and a dropped run raise an alarm.
+		new Alarm(this, 'SweepThrottledAlarm', {
+			alarmDescription:
+				"The sweep trigger was throttled: streams are holding all ten of the account's Lambda executions. Request a concurrency quota increase (engineering spec §11)",
+			metric: sweepTrigger.metricThrottles({
+				period: Duration.minutes(1),
+				statistic: 'Sum',
+			}),
+			threshold: 1,
+			evaluationPeriods: 1,
+			datapointsToAlarm: 1,
+			comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+			treatMissingData: TreatMissingData.NOT_BREACHING,
+		});
+		const defaultScheduleGroup = ScheduleGroup.fromDefaultScheduleGroup(
+			this,
+			'DefaultScheduleGroup',
+		);
+		new Alarm(this, 'SweepDroppedAlarm', {
+			alarmDescription:
+				'EventBridge Scheduler gave up on a sweep after its retries: guesses left by closed browsers are not resolving',
+			metric: defaultScheduleGroup.metricDropped({
+				period: Duration.minutes(1),
+				statistic: 'Sum',
+			}),
+			threshold: 1,
+			evaluationPeriods: 1,
+			datapointsToAlarm: 1,
+			comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+			treatMissingData: TreatMissingData.NOT_BREACHING,
+		});
+
 		new Schedule(this, 'SweepSchedule', {
 			description:
 				'Resolves guesses left pending by closed browsers (engineering spec §3.2)',
 			schedule: ScheduleExpression.rate(Duration.minutes(1)),
-			// No retries: a missed run is covered by the next one a minute later,
-			// and the sweep is idempotent either way.
+			// A throttled run (all ten executions busy with streams) is retried
+			// with back-off for up to five minutes rather than dropped. Runs may
+			// then overlap, which is safe: the sweep is idempotent, every
+			// resolution being a conditional write (§3.2).
 			target: new LambdaInvoke(sweepTrigger, {
-				retryAttempts: 0,
-				maxEventAge: Duration.minutes(1),
+				retryAttempts: 5,
+				maxEventAge: Duration.minutes(5),
 			}),
 		});
 
@@ -257,9 +299,10 @@ export class BtcGuessStack extends Stack {
 				externalModules: ['@aws-sdk/*'],
 			},
 			memorySize: 256,
-			// A stream lives up to the Function URL's 15-minute limit, then the
-			// browser reconnects.
-			timeout: Duration.minutes(15),
+			// A stream ends itself after two minutes and the browser reconnects
+			// (`STREAM_LIFETIME_MS`); the timeout is a backstop so a stuck one
+			// cannot hold one of the account's ten executions for long.
+			timeout: Duration.minutes(3),
 			environment: {
 				STREAM_SECRET_PARAMETER,
 				PLAYERS_TABLE_NAME: table.tableName,

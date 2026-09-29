@@ -23,6 +23,7 @@
 
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import {
+	DeleteCommand,
 	GetCommand,
 	PutCommand,
 	QueryCommand,
@@ -41,6 +42,7 @@ import type {
 	GameStore,
 	PlayerRecord,
 	StartGuessResult,
+	StreamSlot,
 } from './store';
 
 export const PRICE_KEY = 'PRICE#BTCUSD';
@@ -53,6 +55,11 @@ export const BOARD_TOTAL_KEY = 'BOARD#GLOBAL';
 const PODIUM_KEY = 'BOARD#PODIUM';
 /** Cache item: the last hour of candles, identical for everyone, kept for ten seconds. */
 const CANDLES_KEY = 'CANDLES#BTCUSD';
+/** Item prefixes for the stream's own bookkeeping (§3.1): spent tickets and per-player stream leases. */
+export const TICKET_PREFIX = 'TICKET#';
+export const STREAM_PREFIX = 'STREAM#';
+/** DynamoDB may delete a lease this long after it lapses; liveness is judged by `leaseUntil`, never by the TTL. */
+const STREAM_ITEM_GRACE_SECONDS = 3_600;
 export const PENDING_INDEX = 'byPending';
 export const PENDING_BUCKET = 'PENDING';
 
@@ -113,6 +120,9 @@ const isConditionFailure = (
 ): error is ConditionalCheckFailedException =>
 	error instanceof ConditionalCheckFailedException ||
 	(error as { name?: string })?.name === 'ConditionalCheckFailedException';
+
+const streamKey = (playerId: string, slot: number) =>
+	`${STREAM_PREFIX}${playerId}#${slot}`;
 
 /** Reasons a transaction is cancelled that a fresh attempt can get past. */
 const RETRYABLE_REASONS = ['TransactionConflict', 'ThrottlingError'];
@@ -652,5 +662,127 @@ export class DynamoStore implements GameStore {
 				},
 			}),
 		);
+	}
+
+	async spendTicket(jti: string, expiresAt: number) {
+		try {
+			await this.client.send(
+				new PutCommand({
+					TableName: this.tableName,
+					Item: {
+						playerId: `${TICKET_PREFIX}${jti}`,
+						ttl: Math.floor(expiresAt / 1000) + STREAM_ITEM_GRACE_SECONDS,
+					},
+					ConditionExpression: 'attribute_not_exists(playerId)',
+				}),
+			);
+			return true;
+		} catch (error) {
+			if (isConditionFailure(error)) {
+				return false;
+			}
+			throw error;
+		}
+	}
+
+	async claimStreamSlot(
+		playerId: string,
+		streamId: string,
+		now: number,
+		leaseMs: number,
+		maxSlots: number,
+	) {
+		for (let slot = 0; slot < maxSlots; slot++) {
+			try {
+				await this.client.send(
+					new PutCommand({
+						TableName: this.tableName,
+						Item: {
+							playerId: streamKey(playerId, slot),
+							streamId,
+							leaseUntil: now + leaseMs,
+							ttl:
+								Math.floor((now + leaseMs) / 1000) + STREAM_ITEM_GRACE_SECONDS,
+						},
+						// Free, or held by a stream that stopped renewing.
+						ConditionExpression:
+							'attribute_not_exists(playerId) OR #leaseUntil < :now',
+						ExpressionAttributeNames: {
+							'#leaseUntil': 'leaseUntil',
+						},
+						ExpressionAttributeValues: {
+							':now': now,
+						},
+					}),
+				);
+				return slot;
+			} catch (error) {
+				if (!isConditionFailure(error)) {
+					throw error;
+				}
+			}
+		}
+		return null;
+	}
+
+	async renewStreamSlot(
+		playerId: string,
+		{ slot, streamId }: StreamSlot,
+		now: number,
+		leaseMs: number,
+	) {
+		try {
+			await this.client.send(
+				new UpdateCommand({
+					TableName: this.tableName,
+					Key: {
+						playerId: streamKey(playerId, slot),
+					},
+					UpdateExpression: 'SET #leaseUntil = :until, #ttl = :ttl',
+					ConditionExpression: '#streamId = :streamId',
+					ExpressionAttributeNames: {
+						'#leaseUntil': 'leaseUntil',
+						'#ttl': 'ttl',
+						'#streamId': 'streamId',
+					},
+					ExpressionAttributeValues: {
+						':until': now + leaseMs,
+						':ttl':
+							Math.floor((now + leaseMs) / 1000) + STREAM_ITEM_GRACE_SECONDS,
+						':streamId': streamId,
+					},
+				}),
+			);
+			return true;
+		} catch (error) {
+			if (isConditionFailure(error)) {
+				return false;
+			}
+			throw error;
+		}
+	}
+
+	async releaseStreamSlot(playerId: string, { slot, streamId }: StreamSlot) {
+		try {
+			await this.client.send(
+				new DeleteCommand({
+					TableName: this.tableName,
+					Key: {
+						playerId: streamKey(playerId, slot),
+					},
+					ConditionExpression: '#streamId = :streamId',
+					ExpressionAttributeNames: {
+						'#streamId': 'streamId',
+					},
+					ExpressionAttributeValues: {
+						':streamId': streamId,
+					},
+				}),
+			);
+		} catch (error) {
+			if (!isConditionFailure(error)) {
+				throw error;
+			}
+		}
 	}
 }

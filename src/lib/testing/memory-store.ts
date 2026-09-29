@@ -20,6 +20,7 @@ import type {
 	GameStore,
 	PlayerRecord,
 	StartGuessResult,
+	StreamSlot,
 } from '../store';
 
 const tick = () => new Promise<void>((r) => setImmediate(r));
@@ -43,6 +44,10 @@ export class MemoryStore implements GameStore {
 	 * writing. Nothing is written by a cancelled one.
 	 */
 	signInConflicts = 0;
+	/** Spent stream ticket ids. */
+	spentTickets = new Set<string>();
+	/** Stream leases by "playerId#slot": the holder and when its lease runs out. */
+	streamLeases = new Map<string, { streamId: string; leaseUntil: number }>();
 
 	async getPlayer(playerId: string) {
 		await tick();
@@ -217,5 +222,59 @@ export class MemoryStore implements GameStore {
 	async putCachedCandles(candles: CachedCandles) {
 		await tick();
 		this.candles = structuredClone(candles);
+	}
+
+	async spendTicket(jti: string) {
+		await tick();
+		if (this.spentTickets.has(jti)) {
+			return false;
+		}
+		this.spentTickets.add(jti);
+		return true;
+	}
+
+	async claimStreamSlot(
+		playerId: string,
+		streamId: string,
+		now: number,
+		leaseMs: number,
+		maxSlots: number,
+	) {
+		for (let slot = 0; slot < maxSlots; slot++) {
+			await tick();
+			const key = `${playerId}#${slot}`;
+			const held = this.streamLeases.get(key);
+			if (!held || held.leaseUntil < now) {
+				this.streamLeases.set(key, {
+					streamId,
+					leaseUntil: now + leaseMs,
+				});
+				return slot;
+			}
+		}
+		return null;
+	}
+
+	async renewStreamSlot(
+		playerId: string,
+		{ slot, streamId }: StreamSlot,
+		now: number,
+		leaseMs: number,
+	) {
+		await tick();
+		const held = this.streamLeases.get(`${playerId}#${slot}`);
+		if (held?.streamId !== streamId) {
+			return false;
+		}
+		held.leaseUntil = now + leaseMs;
+		return true;
+	}
+
+	async releaseStreamSlot(playerId: string, { slot, streamId }: StreamSlot) {
+		await tick();
+		const key = `${playerId}#${slot}`;
+		if (this.streamLeases.get(key)?.streamId === streamId) {
+			this.streamLeases.delete(key);
+		}
 	}
 }
