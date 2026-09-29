@@ -1,9 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import type { GuessResponse, PendingGuess } from '@/lib/contracts';
 import type { GuessFailure } from '@/lib/guess-phase';
 import type { Direction } from '@/lib/resolve-guess';
+import { createServerClock } from '@/lib/server-clock';
 import { useStream, type StreamStatus } from './useStream';
 
 /** Why the last guess did not go through, if it did not. */
@@ -163,12 +170,19 @@ export function useGame() {
 	};
 }
 
-/** The current time on the server's clock, re-rendering once a second. */
+/**
+ * The current time on the server's clock, re-rendering once a second.
+ *
+ * The offset is handed to the clock during render, so the first render after a
+ * state is already on server time, and the clock's one interval is never
+ * recreated when the offset changes (which it does with every state).
+ */
 export function useServerNow(clockOffset: number): number {
-	const [now, setNow] = useState(() => Date.now() + clockOffset);
-	useEffect(() => {
-		const id = setInterval(() => setNow(Date.now() + clockOffset), 1_000);
-		return () => clearInterval(id);
-	}, [clockOffset]);
-	return now;
+	const [clock] = useState(() =>
+		createServerClock({
+			localNow: () => Date.now(),
+		}),
+	);
+	clock.setOffset(clockOffset);
+	return useSyncExternalStore(clock.subscribe, clock.getNow, clock.getNow);
 }
