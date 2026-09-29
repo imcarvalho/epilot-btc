@@ -33,7 +33,12 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en" className={`${sans.variable} ${mono.variable}`}>
+		<html
+			data-theme="dark"
+			data-astryx-theme
+			lang="en"
+			className={`${sans.variable} ${mono.variable}`}
+		>
 			<body>
 				<Providers>{children}</Providers>
 			</body>
