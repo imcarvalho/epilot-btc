@@ -30,6 +30,12 @@ export class MemoryStore implements GameStore {
 	candles: CachedCandles | null = null;
 	settleWrites = 0;
 	boardQueries = 0;
+	/**
+	 * The board total, kept as DynamoDB keeps it: a counter moved by the
+	 * sign-in transaction, not derived from the players on the board. A test
+	 * that counts a player twice, or not at all, sees the counter be wrong.
+	 */
+	boardTotal = 0;
 
 	async getPlayer(playerId: string) {
 		await tick();
@@ -66,6 +72,7 @@ export class MemoryStore implements GameStore {
 			this.players.delete(replacing.playerId);
 		}
 		this.players.set(player.playerId, structuredClone(player));
+		this.boardTotal++;
 		return true;
 	}
 
@@ -160,10 +167,9 @@ export class MemoryStore implements GameStore {
 		return this.board().filter((e) => e.score > score).length;
 	}
 
-	// The DynamoDB store keeps a counter; here the count is the same number.
 	async getBoardTotal() {
 		await tick();
-		return this.board().length;
+		return this.boardTotal;
 	}
 
 	async getCachedPodium() {

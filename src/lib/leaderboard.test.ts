@@ -43,6 +43,11 @@ function setup() {
 			losses,
 			onBoard,
 		});
+		// Joining the board moves the counter in the sign-in transaction; the
+		// fixture writes the record directly, so it moves it the same way.
+		if (onBoard) {
+			store.boardTotal++;
+		}
 	};
 	return {
 		store,
