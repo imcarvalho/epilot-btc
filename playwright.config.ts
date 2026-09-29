@@ -53,6 +53,11 @@ export default defineConfig({
 				DEV_LOCAL_TABLE: 'PlayersE2E',
 				// So the tests can hold a session cookie (e2e/support/auth.ts).
 				AUTH_SECRET: E2E_AUTH_SECRET,
+				// The Amplify build copies its own AUTH_URL (https) into
+				// .env.production, and Auth.js then reads its session from the
+				// `__Secure-` cookie, not the plain one the tests set. This
+				// server is http on localhost, and process env beats the file.
+				AUTH_URL: `http://localhost:${PORT}`,
 				...(LIVE_COINBASE
 					? {}
 					: {
