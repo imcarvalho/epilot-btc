@@ -5,7 +5,7 @@
  * sends; a mock accepts any expression. This says what the engine does with
  * it: that the sign-in transaction and the sweep's index query are valid, and
  * that each behaves as the game relies on. Every test gets its own table,
- * shaped like the CDK stack's (infra/test/local-table.test.ts holds the two
+ * shaped like the CDK stack's (infra/test/local-table.test.mts holds the two
  * together).
  */
 

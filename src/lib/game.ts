@@ -40,7 +40,7 @@ export interface GameDeps {
 }
 
 /** How many due guesses one sweep run takes on. The next run picks up the rest. */
-export const SWEEP_BATCH = 100;
+const SWEEP_BATCH = 100;
 
 export function newPlayerRecord(
 	playerId: string,
@@ -222,7 +222,7 @@ async function settleIfDue(
 	};
 }
 
-export function toStateResponse(
+function toStateResponse(
 	player: PlayerRecord,
 	price: CachedPrice | null,
 	now: number,

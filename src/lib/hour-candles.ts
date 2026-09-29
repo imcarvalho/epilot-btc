@@ -12,7 +12,7 @@ import { candlesUrl, parseCandles, type Candle } from './candles';
 import type { CachedCandles, GameStore } from './store';
 
 /** How long one fetched hour serves every stream: the chart's old refresh rhythm. */
-export const CANDLES_CACHE_MS = 10_000;
+const CANDLES_CACHE_MS = 10_000;
 
 export interface FetchCandlesOptions {
 	fetchImpl?: typeof fetch;

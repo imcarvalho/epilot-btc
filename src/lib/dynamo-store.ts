@@ -49,9 +49,9 @@ export const BOARD = 'GLOBAL';
 /** Counter item: players on the board, incremented as they join. */
 export const BOARD_TOTAL_KEY = 'BOARD#GLOBAL';
 /** Cache item: the podium, identical for everyone, kept for ten seconds. */
-export const PODIUM_KEY = 'BOARD#PODIUM';
+const PODIUM_KEY = 'BOARD#PODIUM';
 /** Cache item: the last hour of candles, identical for everyone, kept for ten seconds. */
-export const CANDLES_KEY = 'CANDLES#BTCUSD';
+const CANDLES_KEY = 'CANDLES#BTCUSD';
 export const PENDING_INDEX = 'byPending';
 export const PENDING_BUCKET = 'PENDING';
 

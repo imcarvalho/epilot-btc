@@ -12,7 +12,6 @@ export { Eyebrow } from './Eyebrow';
 export { Numeric } from './Numeric';
 export { Panel } from './Panel';
 export { PanelHeader } from './PanelHeader';
-export { Pill } from './Pill';
 export { PlayerChip } from './PlayerChip';
 export { ScoreChip } from './ScoreChip';
 export { SourceBadge } from './SourceBadge';

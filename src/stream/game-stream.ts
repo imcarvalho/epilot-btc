@@ -31,7 +31,7 @@ export interface StreamOptions {
 	tickMs?: number;
 }
 
-export const STREAM_TICK_MS = 1_000;
+const STREAM_TICK_MS = 1_000;
 
 /** One SSE frame. `data` is one line of JSON, so it never needs splitting. */
 export function formatEvent({ type, data }: StreamEvent): string {

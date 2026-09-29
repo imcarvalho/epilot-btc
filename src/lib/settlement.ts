@@ -93,7 +93,7 @@ const TRADE_PAGE = 1000;
  * a few minutes of BTC-USD, so this covers any guess the sweep is on time
  * for; the fallback is for recovering after an outage.
  */
-export const MAX_TRADE_PAGES = 5;
+const MAX_TRADE_PAGES = 5;
 
 /** Coinbase's largest page of candles: five hours of minutes. */
 const CANDLE_PAGE = 300;

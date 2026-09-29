@@ -18,7 +18,7 @@ import type { GameDeps } from './game';
 import { successRate } from './stats';
 import type { BoardEntry } from './store';
 
-export const PODIUM_SIZE = 3;
+const PODIUM_SIZE = 3;
 export const PODIUM_CACHE_MS = 10_000;
 
 function toRow(

@@ -7,7 +7,7 @@
 
 import { spawn, type ChildProcess } from 'node:child_process';
 
-export const OUTAGE_PORT = 3101;
+const OUTAGE_PORT = 3101;
 export const OUTAGE_URL = `http://localhost:${OUTAGE_PORT}`;
 
 export async function startOutageServer(): Promise<() => void> {

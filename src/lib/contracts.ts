@@ -16,8 +16,6 @@ export const GuessRequestSchema = z.strictObject({
 	direction: z.enum(['up', 'down']),
 });
 
-export type GuessRequest = z.infer<typeof GuessRequestSchema>;
-
 export interface PendingGuess {
 	id: string;
 	direction: Direction;

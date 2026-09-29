@@ -13,7 +13,7 @@ import { niceTicks, type YTick } from './axis';
 import { coinbaseUrl } from './coinbase';
 
 export const MINUTE_MS = 60_000;
-export const HOUR_MS = 60 * MINUTE_MS;
+const HOUR_MS = 60 * MINUTE_MS;
 
 export interface Candle {
 	/** Start of the minute, epoch ms. */

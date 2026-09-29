@@ -22,7 +22,7 @@ export const CHART_PADDING = 12;
  * label, is about 65px in the chart's 12px monospace type; with the 8px gap
  * before it that leaves a little room.
  */
-export const Y_AXIS_GUTTER = 80;
+const Y_AXIS_GUTTER = 80;
 
 /** The plot's width: the chart's, less the price-axis gutter. */
 export const plotWidthOf = (width: number) =>

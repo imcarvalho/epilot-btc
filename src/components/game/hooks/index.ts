@@ -3,11 +3,6 @@
  * candles, the board and the live minute - and placing a guess.
  */
 export { useFocusRescue } from './useFocusRescue';
-export {
-	useGame,
-	useServerNow,
-	type GameStatus,
-	type GuessError,
-} from './useGame';
-export { useStream, type CandlesState } from './useStream';
+export { useGame, useServerNow, type GuessError } from './useGame';
+export { type CandlesState } from './useStream';
 export { useLiveMinute, type LiveMinute } from './useLiveMinute';

@@ -19,9 +19,8 @@ export function Panel({
 	variant?: 'solid' | 'dashed';
 	/** Colours the border and ground: a waiting state, or an outcome. */
 	tone?: 'neutral' | 'warning' | 'win' | 'loss';
-	as?: 'section' | 'div' | 'aside';
+	as?: 'section' | 'div';
 	xstyle?: stylex.StyleXStyles;
-	'aria-label'?: string;
 	'aria-labelledby'?: string;
 }) {
 	return (

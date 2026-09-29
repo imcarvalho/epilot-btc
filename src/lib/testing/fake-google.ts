@@ -44,7 +44,6 @@ export function createFakeGoogle(clientId: string) {
 	};
 
 	let next: IdTokenOptions = {};
-	const requests: string[] = [];
 
 	function idToken(options: IdTokenOptions) {
 		const now = Math.floor(Date.now() / 1000);
@@ -88,7 +87,6 @@ export function createFakeGoogle(clientId: string) {
 
 	async function fetchGoogle(input: RequestInfo | URL): Promise<Response> {
 		const url = String(input instanceof Request ? input.url : input);
-		requests.push(url);
 		if (url.endsWith('/.well-known/openid-configuration')) {
 			return json({
 				issuer: ISSUER,
@@ -121,6 +119,5 @@ export function createFakeGoogle(clientId: string) {
 		respondWith(options: IdTokenOptions) {
 			next = options;
 		},
-		requests,
 	};
 }

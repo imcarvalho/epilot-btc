@@ -6,8 +6,6 @@ import type { GuessFailure } from '@/lib/guess-phase';
 import type { Direction } from '@/lib/resolve-guess';
 import { useStream, type StreamStatus } from './useStream';
 
-export type GameStatus = StreamStatus;
-
 /** Why the last guess did not go through, if it did not. */
 export type GuessError = GuessFailure | null;
 
@@ -88,7 +86,7 @@ export function useGame() {
 		}
 	}, [state, placed]);
 
-	const status = useMemo<GameStatus>(() => {
+	const status = useMemo<StreamStatus>(() => {
 		if (streamed.kind !== 'ready' || !placed) {
 			return streamed;
 		}

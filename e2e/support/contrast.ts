@@ -8,7 +8,7 @@
 import { expect, type Locator } from '@playwright/test';
 
 /** WCAG 1.4.3: normal text. */
-export const MIN_TEXT_CONTRAST = 4.5;
+const MIN_TEXT_CONTRAST = 4.5;
 
 /**
  * The contrast between an element's text colour and the first opaque

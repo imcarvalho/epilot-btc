@@ -1,19 +1,5 @@
 /**
- * The two chart views inside the price card, and the parts they share.
+ * The two chart views inside the price card.
  */
 export { HourChart } from './HourChart';
 export { MinuteChart } from './MinuteChart';
-export {
-	CHART_HEIGHT,
-	CHART_PADDING,
-	Y_AXIS_GUTTER,
-	plotWidthOf,
-	useWidth,
-	GridLines,
-	LockedLine,
-	PointTag,
-	Axis,
-	Inspector,
-	Crosshair,
-	ReadoutTip,
-} from './chart-parts';
