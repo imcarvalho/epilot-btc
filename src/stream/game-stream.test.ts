@@ -7,7 +7,12 @@ import type { StreamEvent } from '@/lib/contracts';
 import { createAnonymousPlayer, placeGuess, type GameDeps } from '@/lib/game';
 import type { PricePoint } from '@/lib/settlement';
 import { MemoryStore } from '@/lib/testing/memory-store';
-import { formatEvent, runGameStream } from './game-stream';
+import {
+	formatEvent,
+	MAX_CONSECUTIVE_FAILED_TICKS,
+	retryFrame,
+	runGameStream,
+} from './game-stream';
 
 const T0 = 1_790_000_000_000;
 
@@ -208,6 +213,96 @@ describe('the game stream', () => {
 			sleep: t.sleep,
 		});
 		expect(t.count('state')).toBe(3);
+	});
+});
+
+describe('the game stream when the store fails', () => {
+	it('skips a failed tick and carries on', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		const real = t.store.getPlayer.bind(t.store);
+		vi.spyOn(t.store, 'getPlayer').mockImplementation(async (id) => {
+			if (t.deps.now() === T0 + 1_000) {
+				throw new Error('throttled');
+			}
+			return real(id);
+		});
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 4_000,
+			sleep: t.sleep,
+		});
+		// Four ticks, one of them failed and sent nothing.
+		expect(t.count('state')).toBe(3);
+		expect(console.error).toHaveBeenCalledWith(
+			expect.stringContaining('"event":"stream-tick-failed"'),
+		);
+	});
+
+	it('retries the board if reading it failed', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		vi.spyOn(t.store, 'listTopOfBoard').mockRejectedValueOnce(
+			new Error('throttled'),
+		);
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 3_000,
+			sleep: t.sleep,
+		});
+		expect(t.count('leaderboard')).toBe(1);
+	});
+
+	it('ends after too many failed ticks in a row', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		vi.spyOn(t.store, 'getPlayer').mockRejectedValue(new Error('down'));
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 600_000,
+			sleep: t.sleep,
+		});
+		expect(t.events).toEqual([]);
+		expect(console.error).toHaveBeenCalledTimes(MAX_CONSECUTIVE_FAILED_TICKS);
+	});
+
+	it('counts only consecutive failures', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		const real = t.store.getPlayer.bind(t.store);
+		vi.spyOn(t.store, 'getPlayer').mockImplementation(async (id) => {
+			// Fail every other tick, far more than the limit in total.
+			if (((t.deps.now() - T0) / 1_000) % 2 === 1) {
+				throw new Error('throttled');
+			}
+			return real(id);
+		});
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 40_000,
+			sleep: t.sleep,
+		});
+		expect(t.count('state')).toBe(20);
+	});
+
+	it('still ticks when the candle cache cannot be written', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		vi.spyOn(t.store, 'putCachedCandles').mockRejectedValue(
+			new Error('throttled'),
+		);
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 2_000,
+			sleep: t.sleep,
+		});
+		expect(t.count('state')).toBe(2);
+		expect(t.count('candles')).toBeGreaterThan(0);
+		expect(console.error).not.toHaveBeenCalledWith(
+			expect.stringContaining('stream-tick-failed'),
+		);
+	});
+});
+
+describe('retryFrame', () => {
+	it('spreads the reconnect hint between one and three seconds', () => {
+		expect(retryFrame(() => 0)).toBe('retry: 1000\n\n');
+		expect(retryFrame(() => 0.9995)).toBe('retry: 2999\n\n');
 	});
 });
 
