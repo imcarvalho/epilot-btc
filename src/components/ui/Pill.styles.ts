@@ -20,11 +20,21 @@ export const styles = stylex.create({
 	},
 	// A little lower on a phone, where the header's chips stack.
 	md: {
-		fontSize: 'var(--font-size-base)',
+		fontSize: {
+			default: 'var(--font-size-base)',
+			'@media (max-width: 640px)': 'var(--font-size-sm)',
+		},
+		gap: {
+			default: 'var(--spacing-2)',
+			'@media (max-width: 640px)': 'var(--spacing-1-5)',
+		},
 		minHeight: {
 			default: 'var(--size-element-lg)',
-			'@media (max-width: 640px)': 'var(--size-element-md)',
+			'@media (max-width: 640px)': 32,
 		},
-		paddingInline: 'var(--spacing-4)',
+		paddingInline: {
+			default: 'var(--spacing-4)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
 	},
 });

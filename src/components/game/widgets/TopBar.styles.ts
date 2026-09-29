@@ -80,3 +80,21 @@ export const styles = stylex.create({
 		whiteSpace: 'nowrap',
 	},
 });
+
+// On a phone Sign out matches the chips beside it: same height, padding and type.
+export const signOut = stylex.create({
+	button: {
+		fontSize: {
+			default: null,
+			[NARROW]: 'var(--font-size-sm)',
+		},
+		height: {
+			default: null,
+			[NARROW]: 32,
+		},
+		paddingInline: {
+			default: null,
+			[NARROW]: 'var(--spacing-3)',
+		},
+	},
+});

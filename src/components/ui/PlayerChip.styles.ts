@@ -3,11 +3,6 @@ import * as stylex from '@stylexjs/stylex';
 export const styles = stylex.create({
 	pill: {
 		paddingInlineStart: 'var(--spacing-1-5)',
-		// A phone's row holds the name and Sign out side by side.
-		minHeight: {
-			default: null,
-			'@media (max-width: 640px)': 'var(--size-element-sm)',
-		},
 	},
 	avatar: {
 		display: 'inline-flex',
