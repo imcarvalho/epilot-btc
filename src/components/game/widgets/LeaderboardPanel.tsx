@@ -21,6 +21,9 @@ import { styles } from './LeaderboardPanel.styles';
  * 48% correct over 25 guesses minus 2 points" - not from an `aria-label` a
  * screen reader may skip; the bare numbers are hidden from it and words
  * stand in for them. Your row says "you" in a tag, not in colour alone.
+ *
+ * The column labels above the rows are for the eye: they are hidden from
+ * assistive technology, since every row already says what each number is.
  */
 export function LeaderboardPanel({
 	board,
@@ -46,6 +49,12 @@ export function LeaderboardPanel({
 				board && (
 					<>
 						{/* `role="list"`: with `list-style: none`, Safari drops the list semantics. */}
+						<div aria-hidden {...stylex.props(styles.row, styles.head)}>
+							<span {...stylex.props(styles.headRank)}>#</span>
+							<span {...stylex.props(styles.headName)}>Player</span>
+							<span {...stylex.props(styles.headRate)}>Correct</span>
+							<span {...stylex.props(styles.headScore)}>Score</span>
+						</div>
 						<ol role="list" {...stylex.props(styles.list)}>
 							{board.podium.map((row) => (
 								<Row key={`${row.rank}-${row.publicName}`} row={row} />
@@ -89,7 +98,12 @@ function Row({ row }: { row: LeaderboardRow }) {
 				{row.isYou && <span {...stylex.props(styles.youTag)}>you</span>}
 			</span>
 			<Numeric xstyle={styles.rate}>
-				<span aria-hidden>{formatRate(row.successRate)}</span>
+				<span aria-hidden>
+					{formatRate(row.successRate)}
+					{row.successRate !== null && (
+						<span {...stylex.props(styles.rateWord)}> correct</span>
+					)}
+				</span>
 				<VisuallyHidden>
 					{rateWords(row.successRate, row.guesses)}
 				</VisuallyHidden>

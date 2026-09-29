@@ -204,6 +204,19 @@ for (const [where, width, height] of VIEWPORTS) {
 						hasText: 'you',
 					}),
 			).toContainText('E2ESignedIn');
+			const board = page.getByRole('region', {
+				name: 'Leaderboard',
+			});
+			await expect(
+				board.getByText('Player', {
+					exact: true,
+				}),
+			).toBeVisible();
+			await expect(
+				board.getByText('Score', {
+					exact: true,
+				}),
+			).toBeVisible();
 			await expectAccessible(page);
 		});
 	});

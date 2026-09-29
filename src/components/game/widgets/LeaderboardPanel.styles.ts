@@ -38,6 +38,36 @@ export const styles = stylex.create({
 		paddingBlock: 'var(--spacing-2)',
 		paddingInline: 'var(--spacing-3)',
 	},
+	// The column labels: the row's grid, so they line up with what they name.
+	head: {
+		color: 'var(--color-text-secondary)',
+		fontSize: 'var(--font-size-sm)',
+		paddingBlock: 0,
+	},
+	headRank: {
+		gridArea: 'rank',
+	},
+	headName: {
+		gridArea: 'name',
+	},
+	// On a phone the rate sits under the name and says "correct" itself.
+	headRate: {
+		display: {
+			default: 'inline',
+			'@media (max-width: 640px)': 'none',
+		},
+		gridArea: 'rate',
+	},
+	headScore: {
+		gridArea: 'score',
+		textAlign: 'end',
+	},
+	rateWord: {
+		display: {
+			default: 'none',
+			'@media (max-width: 640px)': 'inline',
+		},
+	},
 	you: {
 		backgroundColor: palette.upWash,
 		borderColor: 'rgba(125, 251, 170, 0.4)',
