@@ -6,7 +6,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import type { Stats } from '@/lib/contracts';
 import { signInWithGoogle, signOutOfGoogle } from '@/app/actions';
 import { BrandMark, PlayerChip, ScoreChip } from '@/components/ui';
-import { signOut, styles } from './TopBar.styles';
+import { signIn, signOut, styles } from './TopBar.styles';
 
 /**
  * Sign out, then a full load of the page: the stream and the screen belong
@@ -82,6 +82,7 @@ export function TopBar({
 								label="Sign in to save your score"
 								size="lg"
 								variant="secondary"
+								xstyle={signIn.button}
 								icon={<Icon icon={Download} size="sm" color="accent" />}
 							/>
 						</form>

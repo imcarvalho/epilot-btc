@@ -94,15 +94,31 @@ export const styles = stylex.create({
 	},
 });
 
-// On a phone Sign out matches the chips beside it: same height, padding and type.
-export const signOut = stylex.create({
+// On a phone the account buttons match the chips beside them: same height and
+// type. Sign out also takes the chips' padding at every width. The defaults
+// are the Button's own large size, spelled out: a `null` here would strip the
+// Button's value rather than keep it, and the label would inherit the page's.
+export const signIn = stylex.create({
 	button: {
 		fontSize: {
-			default: null,
+			default: 'var(--text-label-size)',
 			[NARROW]: 'var(--font-size-sm)',
 		},
 		height: {
-			default: null,
+			default: 'var(--size-element-lg)',
+			[NARROW]: 32,
+		},
+	},
+});
+
+export const signOut = stylex.create({
+	button: {
+		fontSize: {
+			default: 'var(--text-label-size)',
+			[NARROW]: 'var(--font-size-sm)',
+		},
+		height: {
+			default: 'var(--size-element-lg)',
 			[NARROW]: 32,
 		},
 		paddingInline: 'var(--spacing-3)',

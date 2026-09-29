@@ -18,7 +18,7 @@ export const styles = stylex.create({
 	name: {
 		color: 'var(--color-text-primary)',
 		fontSize: {
-			default: 'var(--font-size-lg)',
+			default: 'var(--text-label-size)',
 			'@media (max-width: 640px)': 'var(--font-size-sm)',
 		},
 		fontWeight: 'var(--font-weight-medium)',
