@@ -8,9 +8,15 @@ export const styles = stylex.create({
 		color: palette.ink,
 		display: 'inline-flex',
 		flexShrink: 0,
-		height: 44,
+		height: {
+			default: 44,
+			'@media (max-width: 640px)': 36,
+		},
 		justifyContent: 'center',
-		width: 44,
+		width: {
+			default: 44,
+			'@media (max-width: 640px)': 36,
+		},
 	},
 	up: {
 		backgroundImage: `linear-gradient(135deg, ${palette.upFrom}, ${palette.upTo})`,

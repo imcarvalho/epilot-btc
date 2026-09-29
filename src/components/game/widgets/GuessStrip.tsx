@@ -262,7 +262,7 @@ function ResultBanner({
 	return (
 		<Panel as="div" tone={won ? 'win' : 'loss'} xstyle={styles.compact}>
 			<div {...stylex.props(styles.result)}>
-				<div {...stylex.props(styles.row)}>
+				<div {...stylex.props(styles.row, styles.resultRow)}>
 					<IconTile
 						icon={
 							won
@@ -293,7 +293,10 @@ function ResultBanner({
 					>
 						{won ? '+1' : '−1'}
 					</Numeric>
-					<span {...stylex.props(styles.muted)}>score {score}</span>
+					{/* The top bar already shows the score; on a phone the +1 or -1 stays alone. */}
+					<span {...stylex.props(styles.muted, styles.scoreTotal)}>
+						score {score}
+					</span>
 				</div>
 			</div>
 		</Panel>

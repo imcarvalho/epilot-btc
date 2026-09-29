@@ -3,7 +3,10 @@ import { palette } from '@/components/ui/tokens.stylex';
 
 export const styles = stylex.create({
 	compact: {
-		paddingBlock: 'var(--spacing-5)',
+		paddingBlock: {
+			default: 'var(--spacing-5)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
 		paddingInline: {
 			default: 'var(--spacing-6)',
 			'@media (max-width: 640px)': 'var(--spacing-4)',
@@ -160,13 +163,33 @@ export const styles = stylex.create({
 	result: {
 		alignItems: 'center',
 		display: 'flex',
-		flexWrap: 'wrap',
-		gap: 'var(--spacing-4)',
+		gap: {
+			default: 'var(--spacing-4)',
+			'@media (max-width: 640px)': 'var(--spacing-2)',
+		},
+		flexWrap: {
+			default: 'wrap',
+			'@media (max-width: 640px)': 'nowrap',
+		},
 		justifyContent: 'space-between',
+	},
+	// On a phone the text takes what the +1 or -1 leaves, on one row.
+	resultRow: {
+		flexGrow: 1,
+		minWidth: 0,
+	},
+	scoreTotal: {
+		display: {
+			default: null,
+			'@media (max-width: 640px)': 'none',
+		},
 	},
 	headline: {
 		color: 'var(--color-text-primary)',
-		fontSize: 'var(--font-size-xl)',
+		fontSize: {
+			default: 'var(--font-size-xl)',
+			'@media (max-width: 640px)': 'var(--font-size-lg)',
+		},
 		fontWeight: 'var(--font-weight-semibold)',
 		margin: 0,
 	},
@@ -176,9 +199,16 @@ export const styles = stylex.create({
 		borderStyle: 'solid',
 		borderWidth: 1,
 		display: 'flex',
+		flexShrink: 0,
 		gap: 'var(--spacing-2)',
-		paddingBlock: 'var(--spacing-2)',
-		paddingInline: 'var(--spacing-5)',
+		paddingBlock: {
+			default: 'var(--spacing-2)',
+			'@media (max-width: 640px)': 'var(--spacing-1)',
+		},
+		paddingInline: {
+			default: 'var(--spacing-5)',
+			'@media (max-width: 640px)': 'var(--spacing-3)',
+		},
 	},
 	scoreBoxWin: {
 		borderColor: 'rgba(125, 251, 170, 0.4)',
@@ -187,7 +217,10 @@ export const styles = stylex.create({
 		borderColor: 'rgba(255, 138, 138, 0.4)',
 	},
 	delta: {
-		fontSize: 'var(--font-size-3xl)',
+		fontSize: {
+			default: 'var(--font-size-3xl)',
+			'@media (max-width: 640px)': 'var(--font-size-xl)',
+		},
 		fontWeight: 'var(--font-weight-bold)',
 	},
 	deltaWin: {
