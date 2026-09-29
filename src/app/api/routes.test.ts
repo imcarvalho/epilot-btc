@@ -196,6 +196,55 @@ describe('POST /api/player', () => {
 			expect(store.slots.size).toBe(0);
 		});
 
+		it('counts nothing when the request carries no forwarded address, which is the limit failing open', async () => {
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit + 5; i++) {
+				const res = await createPlayer(
+					request('/api/player', {
+						method: 'POST',
+					}),
+				);
+				expect(res.status).toBe(201);
+			}
+			expect(store.slots.size).toBe(0);
+			expect(store.players.size).toBe(PLAYER_CREATE_RATE.limit + 5);
+		});
+
+		it('counts the address TRUSTED_PROXY_HOPS from the right, when more of our proxies sit in front', async () => {
+			vi.stubEnv('TRUSTED_PROXY_HOPS', '2');
+			const behindTwo = (ip: string) =>
+				createPlayer(
+					request('/api/player', {
+						method: 'POST',
+						headers: {
+							'x-forwarded-for': `${ip}, 10.0.0.1`,
+						},
+					}),
+				);
+			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
+				expect((await behindTwo('203.0.113.7')).status).toBe(201);
+			}
+			expect((await behindTwo('203.0.113.7')).status).toBe(429);
+			expect((await behindTwo('203.0.113.8')).status).toBe(201);
+		});
+
+		it('creates two players for two concurrent first visits with no cookie, and each counts against the limit', async () => {
+			const [first, second] = await Promise.all([
+				from('203.0.113.7'),
+				from('203.0.113.7'),
+			]);
+			expect(first.status).toBe(201);
+			expect(second.status).toBe(201);
+			expect(first.cookies.get('btc_player')!.value).not.toBe(
+				second.cookies.get('btc_player')!.value,
+			);
+			expect(store.players.size).toBe(2);
+			const counted = [...store.slots.values()].reduce(
+				(total, count) => total + Number(count),
+				0,
+			);
+			expect(counted).toBe(2);
+		});
+
 		it('starts again in the next hour', async () => {
 			for (let i = 0; i < PLAYER_CREATE_RATE.limit; i++) {
 				await from('203.0.113.7');
