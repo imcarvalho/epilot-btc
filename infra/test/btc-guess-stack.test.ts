@@ -183,7 +183,7 @@ describe('BtcGuessStack', () => {
 		});
 	});
 
-	it('runs the sweep every minute, without retries', () => {
+	it('runs the sweep every minute, retrying a throttled run for up to five minutes', () => {
 		const template = synth();
 
 		template.resourceCountIs('AWS::Scheduler::Schedule', 1);
@@ -192,8 +192,8 @@ describe('BtcGuessStack', () => {
 			State: 'ENABLED',
 			Target: Match.objectLike({
 				RetryPolicy: {
-					MaximumRetryAttempts: 0,
-					MaximumEventAgeInSeconds: 60,
+					MaximumRetryAttempts: 5,
+					MaximumEventAgeInSeconds: 300,
 				},
 			}),
 		});
@@ -248,16 +248,90 @@ describe('BtcGuessStack', () => {
 		template.hasOutput('StreamUrl', {});
 	});
 
-	it('lets a stream run to the 15-minute limit and names its secret, never its value', () => {
+	it('caps a stream function at three minutes and names its secret, never its value', () => {
 		const template = synth();
 
 		template.hasResourceProperties('AWS::Lambda::Function', {
-			Timeout: 900,
+			Timeout: 180,
 			Environment: {
 				Variables: Match.objectLike({
 					STREAM_SECRET_PARAMETER,
 				}),
 			},
 		});
+	});
+
+	it('alarms on the sweep trigger being throttled, on the first throttle', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+			Namespace: 'AWS/Lambda',
+			MetricName: 'Throttles',
+			Statistic: 'Sum',
+			Period: 60,
+			Threshold: 1,
+			EvaluationPeriods: 1,
+			ComparisonOperator: 'GreaterThanOrEqualToThreshold',
+			Dimensions: [
+				{
+					Name: 'FunctionName',
+					Value: Match.objectLike({
+						Ref: Match.stringLikeRegexp('^SweepTrigger'),
+					}),
+				},
+			],
+		});
+	});
+
+	it('alarms on the scheduler dropping a sweep, in the default schedule group', () => {
+		const template = synth();
+
+		template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+			Namespace: 'AWS/Scheduler',
+			MetricName: 'InvocationDroppedCount',
+			Statistic: 'Sum',
+			Threshold: 1,
+			EvaluationPeriods: 1,
+			Dimensions: [
+				{
+					Name: 'ScheduleGroup',
+					Value: 'default',
+				},
+			],
+		});
+	});
+
+	it('does not reserve concurrency: the account limit of 10 leaves nothing to reserve', () => {
+		const template = synth();
+
+		for (const fn of Object.values(
+			template.findResources('AWS::Lambda::Function'),
+		)) {
+			expect(fn.Properties).not.toHaveProperty('ReservedConcurrentExecutions');
+		}
+	});
+
+	it('gives the stream function no table action beyond the app policy: no scans, batches or table admin', () => {
+		const template = synth();
+
+		const actions = Object.values(template.findResources('AWS::IAM::Policy'))
+			.flatMap(
+				(policy) =>
+					policy.Properties.PolicyDocument.Statement as Array<{
+						Action: string[] | string;
+					}>,
+			)
+			.flatMap((statement) => [statement.Action].flat())
+			.filter((action) => action.startsWith('dynamodb:'));
+		expect(actions.length).toBeGreaterThan(0);
+		expect(new Set(actions)).toEqual(
+			new Set([
+				'dynamodb:GetItem',
+				'dynamodb:PutItem',
+				'dynamodb:UpdateItem',
+				'dynamodb:DeleteItem',
+				'dynamodb:Query',
+			]),
+		);
 	});
 });

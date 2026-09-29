@@ -11,9 +11,14 @@
  * a secret the two tiers share. It is short-lived because it travels in a
  * URL: it only has to survive until the stream opens, and a reconnect asks
  * for a new one.
+ *
+ * It is also single-use: it carries a random id (`jti`), and the stream
+ * spends that id with a conditional write when it opens (`admitStream`), so
+ * a ticket cannot open a second stream however many times it is replayed.
+ * This file only signs and verifies; spending is the store's job.
  */
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
 /** Long enough to open a stream, short enough that a leaked URL is stale. */
 export const STREAM_TOKEN_TTL_MS = 60_000;
@@ -23,6 +28,16 @@ interface Payload {
 	p: string;
 	/** Expiry, epoch ms. */
 	e: number;
+	/** Ticket id: random, spent once when a stream opens. */
+	j: string;
+}
+
+/** What a valid ticket says. */
+export interface StreamTicketClaims {
+	playerId: string;
+	jti: string;
+	/** Epoch ms. */
+	expiresAt: number;
 }
 
 function sign(body: string, secret: string): string {
@@ -33,21 +48,23 @@ export function createStreamToken(
 	playerId: string,
 	secret: string,
 	now: number,
+	jti: string = randomUUID(),
 ): string {
 	const payload: Payload = {
 		p: playerId,
 		e: now + STREAM_TOKEN_TTL_MS,
+		j: jti,
 	};
 	const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
 	return `${body}.${sign(body, secret)}`;
 }
 
-/** The player id a token was issued for, or null if it is forged, malformed or expired. */
+/** What a token says, or null if it is forged, malformed or expired. */
 export function verifyStreamToken(
 	token: string,
 	secret: string,
 	now: number,
-): string | null {
+): StreamTicketClaims | null {
 	const [body, signature, extra] = token.split('.');
 	if (!body || !signature || extra !== undefined) {
 		return null;
@@ -69,10 +86,18 @@ export function verifyStreamToken(
 		typeof payload !== 'object' ||
 		payload === null ||
 		typeof (payload as Payload).p !== 'string' ||
-		typeof (payload as Payload).e !== 'number'
+		typeof (payload as Payload).e !== 'number' ||
+		typeof (payload as Payload).j !== 'string' ||
+		(payload as Payload).j === ''
 	) {
 		return null;
 	}
-	const { p, e } = payload as Payload;
-	return now < e ? p : null;
+	const { p, e, j } = payload as Payload;
+	return now < e
+		? {
+				playerId: p,
+				jti: j,
+				expiresAt: e,
+			}
+		: null;
 }

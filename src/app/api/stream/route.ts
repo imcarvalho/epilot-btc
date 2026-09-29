@@ -1,6 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { getDeps } from '@/lib/deps';
-import { verifyStreamToken } from '@/lib/stream-token';
+import {
+	admitStream,
+	REFUSAL_STATUS,
+	renewWhileSleeping,
+} from '@/stream/admission';
 import { formatEvent, runGameStream } from '@/stream/game-stream';
 
 export const dynamic = 'force-dynamic';
@@ -26,16 +30,17 @@ export async function GET(request: NextRequest) {
 	}
 
 	const deps = getDeps();
-	const playerId = verifyStreamToken(
+	const admission = await admitStream(
+		deps,
 		request.nextUrl.searchParams.get('token') ?? '',
 		secret,
-		deps.now(),
 	);
-	if (!playerId) {
-		return new Response('unauthorized', {
-			status: 401,
+	if (admission.kind === 'refused') {
+		return new Response(admission.reason, {
+			status: REFUSAL_STATUS[admission.reason],
 		});
 	}
+	const { playerId, lease } = admission;
 
 	const encoder = new TextEncoder();
 	// The browser can leave between two writes: after that, write nothing.
@@ -49,22 +54,29 @@ export async function GET(request: NextRequest) {
 		},
 		async start(controller) {
 			controller.enqueue(encoder.encode('retry: 1000\n\n'));
-			await runGameStream(
-				deps,
-				playerId,
-				{
-					send: (event) => {
-						if (open) {
-							controller.enqueue(encoder.encode(formatEvent(event)));
-						}
+			try {
+				await runGameStream(
+					deps,
+					playerId,
+					{
+						send: (event) => {
+							if (open) {
+								controller.enqueue(encoder.encode(formatEvent(event)));
+							}
+						},
+						isOpen: () => open && lease.isHeld(),
 					},
-					isOpen: () => open,
-				},
-				{
-					lifetimeMs: LOCAL_STREAM_LIFETIME_MS,
-					sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-				},
-			);
+					{
+						lifetimeMs: LOCAL_STREAM_LIFETIME_MS,
+						sleep: renewWhileSleeping(
+							lease,
+							(ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+						),
+					},
+				);
+			} finally {
+				await lease.release();
+			}
 			if (open) {
 				controller.close();
 			}

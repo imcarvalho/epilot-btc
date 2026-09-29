@@ -10,6 +10,7 @@ import {
 	DynamoDBClient,
 } from '@aws-sdk/client-dynamodb';
 import {
+	DeleteCommand,
 	DynamoDBDocumentClient,
 	GetCommand,
 	PutCommand,
@@ -27,6 +28,8 @@ import {
 	PENDING_BUCKET,
 	PENDING_INDEX,
 	PRICE_KEY,
+	STREAM_PREFIX,
+	TICKET_PREFIX,
 } from './dynamo-store';
 
 const TABLE = 'Players';
@@ -585,6 +588,132 @@ describe('DynamoStore', () => {
 			ddb.reset();
 			ddb.on(GetCommand).resolves({});
 			await expect(store.getBoardTotal()).resolves.toBe(0);
+		});
+	});
+
+	describe('stream tickets and leases (§3.1)', () => {
+		it('spends a ticket id with a put that fails if it was spent before', async () => {
+			ddb.on(PutCommand).resolves({});
+			await expect(store.spendTicket('j1', T + 60_000)).resolves.toBe(true);
+
+			const input = ddb.commandCalls(PutCommand)[0].args[0].input;
+			expect(input.Item?.playerId).toBe(`${TICKET_PREFIX}j1`);
+			expect(input.ConditionExpression).toBe('attribute_not_exists(playerId)');
+			expect(input.Item?.ttl).toBeGreaterThan((T + 60_000) / 1000);
+		});
+
+		it('reports a replayed ticket, and rethrows anything else', async () => {
+			ddb.on(PutCommand).rejects(conditionFailed());
+			await expect(store.spendTicket('j1', T)).resolves.toBe(false);
+			ddb.reset();
+			ddb.on(PutCommand).rejects(new Error('throttled'));
+			await expect(store.spendTicket('j1', T)).rejects.toThrow('throttled');
+		});
+
+		it('claims the first slot that is free or lapsed, one conditional put each', async () => {
+			ddb
+				.on(PutCommand)
+				.rejectsOnce(conditionFailed())
+				.rejectsOnce(conditionFailed())
+				.resolves({});
+			await expect(
+				store.claimStreamSlot('anon:a', 's1', T, 30_000, 3),
+			).resolves.toBe(2);
+
+			const calls = ddb.commandCalls(PutCommand);
+			expect(calls.map((c) => c.args[0].input.Item?.playerId)).toEqual([
+				`${STREAM_PREFIX}anon:a#0`,
+				`${STREAM_PREFIX}anon:a#1`,
+				`${STREAM_PREFIX}anon:a#2`,
+			]);
+			const input = calls[2].args[0].input;
+			expect(input.Item).toMatchObject({
+				streamId: 's1',
+				leaseUntil: T + 30_000,
+			});
+			expect(input.ConditionExpression).toBe(
+				'attribute_not_exists(playerId) OR #leaseUntil < :now',
+			);
+			expect(input.ExpressionAttributeValues).toEqual({
+				':now': T,
+			});
+			expectPlaceholdersToMatch(input);
+		});
+
+		it('gives up with null when every slot is held', async () => {
+			ddb.on(PutCommand).rejects(conditionFailed());
+			await expect(
+				store.claimStreamSlot('anon:a', 's1', T, 30_000, 3),
+			).resolves.toBeNull();
+			expect(ddb.commandCalls(PutCommand)).toHaveLength(3);
+		});
+
+		it('does not swallow a real failure while claiming', async () => {
+			ddb.on(PutCommand).rejects(new Error('throttled'));
+			await expect(
+				store.claimStreamSlot('anon:a', 's1', T, 30_000, 3),
+			).rejects.toThrow('throttled');
+		});
+
+		it('renews a lease only while the slot is still this stream', async () => {
+			ddb.on(UpdateCommand).resolves({});
+			await expect(
+				store.renewStreamSlot(
+					'anon:a',
+					{
+						slot: 1,
+						streamId: 's1',
+					},
+					T,
+					30_000,
+				),
+			).resolves.toBe(true);
+			const input = ddb.commandCalls(UpdateCommand)[0].args[0].input;
+			expect(input.Key).toEqual({
+				playerId: `${STREAM_PREFIX}anon:a#1`,
+			});
+			expect(input.ConditionExpression).toBe('#streamId = :streamId');
+			expect(input.ExpressionAttributeValues).toMatchObject({
+				':streamId': 's1',
+				':until': T + 30_000,
+			});
+			expectPlaceholdersToMatch(input);
+
+			ddb.reset();
+			ddb.on(UpdateCommand).rejects(conditionFailed());
+			await expect(
+				store.renewStreamSlot(
+					'anon:a',
+					{
+						slot: 1,
+						streamId: 's1',
+					},
+					T,
+					30_000,
+				),
+			).resolves.toBe(false);
+		});
+
+		it('releases a slot only if it is still this stream, and ignores a lost one', async () => {
+			ddb.on(DeleteCommand).resolves({});
+			await store.releaseStreamSlot('anon:a', {
+				slot: 0,
+				streamId: 's1',
+			});
+			const input = ddb.commandCalls(DeleteCommand)[0].args[0].input;
+			expect(input.ConditionExpression).toBe('#streamId = :streamId');
+			expect(input.ExpressionAttributeValues).toEqual({
+				':streamId': 's1',
+			});
+
+			ddb.reset();
+			ddb.on(DeleteCommand).rejects(conditionFailed());
+			await expect(
+				store.releaseStreamSlot('anon:a', {
+					slot: 0,
+					streamId: 's1',
+				}),
+			).resolves.toBeUndefined();
 		});
 	});
 });
