@@ -489,7 +489,7 @@ What it pulls in, and must be set up first:
 - [x] Sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks; the anonymous merge is single-shot.
 - [x] The leaderboard and the sweep are both served from indexes rather than scans, and no response carries a real name or an IP address.
 - [x] Tests pass in CI; README covers the design, how to run it and how to deploy it.
-- [ ] Public deployment reachable by link, from a public repository.
+- [x] Public deployment reachable by link, from a public repository.
 
 ---
 

@@ -28,7 +28,7 @@ Private while building, public at delivery. The brief asks for a public reposito
 - [x] Skeleton committed and pushed (`CLAUDE.md`, `docs/`, `src/lib/`)
 - [x] History scanned: no access keys, no private keys, no `.env` tracked
 - [x] `.git/index.lock.stale-remove-me` deleted - harmless, does not block git, just clutter
-- [ ] **At delivery:** switch the repository to public
+- [x] **At delivery:** switch the repository to public
 
 Blocks Amplify, which deploys from the repository.
 
@@ -83,6 +83,6 @@ From engineering spec §2.1. Each one can invalidate work done after it:
 
 ## Delivery
 
-- [ ] Public repository link
+- [x] Public repository link
 - [x] Deployed link, reachable - https://main.dalnijp0oanzq.amplifyapp.com/
 - [x] README covering the design, how to run it, how to deploy it
