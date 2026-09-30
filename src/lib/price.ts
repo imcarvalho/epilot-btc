@@ -118,7 +118,10 @@ export function observedAt(
 /**
  * A price read from the market now, never from the cache, and written to the
  * cache so everyone else's screen benefits. `updatedAt` is when that price
- * stood (`observedAt`). Null if the read fails: there is no fallback here.
+ * stood (`observedAt`). Null if the read fails: there is no fallback here. A
+ * failed cache write is logged on its own and the fresh price still returned:
+ * the cache only saves the next caller a fetch, and a store hiccup is not a
+ * Coinbase failure.
  */
 export async function fetchFreshPrice({
 	store,
@@ -126,14 +129,13 @@ export async function fetchFreshPrice({
 	now,
 }: PriceDeps): Promise<CachedPrice | null> {
 	const startedAt = now();
+	let fresh: CachedPrice;
 	try {
 		const quote = await fetchPrice();
-		const fresh = {
+		fresh = {
 			price: quote.price,
 			updatedAt: observedAt(quote.time, startedAt, now()),
 		};
-		await store.putCachedPrice(fresh);
-		return fresh;
 	} catch (error) {
 		console.error(
 			JSON.stringify({
@@ -143,6 +145,17 @@ export async function fetchFreshPrice({
 		);
 		return null;
 	}
+	try {
+		await store.putCachedPrice(fresh);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				event: 'price-cache-write-failed',
+				error: String(error),
+			}),
+		);
+	}
+	return fresh;
 }
 
 /**

@@ -359,6 +359,27 @@ describe('fetchFreshPrice', () => {
 			}),
 		).resolves.toBeNull();
 	});
+	it('still returns the price when the cache write fails, and blames the store', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const store = new MemoryStore();
+		store.putCachedPrice = async () => {
+			throw new Error('ProvisionedThroughputExceededException');
+		};
+		const price = await fetchFreshPrice({
+			store,
+			fetchPrice: async () => ({
+				price: 200,
+				time: T,
+			}),
+			now: () => T,
+		});
+		expect(price).toEqual({
+			price: 200,
+			updatedAt: T,
+		});
+		const events = error.mock.calls.map(([line]) => JSON.parse(line).event);
+		expect(events).toEqual(['price-cache-write-failed']);
+	});
 });
 
 describe('isStale', () => {
