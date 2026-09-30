@@ -266,22 +266,22 @@ These are also what a screen reader announces, which is why they are written as 
 
 ## 8. Acceptance criteria
 
-- [ ] Score and price are visible at all times, with an indication of when the price was last updated.
-- [ ] Guessing disables further guesses until the current one resolves, including in a second tab.
-- [ ] A guess never resolves before 60 seconds, nor on an unchanged price.
-- [ ] Correct adds 1, wrong subtracts 1, and the score may go negative.
-- [ ] The three waiting situations are distinguishable on screen.
-- [ ] Closing the browser and coming back preserves score, history and any pending guess, which settles while away.
-- [ ] Playing anonymously and then signing in keeps the name and a guess still in its minute and starts the score at zero, with a sentence saying so; signing in on a second device shows the same state.
-- [ ] The scoreboard's success rate and streaks match the history, with an empty state before the first result.
-- [ ] A first visit shows a full chart, both buttons active, a plain `0` score with no rate or streak beside it, and two empty cards that say what will fill them.
-- [ ] Every player has a generated name from the first visit.
-- [ ] The leaderboard shows the top three, and for a signed-in player their own ranked row, whose numbers match their scoreboard.
-- [ ] A player inside the top three sees their row highlighted there, with no duplicate row below.
-- [ ] An anonymous player sees the board and the line explaining what puts them on it, and is never blocked from playing.
-- [ ] A signed-in player's Google name never appears publicly.
-- [ ] The chart keeps updating while a guess is pending.
-- [ ] Outcomes are announced to screen readers, and confetti is skipped under reduced-motion preferences.
+- [x] Score and price are visible at all times, with an indication of when the price was last updated.
+- [x] Guessing disables further guesses until the current one resolves, including in a second tab.
+- [x] A guess never resolves before 60 seconds, nor on an unchanged price.
+- [x] Correct adds 1, wrong subtracts 1, and the score may go negative.
+- [x] The three waiting situations are distinguishable on screen.
+- [x] Closing the browser and coming back preserves score, history and any pending guess, which settles while away.
+- [x] Playing anonymously and then signing in keeps the name and a guess still in its minute and starts the score at zero, with a sentence saying so; signing in on a second device shows the same state.
+- [x] The scoreboard's success rate and streaks match the history, with an empty state before the first result.
+- [x] A first visit shows a full chart, both buttons active, a plain `0` score with no rate or streak beside it, and two empty cards that say what will fill them.
+- [x] Every player has a generated name from the first visit.
+- [x] The leaderboard shows the top three, and for a signed-in player their own ranked row, whose numbers match their scoreboard.
+- [x] A player inside the top three sees their row highlighted there, with no duplicate row below.
+- [x] An anonymous player sees the board and the line explaining what puts them on it, and is never blocked from playing.
+- [x] A signed-in player's Google name never appears publicly.
+- [x] The chart keeps updating while a guess is pending.
+- [x] Outcomes are announced to screen readers, and confetti is skipped under reduced-motion preferences.
 
 ---
 

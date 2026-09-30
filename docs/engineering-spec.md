@@ -482,13 +482,13 @@ What it pulls in, and must be set up first:
 
 ## 10. Definition of done
 
-- [ ] No client-supplied price or timestamp can affect an outcome, verifiable in the network tab.
-- [ ] Guess creation and resolution are each idempotent under concurrent calls.
-- [ ] A guess left behind by a closed browser resolves within a minute of becoming resolvable.
-- [ ] A trade history that cannot be read blocks resolution and is reported as such (`settlementDelayed`, or the delayed feed when the ticker is down too); a stale ticker blocks new guesses and says so; the tape is read once per process, not once per waiting player.
-- [ ] Sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks; the anonymous merge is single-shot.
-- [ ] The leaderboard and the sweep are both served from indexes rather than scans, and no response carries a real name or an IP address.
-- [ ] Tests pass in CI; README covers the design, how to run it and how to deploy it.
+- [x] No client-supplied price or timestamp can affect an outcome, verifiable in the network tab.
+- [x] Guess creation and resolution are each idempotent under concurrent calls.
+- [x] A guess left behind by a closed browser resolves within a minute of becoming resolvable.
+- [x] A trade history that cannot be read blocks resolution and is reported as such (`settlementDelayed`, or the delayed feed when the ticker is down too); a stale ticker blocks new guesses and says so; the tape is read once per process, not once per waiting player.
+- [x] Sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks; the anonymous merge is single-shot.
+- [x] The leaderboard and the sweep are both served from indexes rather than scans, and no response carries a real name or an IP address.
+- [x] Tests pass in CI; README covers the design, how to run it and how to deploy it.
 - [ ] Public deployment reachable by link, from a public repository.
 
 ---
