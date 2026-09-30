@@ -88,6 +88,11 @@ export function GameScreen() {
 	const showingResult =
 		phase?.kind === 'result' || phase?.kind === 'away-result';
 
+	// So does a guess in play, so the price and the chart lead the screen. A
+	// feed warning during the guess (stale, delayed) stays on top.
+	const underChart =
+		showingResult || phase?.kind === 'locked' || phase?.kind === 'time-up';
+
 	// What a sign-in did is reported once, by the stream's ticket; hold it
 	// until the player dismisses it.
 	const [signInSeen, setSignInSeen] = useState<SignInOutcome | null>(null);
@@ -160,7 +165,7 @@ export function GameScreen() {
 									{...stylex.props(
 										styles.strip,
 										prompting && styles.stripAfter,
-										showingResult && styles.stripUnderChart,
+										underChart && styles.stripUnderChart,
 									)}
 								>
 									<GuessStrip

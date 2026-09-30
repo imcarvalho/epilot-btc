@@ -61,8 +61,8 @@ export const styles = stylex.create({
 		outlineWidth: 2,
 	},
 	// Visual order only: the strip is not in the tab order. On a phone the
-	// chart is 0, a result sits under it at 1, the buttons are 2 and a bare
-	// prompt comes after them at 3.
+	// chart is 0, a guess in play or a result sits under it at 1, the buttons
+	// are 2 and a bare prompt comes after them at 3.
 	stripAfter: {
 		order: {
 			default: 0,
