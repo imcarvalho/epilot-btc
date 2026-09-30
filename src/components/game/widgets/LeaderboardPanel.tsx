@@ -56,8 +56,11 @@ export function LeaderboardPanel({
 							<span {...stylex.props(styles.headScore)}>Score</span>
 						</div>
 						<ol role="list" {...stylex.props(styles.list)}>
-							{board.podium.map((row) => (
-								<Row key={`${row.rank}-${row.publicName}`} row={row} />
+							{/* Keyed by place: equal scores share a rank and generated
+							    names repeat, so neither tells two rows apart, and the
+							    response carries no ids. A row holds no state to lose. */}
+							{board.podium.map((row, place) => (
+								<Row key={place} row={row} />
 							))}
 							{board.you && (
 								<>
