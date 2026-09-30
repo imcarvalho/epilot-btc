@@ -84,15 +84,15 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 nvm use           # Node 24, from .nvmrc: the Astryx CLI that builds the theme needs >= 22.13
 npm install && npm --prefix infra install
 npm run dev:local  # http://localhost:3000 - the whole app, no AWS account needed
-npm test           # type-check (app, e2e, infra), the app's unit tests, the store against DynamoDB Local (needs Java), then the infra stack's: no network
+npm test           # type-check (app, e2e, infra), the app's unit tests, the store against DynamoDB Local (needs Java), then the infra stack's; no test calls out
 npm run build      # next build; also proves the StyleX/Astryx atomic CSS compiles for production
 npm run format     # Prettier: tabs and single quotes
 npm run lint       # ESLint, two layout rules: braces on every if/else/loop, objects over lines
-npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java, no network)
+npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java; no test calls out)
 npm run test:all   # both of the above
 ```
 
-`npm run dev:local` needs Java 17+. The first run downloads [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) into `.dynamodb/` (git-ignored); every run starts it, creates the table if missing, and starts `next dev` against it. Local players persist in `.dynamodb/data`; delete that folder to start over. Ctrl-C stops both. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
+`npm run dev:local` needs Java 17+. The first run downloads [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) into `.dynamodb/` (git-ignored), checked against a pinned sha256: AWS publishes only its latest release, so when AWS ships a new one the download fails with the new hash, to update in `scripts/dynamodb-local.mjs` after reading its release notes; every run starts it, creates the table if missing, and starts `next dev` against it. Local players persist in `.dynamodb/data`; delete that folder to start over. Ctrl-C stops both. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
 
 Sign-in is off locally until `.env.local` has `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`; the game plays anonymously without them.
 

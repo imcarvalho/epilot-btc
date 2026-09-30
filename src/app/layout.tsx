@@ -1,17 +1,21 @@
 import type { Metadata, Viewport } from 'next';
-import { JetBrains_Mono, Space_Grotesk } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { Providers } from './providers';
 
-// Self-hosted by next/font at build time; the Dracula theme reads them
-// through these two variables (src/themes/dracula.theme.ts).
-const sans = Space_Grotesk({
-	subsets: ['latin'],
+// Served from the repository (./fonts, SIL OFL 1.1: the variable fonts' Latin
+// subset, as Google Fonts serves it), so the build fetches nothing. The
+// Dracula theme reads them through these two variables
+// (src/themes/dracula.theme.ts).
+const sans = localFont({
+	src: './fonts/SpaceGrotesk-Variable.woff2',
+	weight: '300 700',
 	variable: '--font-sans',
 	display: 'swap',
 });
-const mono = JetBrains_Mono({
-	subsets: ['latin'],
+const mono = localFont({
+	src: './fonts/JetBrainsMono-Variable.woff2',
+	weight: '100 800',
 	variable: '--font-mono',
 	display: 'swap',
 });

@@ -10,6 +10,7 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { connect } from 'node:net';
 import { join } from 'node:path';
@@ -24,6 +25,16 @@ export const DIR = join(ROOT, '.dynamodb');
 const JAR = join(DIR, 'DynamoDBLocal.jar');
 const DOWNLOAD =
 	'https://d1ni2b6xgvw0s0.cloudfront.net/v2.x/dynamodb_local_latest.tar.gz';
+/**
+ * AWS publishes DynamoDB Local only as "latest", with no versioned archive,
+ * so the version is pinned by its checksum instead: 3.3.1 (2026-05-28), as
+ * AWS's own `dynamodb_local_latest.tar.gz.sha256` gives it. When AWS ships a
+ * new release the download stops matching and fails, naming the hash it got,
+ * rather than changing the engine the tests run against unannounced. Check
+ * the release notes, then update this.
+ */
+const SHA256 =
+	'f80bcec477f85f57e2c77f8d54aa6b672a8403fceff0c450560aee1cf6c21163';
 
 /** The table the CDK stack creates, as a CreateTable input. */
 export function tableInput(tableName) {
@@ -115,7 +126,7 @@ export function requireJava() {
 	}
 }
 
-/** Downloads DynamoDB Local into .dynamodb/ the first time. */
+/** Downloads DynamoDB Local into .dynamodb/ the first time, checked against `SHA256`. */
 export async function ensureJar(log = () => {}) {
 	if (existsSync(JAR)) {
 		return;
@@ -128,8 +139,15 @@ export async function ensureJar(log = () => {}) {
 	if (!res.ok) {
 		throw new Error(`Download failed: ${res.status} ${res.statusText}`);
 	}
+	const bytes = Buffer.from(await res.arrayBuffer());
+	const got = createHash('sha256').update(bytes).digest('hex');
+	if (got !== SHA256) {
+		throw new Error(
+			`DynamoDB Local download has sha256 ${got}, expected ${SHA256}: AWS has probably released a new version. Check its release notes, then update SHA256 in scripts/dynamodb-local.mjs.`,
+		);
+	}
 	const archive = join(DIR, 'dynamodb_local.tar.gz');
-	writeFileSync(archive, Buffer.from(await res.arrayBuffer()));
+	writeFileSync(archive, bytes);
 	const tar = spawnSync('tar', ['-xzf', archive, '-C', DIR], {
 		stdio: 'inherit',
 	});

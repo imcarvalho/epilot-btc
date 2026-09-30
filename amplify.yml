@@ -21,7 +21,10 @@ frontend:
         # inside the project so the build cache below carries them over.
         - export PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers"
         - npx playwright install chromium
-        - '[ -x .jdk/bin/java ] || (mkdir -p .jdk && curl -fsSL https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz | tar -xz -C .jdk --strip-components=1)'
+        # A pinned release, checked against Corretto's published sha256, so a
+        # new release or a bad download cannot change or break the gate.
+        - export JDK=17.0.20.12.1 JDK_SHA256=b852a8bc8890149c71141e784cde160d7ecb09bfa82b71209179b25902a0ebe3
+        - '[ -x .jdk/bin/java ] || (curl -fsSL -o jdk.tar.gz "https://corretto.aws/downloads/resources/$JDK/amazon-corretto-$JDK-linux-x64.tar.gz" && echo "$JDK_SHA256  jdk.tar.gz" | sha256sum -c - && mkdir -p .jdk && tar -xzf jdk.tar.gz -C .jdk --strip-components=1 && rm jdk.tar.gz)'
         - export PATH="$PWD/.jdk/bin:$PATH"
         - java -version
     build:
@@ -35,7 +38,10 @@ frontend:
         # the unit, store and infra tests first, then the accessibility tests
         # against the very build that is about to be deployed. They run it
         # against DynamoDB Local in its own table, never the real one, and
-        # against a fake Coinbase, so the gate needs no network beyond npm.
+        # against a fake Coinbase, so no test calls anything outside the
+        # build. What the build downloads - npm packages, Playwright's
+        # Chromium, Corretto and DynamoDB Local - is pinned (the last two by
+        # checksum) and cached between builds.
         # The type-check comes first and alone: the build rewrites .next/types,
         # which tsconfig.json includes. The unit, store and infra tests share
         # nothing with the build, so they run beside it; either failing fails
