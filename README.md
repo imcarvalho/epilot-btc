@@ -6,6 +6,33 @@ Guess whether BTC/USD will be higher or lower one minute from now. Right +1, wro
 
 A take-home exercise for epilot. Everything in the build order is in: the fair guess-and-resolve loop, the waiting states and result moments, the last-hour chart, the scoreboard with a generated name, Google sign-in, the leaderboard, the live minute and confetti.
 
+## Quickstart
+
+You need **Node 24** (`.nvmrc`; the Astryx CLI that builds the theme needs >= 22.13) and **Java 17+** on your `PATH` (for [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html), which stands in for the table). No AWS account, no Google client and no `.env` file are needed.
+
+```
+nvm use
+npm install && npm --prefix infra install
+npm run dev:local   # http://localhost:3000
+```
+
+Open http://localhost:3000 and play: you are an anonymous player with a generated name, and a guess resolves on screen a minute later. Sign-in is off until `.env.local` has the Google variables (see [Configuration](#configuration)). Ctrl-C stops everything. More on what `dev:local` does, the tests and the rest of the commands in [Running it](#running-it).
+
+## Stack
+
+| Layer          | What                                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language       | TypeScript throughout, on Node 24                                                                                                                            |
+| App            | Next.js 16 (App Router, route handlers on the Node runtime), React 19, Zod for request validation                                                            |
+| UI             | [Astryx](https://astryx.atmeta.com/) 0.6.3 on StyleX, with a Dracula token set; Lucide icons; charts hand-built in SVG                                         |
+| Sign-in        | Auth.js (`next-auth` v5) with Google, JWT sessions                                                                                                           |
+| Market data    | Coinbase Exchange public API (BTC-USD ticker, trades, candles), called only from the server                                                                  |
+| Data           | DynamoDB through the AWS SDK v3                                                                                                                              |
+| Hosting        | AWS Amplify Hosting (web tier), eu-central-1                                                                                                                 |
+| Infrastructure | AWS CDK: DynamoDB table and indexes, the game stream as a Lambda Function URL in `RESPONSE_STREAM` mode, EventBridge Scheduler for the sweep, SSM Parameter Store for secrets, CloudWatch alarms |
+| Tests          | Vitest, DynamoDB Local, `aws-sdk-client-mock`, Playwright with axe-core, CDK assertions                                                                      |
+| Tooling        | Prettier, ESLint, esbuild (bundling the Lambdas)                                                                                                             |
+
 ## The design
 
 The question underneath the game is whether a player can trust the result. So **the server is the only source of truth about game state.** The browser sends who it is (an `httpOnly` cookie) and what it guesses (`up` or `down`), and nothing else it says counts: no prices, no timestamps. Those fields do not exist in the API contract, and a request that tries to carry one is a 400, which you can check in the network tab.
@@ -81,18 +108,6 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 | `CLAUDE.md`                  | Context for an agent picking this up: decisions made and open, build order, conventions                                                                                                      |
 
 ## Running it
-
-### Quickstart
-
-You need **Node 24** (`.nvmrc`; the Astryx CLI that builds the theme needs >= 22.13) and **Java 17+** on your `PATH` (for [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html), which stands in for the table). No AWS account, no Google client and no `.env` file are needed.
-
-```
-nvm use
-npm install && npm --prefix infra install
-npm run dev:local   # http://localhost:3000
-```
-
-Open http://localhost:3000 and play: you are an anonymous player with a generated name, and a guess resolves on screen a minute later. Sign-in is off until `.env.local` has the Google variables (below). Ctrl-C stops everything.
 
 The first run downloads DynamoDB Local into `.dynamodb/` (git-ignored), checked against a pinned sha256: AWS publishes only its latest release, so when AWS ships a new one the download fails with the new hash, to update in `scripts/dynamodb-local.mjs` after reading its release notes. Every run starts it, creates the table if missing, builds the theme and starts `next dev` against it, serving the game stream from the app itself. Local players persist in `.dynamodb/data`; delete that folder to start over. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
 
