@@ -262,6 +262,13 @@ test('signed in, just now: the notice, the sign-out button, your own row, and di
 			'Your score starts again from 0, because the board counts only what you play while signed in, and it now follows you to any device.',
 		),
 	).toBeVisible();
+	// Said once: by the announcer, not again by the banner that shows it.
+	await expect(announced(page)).toContainText('Your score starts again from 0');
+	await expect(
+		page.locator('[role="status"], [role="alert"], [aria-live]').filter({
+			hasText: 'Your score starts again from 0',
+		}),
+	).toHaveCount(1);
 	await expect(
 		page.getByRole('button', {
 			name: 'Sign out',

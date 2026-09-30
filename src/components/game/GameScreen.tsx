@@ -140,7 +140,11 @@ export function GameScreen() {
 					) : (
 						<>
 							{notice && (
+								// `role="note"` in place of the Banner's own live `status`: the
+								// announcer already says the notice, and one live region says
+								// each thing once.
 								<Banner
+									role="note"
 									status={signInSeen === 'kept-existing' ? 'info' : 'success'}
 									title={<span {...stylex.props(styles.notice)}>{notice}</span>}
 									isDismissable
