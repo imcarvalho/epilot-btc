@@ -61,7 +61,9 @@ Three shapes repeat, and recognising them makes the rest obvious.
 
 **Next.js, for deployment and auth - not for rendering.** On architecture alone this is a client-side game with a small stateful API, and a static bundle would have served it. Next was chosen because Amplify Hosting runs it natively (the deployed link is the deliverable most likely to fail) and because Auth.js takes Google sign-in off the critical path. No game state passes through server rendering: server components render the shell and stop.
 
-**A server-sent stream, after arguing against one.** The original design had no server push at all: the browser owns the countdown and already watches the Coinbase ticker, so it could work out when to ask. That was reversed for a concrete reason - Amplify Hosting buffers a whole response and cuts it at 30 seconds, so it cannot serve SSE. The stream therefore lives in its own Lambda Function URL in `RESPONSE_STREAM` mode (`src/stream/lambda.ts`), while `src/app/api/stream/route.ts` runs the same `runGameStream` locally for development and the e2e tests. Same code, two hosts.
+**One server stream feeds the screen.** The question was never whether to push, it was how much the browser should decide for itself. An earlier design had it work out when to ask - it owns the countdown and was already watching the Coinbase ticker for the chart - and that would have worked. It was dropped because it left the browser deciding when state is read and talking to a third party directly, and neither belongs there under the principle above. The browser now renders what it is pushed and sends one thing.
+
+A separate constraint decided *where* the stream runs rather than whether it exists: Amplify Hosting buffers a whole response and cuts it at 30 seconds, so it cannot serve SSE. The stream lives in its own Lambda Function URL in `RESPONSE_STREAM` mode (`src/stream/lambda.ts`), while `src/app/api/stream/route.ts` runs the same `runGameStream` locally for development and the e2e tests. Same code, two hosts.
 
 **Sparse indexes for both access patterns the table cannot serve.** The leaderboard needs "best players in order"; the sweep needs "everyone with a guess outstanding". Both are sparse global secondary indexes: the attribute is written only when it applies, so the index holds the working set rather than the table, and eligibility is enforced by the data rather than by a filter someone can forget. The `byScore` index projects exactly what a podium row renders, so three rows cost one query and no reads back.
 
@@ -114,6 +116,6 @@ If you are using this to prepare rather than to onboard, these are the ones to h
 - What stops two tabs both placing a guess? *(A conditional write, not the disabled button.)*
 - What happens if the sweep and a tab resolve the same guess at once? *(One write lands; the other reads back the winner's answer.)*
 - Why settle from trade history instead of the current price? *(So waiting for a better moment cannot change the outcome.)*
-- Why is there a stream when the specs argue against one? *(Amplify cuts responses at 30 seconds; the decision was reversed and the specs were updated with it.)*
+- Why is there a stream at all? *(Because the alternative left the browser deciding when state is read and calling Coinbase itself. Amplify's 30-second cut decided where it runs, not whether.)*
 - Why is the leaderboard sign-in only? *(Incognito windows; and it is the one honest conversion.)*
 - What would you change first for production? *(Rank by histogram, shard the partition, raise the stream's concurrency.)*
