@@ -87,4 +87,3 @@ From engineering spec §2.1. Each one can invalidate work done after it:
 - [ ] Public repository link
 - [x] Deployed link, reachable - https://main.dalnijp0oanzq.amplifyapp.com/
 - [x] README covering the design, how to run it, how to deploy it
-- [ ] Aiko's colleague in copy - confirm the address now rather than at send time

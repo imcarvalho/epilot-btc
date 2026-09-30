@@ -67,7 +67,7 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 
 | Path                         | What                                                                                                                                                                                         |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/`                      | Both specs, the six screen designs, the user-flow diagram with its Mermaid source, and the setup checklist                                                                                    |
+| `docs/`                      | Both specs, the seven screen designs, the user-flow diagram with its Mermaid source, and the setup checklist                                                                                    |
 | `src/lib/`                   | The game, framework-free and unit-tested: the resolution rule, scoring, the price cache, the guess cycle and sign-in merge (`game.ts`), the DynamoDB store, the leaderboard, the name generator, the stream ticket, and the pure logic behind every screen state and chart |
 | `src/app/api/`               | Thin route handlers over `src/lib`: `player`, `stream-token`, `snapshot`, `guess`, `cron/resolve`, Auth.js at `auth/[...nextauth]`, and `stream` (the game stream, local only) |
 | `src/stream/`                | The game stream: `runGameStream`, and the Lambda that serves it in production |
@@ -76,23 +76,38 @@ Sign-in providers beyond Google and self-service account deletion; leaderboards 
 | `src/components/game/`       | The screen: `GameScreen` composing `widgets/`, `charts/`, `feedback/`, with `hooks/` and `utils/`                                                                                             |
 | `src/themes/`                | The Dracula token set, and the theme compiled from it                                                                                                                                        |
 | `infra/`                     | CDK stack: table and indexes, the IAM policy for the Amplify compute role, the game stream's Lambda and Function URL, and the once-a-minute sweep (EventBridge Scheduler invoking a small Lambda that calls `/api/cron/resolve`)        |
+| `scripts/`                   | `dev:local` (DynamoDB Local plus `next dev`), the DynamoDB Local download and table setup, and the theme build |
+| `e2e/`                       | The Playwright accessibility and state tests, and the fake Coinbase they run against |
 | `CLAUDE.md`                  | Context for an agent picking this up: decisions made and open, build order, conventions                                                                                                      |
 
 ## Running it
 
+### Quickstart
+
+You need **Node 24** (`.nvmrc`; the Astryx CLI that builds the theme needs >= 22.13) and **Java 17+** on your `PATH` (for [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html), which stands in for the table). No AWS account, no Google client and no `.env` file are needed.
+
 ```
-nvm use           # Node 24, from .nvmrc: the Astryx CLI that builds the theme needs >= 22.13
+nvm use
 npm install && npm --prefix infra install
-npm run dev:local  # http://localhost:3000 - the whole app, no AWS account needed
+npm run dev:local   # http://localhost:3000
+```
+
+Open http://localhost:3000 and play: you are an anonymous player with a generated name, and a guess resolves on screen a minute later. Sign-in is off until `.env.local` has the Google variables (below). Ctrl-C stops everything.
+
+The first run downloads DynamoDB Local into `.dynamodb/` (git-ignored), checked against a pinned sha256: AWS publishes only its latest release, so when AWS ships a new one the download fails with the new hash, to update in `scripts/dynamodb-local.mjs` after reading its release notes. Every run starts it, creates the table if missing, builds the theme and starts `next dev` against it, serving the game stream from the app itself. Local players persist in `.dynamodb/data`; delete that folder to start over. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
+
+### Development
+
+```
 npm test           # type-check (app, e2e, infra), the app's unit tests, the store against DynamoDB Local (needs Java), then the infra stack's; no test calls out
+npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java; no test calls out). First run: npx playwright install chromium
+npm run test:all   # both of the above
 npm run build      # next build; also proves the StyleX/Astryx atomic CSS compiles for production
 npm run format     # Prettier: tabs and single quotes
 npm run lint       # ESLint, two layout rules: braces on every if/else/loop, objects over lines
-npm run test:a11y  # axe-core in a real browser over the screen's states (Playwright; needs Java; no test calls out)
-npm run test:all   # both of the above
 ```
 
-`npm run dev:local` needs Java 17+. The first run downloads [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) into `.dynamodb/` (git-ignored), checked against a pinned sha256: AWS publishes only its latest release, so when AWS ships a new one the download fails with the new hash, to update in `scripts/dynamodb-local.mjs` after reading its release notes; every run starts it, creates the table if missing, and starts `next dev` against it. Local players persist in `.dynamodb/data`; delete that folder to start over. Ctrl-C stops both. Arguments pass through to Next, so `npm run dev:local -- -p 3001` works. Next allows one dev server per project, so stop any other `npm run dev` first.
+### Configuration
 
 Sign-in is off locally until `.env.local` has `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`; the game plays anonymously without them.
 
@@ -105,7 +120,7 @@ The environment:
 | `PLAYERS_TABLE_NAME`                   | The stack's `PlayersTableName` output                                                                                                                                                 |
 | `PLAYERS_TABLE_REGION`                 | The table's region. Defaults to `eu-central-1`; set explicitly rather than taken from the runtime, which may run elsewhere                                                            |
 | `CRON_SECRET`                          | Shared secret the scheduler sends as `x-cron-secret`. Unset, the sweep route rejects everything                                                                                        |
-| `DYNAMODB_ENDPOINT`                    | Local development only: point at DynamoDB Local instead of AWS. `dev:local` sets it, with the other three                                                                              |
+| `DYNAMODB_ENDPOINT`                    | Local development only: point at DynamoDB Local instead of AWS. `dev:local` sets it, along with `PLAYERS_TABLE_NAME`, `CRON_SECRET` and the three stream variables                                                                              |
 | `AUTH_SECRET`                          | Encrypts the Auth.js session cookie (`openssl rand -base64 32`). Unset, sign-in is off and the game runs anonymously                                                                   |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | The Google OAuth client. Redirect URI: `<origin>/api/auth/callback/google`                                                                                                             |
 | `STREAM_URL`                           | Where the game stream is: the stack's `StreamUrl` output when deployed; `<origin>/api/stream` locally |
@@ -113,18 +128,22 @@ The environment:
 | `LOCAL_STREAM`                         | Local development and the e2e tests only: `1` serves the game stream from `/api/stream`. `dev:local` sets it |
 | `AUTH_URL`                             | Deployed only: the public origin, e.g. `https://main.dalnijp0oanzq.amplifyapp.com`. Behind Amplify's proxy the app sees itself as `localhost:3000`, and Auth.js would build its Google callback from that |
 
-The cycle by hand, with a cookie jar standing in for the browser:
+### The cycle by hand
+
+With `npm run dev:local` running, and a cookie jar standing in for the browser (`jq` to read the ticket):
 
 ```
 curl -c jar -X POST localhost:3000/api/player                  # first visit: sets the httpOnly cookie
-curl -b jar localhost:3000/api/stream-token                    # the stream's URL and a 60 s ticket
+TOKEN=$(curl -sb jar localhost:3000/api/stream-token | jq -r .token)   # a 60 s single-use ticket for the stream
 curl -N "localhost:3000/api/stream?token=$TOKEN"               # the game stream: state every second, the hour, the board
 curl -b jar -H 'content-type: application/json' \
      -d '{"direction":"up"}' localhost:3000/api/guess          # 201; again and it is a 409
 curl -b jar -H 'content-type: application/json' \
      -d '{"direction":"up","price":1}' localhost:3000/api/guess   # 400: the server takes no price
-curl -X POST -H "x-cron-secret: $CRON_SECRET" localhost:3000/api/cron/resolve   # the sweep
+curl -X POST -H 'x-cron-secret: local-secret' localhost:3000/api/cron/resolve   # the sweep
 ```
+
+`local-secret` is the `CRON_SECRET` that `dev:local` uses unless you set one; it prints the sweep command when it starts.
 
 ## Tests
 
@@ -141,7 +160,9 @@ Fairness is the thing being demonstrated, so the tests carry the argument. `npm 
 
 ## Deploying it
 
-A push to `main` deploys the app: Amplify Hosting builds it with `amplify.yml`, and **only if every test passes** - `npm test` (the app's and the infra stack's), then the accessibility tests against the very build about to be deployed. A failing test fails the build, and the live site stays on the last good one. The infrastructure around it:
+Once set up, a push to `main` deploys the app: Amplify Hosting builds it with `amplify.yml`, and **only if every test passes** - `npm test` (the app's and the infra stack's), then the accessibility tests against the very build about to be deployed. A failing test fails the build, and the live site stays on the last good one.
+
+The infrastructure is a CDK stack in `infra/`, its own package:
 
 ```
 cd infra
@@ -151,25 +172,25 @@ npm run synth  # renders CloudFormation, no AWS credentials needed
 npm run deploy # needs AWS credentials
 ```
 
-One-off setup around the stack, because none of it can live in a template:
+The stack always deploys to eu-central-1, whatever region your AWS profile names. The profile only supplies credentials and the account; if its region differs, `cdk` prints a warning and carries on.
 
-- The stack always deploys to eu-central-1, whatever region your AWS profile names. The profile only supplies credentials and the account; if its region differs, `cdk` prints a warning and carries on.
-- Create the Amplify app in eu-central-1, connected to the repository, with an SSR compute role, and attach the stack's `PlayersTableAccessPolicyArn` output to that role.
-- Set the environment variables above on the Amplify app. They reach the build but not the SSR runtime, so `amplify.yml` copies exactly these names into `.env.production`, which Next loads at runtime. After changing one, redeploy.
-- Put the sweep's shared secret in SSM as a SecureString, with the same value as `CRON_SECRET` on the Amplify app. CloudFormation cannot create a SecureString, and this keeps the value out of every template:
+### From nothing
 
-  ```
-  aws ssm put-parameter --region eu-central-1 --type SecureString \
-    --name /btc-guess/cron-secret --value "$CRON_SECRET"
-  ```
+Some of this cannot live in a template, and the order matters: the stack needs the site's URL, and the secrets it reads must exist before its Lambdas run.
 
-- Put the stream's signing secret in SSM the same way, as `/btc-guess/stream-secret`, and set the same value as `STREAM_SECRET` on the Amplify app, with the stack's `StreamUrl` output as `STREAM_URL`:
+1. **Create the Amplify app** in eu-central-1, connected to the repository, with an SSR compute role. Note its URL (`https://main.<app id>.amplifyapp.com`) and put it in `SITE` in `infra/bin/app.ts`: the sweep calls it, and the stream accepts only its origin and `localhost:3000`.
+2. **Put the two secrets in SSM** as SecureStrings. CloudFormation cannot create a SecureString, and this keeps the values out of every template:
 
-  ```
-  aws ssm put-parameter --region eu-central-1 --type SecureString \
-    --name /btc-guess/stream-secret --value "$STREAM_SECRET"
-  ```
+   ```
+   aws ssm put-parameter --region eu-central-1 --type SecureString \
+     --name /btc-guess/cron-secret --value "$CRON_SECRET"
+   aws ssm put-parameter --region eu-central-1 --type SecureString \
+     --name /btc-guess/stream-secret --value "$STREAM_SECRET"
+   ```
 
-- Create a Google OAuth client (Web application) with the redirect URIs `http://localhost:3000/api/auth/callback/google` and `<deployed origin>/api/auth/callback/google`. Publish the consent screen rather than leaving it in Testing, or only listed test users can sign in.
+3. **Deploy the stack** (`npm run deploy` in `infra/`), and attach its `PlayersTableAccessPolicyArn` output to the Amplify compute role.
+4. **Create a Google OAuth client** (Web application) with the redirect URIs `http://localhost:3000/api/auth/callback/google` and `<deployed origin>/api/auth/callback/google`. Publish the consent screen rather than leaving it in Testing, or only listed test users can sign in.
+5. **Set the environment variables** (the table under "Configuration") on the Amplify app: `PLAYERS_TABLE_NAME` and `STREAM_URL` from the stack's outputs, `CRON_SECRET` and `STREAM_SECRET` with the same values as in SSM, the three `AUTH_` variables, and `AUTH_URL` as the site's origin. They reach the build but not the SSR runtime, so `amplify.yml` copies exactly these names into `.env.production`, which Next loads at runtime. After changing one, redeploy.
+6. **Push to `main`**, or start a build from the Amplify console.
 
 `docs/setup-checklist.md` records each of these as it was done for the live app.
