@@ -2,13 +2,15 @@
  * The chart's last hour of one-minute candles, read by the server.
  *
  * Engineering spec §5. Every browser used to fetch these from Coinbase
- * itself; now the stream sends them, from one cached item that the first
- * reader to find it older than ten seconds refreshes. So Coinbase sees one
- * candles request per ten seconds however many players are watching, and a
- * failed refresh serves the last hour it had rather than none.
+ * itself; now the stream sends them, from one cached item that the reader
+ * holding the ten seconds' refresh slot (`CANDLES_REFRESH_RATE`) refreshes
+ * once it is stale. So Coinbase sees at most one candles request per ten
+ * seconds however many players are watching, failing or not, and a failed
+ * refresh serves the last hour it had rather than none.
  */
 
 import { candlesUrl, parseCandles, type Candle } from './candles';
+import { CANDLES_REFRESH_RATE, rateSlot } from './rate-limit';
 import type { CachedCandles, GameStore } from './store';
 
 /** How long one fetched hour serves every stream: the chart's old refresh rhythm. */
@@ -40,7 +42,11 @@ export interface CandlesDeps {
 	now: () => number;
 }
 
-/** The cached hour while it is fresh, otherwise a new fetch; null only if there has never been one. */
+/**
+ * The cached hour while it is fresh, otherwise a new fetch by whichever
+ * caller takes the refresh slot, the cached hour for everyone else; null only
+ * if there has never been one.
+ */
 export async function getHourCandles({
 	store,
 	fetchCandles,
@@ -48,6 +54,9 @@ export async function getHourCandles({
 }: CandlesDeps): Promise<CachedCandles | null> {
 	const cached = await store.getCachedCandles();
 	if (cached && now() - cached.updatedAt < CANDLES_CACHE_MS) {
+		return cached;
+	}
+	if (!(await store.takeSlot(rateSlot(CANDLES_REFRESH_RATE, '', now())))) {
 		return cached;
 	}
 

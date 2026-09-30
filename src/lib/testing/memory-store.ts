@@ -278,3 +278,17 @@ export class MemoryStore implements GameStore {
 		}
 	}
 }
+
+/**
+ * The same table as seen from another runtime instance: the data is shared,
+ * but the object is not, so what one process shares in memory (keyed by its
+ * store) does not reach the other - as with two Lambdas on one table.
+ */
+export function fromAnotherInstance(store: MemoryStore): GameStore {
+	return new Proxy(store, {
+		get(target, key) {
+			const value = Reflect.get(target, key);
+			return typeof value === 'function' ? value.bind(target) : value;
+		},
+	});
+}

@@ -18,7 +18,7 @@
 
 import { z } from 'zod';
 import { coinbaseUrl } from './coinbase';
-import { PRICE_READ_RATE, rateSlot } from './rate-limit';
+import { PRICE_READ_RATE, PRICE_REFRESH_RATE, rateSlot } from './rate-limit';
 import type { CachedPrice, GameStore } from './store';
 
 export const PRICE_URL = coinbaseUrl('ticker');
@@ -216,8 +216,11 @@ const reads = new WeakMap<GameStore, ReadState>();
 /**
  * The current game price for the screen: the cached one while it is fresh,
  * otherwise a new fetch, shared by every caller while it is in flight and not
- * repeated for `PRICE_FAILURE_MS` after it fails. Returns the last known
- * price if the fetch fails, and null only if there has never been one.
+ * repeated for `PRICE_FAILURE_MS` after it fails. Across instances, only the
+ * caller that takes the second's refresh slot (`PRICE_REFRESH_RATE`) fetches;
+ * the others serve the cache. Returns the last known price if the fetch
+ * fails or another instance is refreshing, and null only if there has never
+ * been one.
  */
 export async function getGamePrice(
 	deps: PriceDeps,
@@ -245,15 +248,20 @@ export async function getGamePrice(
 		return cached;
 	}
 
+	// Set before the first await, so callers arriving meanwhile share it.
 	const read = state;
-	read.inFlight = fetchFreshPrice(deps)
-		.then((fresh) => {
-			read.failedAt = fresh ? null : deps.now();
-			return fresh;
-		})
-		.finally(() => {
-			read.inFlight = null;
-		});
+	read.inFlight = (async () => {
+		const slot = rateSlot(PRICE_REFRESH_RATE, '', deps.now());
+		if (!(await deps.store.takeSlot(slot))) {
+			// Another instance is refreshing: not a failure, so no back-off.
+			return null;
+		}
+		const fresh = await fetchFreshPrice(deps);
+		read.failedAt = fresh ? null : deps.now();
+		return fresh;
+	})().finally(() => {
+		read.inFlight = null;
+	});
 	return (await read.inFlight) ?? cached;
 }
 

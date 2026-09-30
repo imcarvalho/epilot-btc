@@ -10,7 +10,7 @@ import {
 	PriceFetchError,
 	PRICE_URL,
 } from './price';
-import { MemoryStore } from './testing/memory-store';
+import { fromAnotherInstance, MemoryStore } from './testing/memory-store';
 
 // Recorded from the live endpoint on 27 Sep 2026.
 const RECORDED = {
@@ -262,6 +262,67 @@ describe('getGamePrice under load', () => {
 		clock = T + PRICE_FAILURE_MS;
 		await getGamePrice(deps);
 		expect(fetchPrice).toHaveBeenCalledTimes(2);
+	});
+
+	it('lets one instance refresh a stale price while the others serve the cache', async () => {
+		const store = new MemoryStore();
+		const stale = {
+			price: 100,
+			updatedAt: T - 5_000,
+		};
+		store.price = stale;
+		const fetchPrice = vi.fn(async () => ({
+			price: 200,
+			time: T,
+		}));
+		const prices = await Promise.all(
+			[store, fromAnotherInstance(store), fromAnotherInstance(store)].map((s) =>
+				getGamePrice({
+					store: s,
+					fetchPrice,
+					now: () => T,
+				}),
+			),
+		);
+		expect(fetchPrice).toHaveBeenCalledTimes(1);
+		expect(prices).toContainEqual({
+			price: 200,
+			updatedAt: T,
+		});
+		expect(prices.filter((p) => p?.price === 100)).toHaveLength(2);
+	});
+
+	it('keeps an outage to one Coinbase call a second, however many instances ask', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const store = new MemoryStore();
+		store.price = {
+			price: 100,
+			updatedAt: T - 60_000,
+		};
+		const instances = [
+			store,
+			...Array.from(
+				{
+					length: 8,
+				},
+				() => fromAnotherInstance(store),
+			),
+		];
+		const fetchPrice = vi.fn(async () => {
+			throw new PriceFetchError('429');
+		});
+		for (let ms = 0; ms < 3_000; ms += 250) {
+			await Promise.all(
+				instances.map((s) =>
+					getGamePrice({
+						store: s,
+						fetchPrice,
+						now: () => T + ms,
+					}),
+				),
+			);
+		}
+		expect(fetchPrice).toHaveBeenCalledTimes(3);
 	});
 
 	it('reads again at once after a success', async () => {
