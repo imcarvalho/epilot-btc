@@ -231,7 +231,7 @@ function LockedStrip({
 						)}
 					>
 						<Icon icon={moved === 0 ? Minus : Check} size="sm" />
-						<div {...stylex.props(styles.stack)}>
+						<div {...stylex.props(styles.stack, styles.movedText)}>
 							<span>
 								{moved === 0 ? 'Price has not moved' : 'Price has moved'}
 							</span>

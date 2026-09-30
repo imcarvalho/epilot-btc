@@ -80,7 +80,8 @@ export const styles = stylex.create({
 	},
 	// On a wide strip, one width however far the price has moved (room for
 	// "-$1,234.56 so far"), against the right edge: the bar beside it no
-	// longer grows and shrinks with the figure.
+	// longer grows and shrinks with the figure. There the icon and text sit
+	// on the right too, so the slack falls on the side facing the bar.
 	movedBox: {
 		alignItems: 'center',
 		borderRadius: 'var(--radius-element)',
@@ -88,6 +89,10 @@ export const styles = stylex.create({
 		borderWidth: 1,
 		boxSizing: 'border-box',
 		display: 'flex',
+		flexDirection: {
+			default: 'row-reverse',
+			'@media (max-width: 860px)': 'row',
+		},
 		fontSize: 'var(--font-size-sm)',
 		gap: 'var(--spacing-3)',
 		justifySelf: {
@@ -128,6 +133,16 @@ export const styles = stylex.create({
 	},
 	movedFigure: {
 		color: 'var(--color-text-secondary)',
+	},
+	movedText: {
+		alignItems: {
+			default: 'flex-end',
+			'@media (max-width: 860px)': 'flex-start',
+		},
+		textAlign: {
+			default: 'end',
+			'@media (max-width: 860px)': 'start',
+		},
 	},
 	strong: {
 		color: 'var(--color-text-primary)',
