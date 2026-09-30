@@ -99,6 +99,8 @@ Designed against the flow above. The visual language is the Dracula palette on a
 
 **On a phone.** The screens above are drawn at desktop width. On a phone the same screen is repacked so the price, the chart and both buttons fit on the first screen, since that is the game and everything else is context. The top bar packs into as few rows as fit: the name beside the title, then the score, then sign-in. The feed badge ("Coinbase BTC/USD · 1-minute candles · live") moves into the price card beside its title, because it describes the price and not the app, and it does so at every width. The chart is shorter, and its price labels move inside the plot so the plot keeps its full width. Higher and Lower stay side by side, so the two choices are always seen together. When nothing is in play, the guess strip is only a prompt, so on a phone it drops below the buttons it points at. Once a guess is in play, or a result or a warning is showing, the strip is what is happening, and it stays on top.
 
+The designs above draw falling candles filled; the app draws them hollow (6.1). The designs predate that change and have not been re-exported.
+
 ---
 
 ## 6. The player experience
@@ -114,6 +116,7 @@ Two views of the same market, switched by a control in the chart header - **Last
 - **Why candles and not a line:** each candle is one minute, which is the unit the game is played in. Open, close and the wicks show how much the price moved inside a minute, which is exactly what the player is betting on.
 - **Why an hour:** over a minute BTC barely moves, and a number alone gives nothing to reason about. An hour of history makes a tiny move legible - climbing, sliding or flat.
 - **The Y axis must not start at zero**, or the chart is a flat line. It fits the data range with a small margin.
+- **Rising candles are filled and falling ones hollow**, so direction reads from the shape as well as the colour (as outcomes never rely on colour alone, 6.5). On a phone a candle is only a few pixels wide and the difference is slight; there the chart's summary and the inspector say each candle's direction in words.
 - **During a guess the chart carries the guess:** a dashed line at the locked-in price, and the minute since the guess shaded.
 
 **The minute: a live line, one point per second** (see the third screen above). Once a guess is in play the view can switch to the minute itself: the X axis restarts at the guess, the dashed line is the price locked in, and the area between it and the live line is the margin the player is winning or losing by. The countdown becomes the axis rather than a number off to the side.
