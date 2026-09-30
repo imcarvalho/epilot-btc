@@ -78,14 +78,26 @@ export const styles = stylex.create({
 			'@media (max-width: 860px)': '1fr 1fr',
 		},
 	},
+	// On a wide strip, one width however far the price has moved (room for
+	// "-$1,234.56 so far"), against the right edge: the bar beside it no
+	// longer grows and shrinks with the figure.
 	movedBox: {
 		alignItems: 'center',
 		borderRadius: 'var(--radius-element)',
 		borderStyle: 'solid',
 		borderWidth: 1,
+		boxSizing: 'border-box',
 		display: 'flex',
 		fontSize: 'var(--font-size-sm)',
 		gap: 'var(--spacing-3)',
+		justifySelf: {
+			default: 'end',
+			'@media (max-width: 860px)': 'stretch',
+		},
+		width: {
+			default: '14rem',
+			'@media (max-width: 860px)': 'auto',
+		},
 		paddingBlock: 'var(--spacing-2)',
 		paddingInline: {
 			default: 'var(--spacing-4)',
