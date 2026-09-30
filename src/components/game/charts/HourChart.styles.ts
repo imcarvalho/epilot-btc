@@ -24,8 +24,12 @@ export const styles = stylex.create({
 	upFill: {
 		fill: palette.upFrom,
 	},
-	downFill: {
-		fill: palette.downFrom,
+	// Hollow, so a falling candle differs from a rising one by shape too. The
+	// width is `HOLLOW_STROKE` in candles.ts, which insets the path for it.
+	downHollow: {
+		fill: 'none',
+		stroke: palette.downFrom,
+		strokeWidth: 1,
 	},
 	note: {
 		alignItems: 'center',

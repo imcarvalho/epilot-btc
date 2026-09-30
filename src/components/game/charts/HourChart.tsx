@@ -124,7 +124,7 @@ export function HourChart({
 							{...stylex.props(styles.wick, styles.downStroke)}
 						/>
 						<path d={chart.upBodies} {...stylex.props(styles.upFill)} />
-						<path d={chart.downBodies} {...stylex.props(styles.downFill)} />
+						<path d={chart.downBodies} {...stylex.props(styles.downHollow)} />
 						{lock && lockX !== null && (
 							<LockedLine
 								width={plotWidth}

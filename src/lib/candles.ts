@@ -88,6 +88,7 @@ export interface PlacedCandle {
 
 export interface CandleChart {
 	upBodies: string;
+	/** Outlines, inset for a `HOLLOW_STROKE`-wide stroke: drawn hollow, not filled. */
 	downBodies: string;
 	upWicks: string;
 	downWicks: string;
@@ -106,13 +107,24 @@ export interface CandleChart {
 /** A flat candle (open = close) still draws as a visible dash. */
 const MIN_BODY = 1.5;
 
+/**
+ * Falling bodies are hollow, so up and down differ by shape as well as by
+ * colour (WCAG 1.4.1): drawn as an outline this wide, inset by half of it so
+ * the outline stays inside the same box a filled body takes. The stroke width
+ * in `HourChart.styles.ts` must match.
+ */
+const HOLLOW_STROKE = 1;
+
+/** Narrow enough to leave a gap between candles, wide enough to show a hollow. */
+const MIN_BODY_WIDTH = 3;
+
 export function buildCandleChart(
 	candles: Candle[],
 	{ width, height, windowEnd, padding = 8, includePrice }: ChartSize,
 ): CandleChart {
 	const windowStart = windowEnd - HOUR_MS;
 	const slot = width / 60;
-	const bodyWidth = Math.max(1, slot * 0.55);
+	const bodyWidth = Math.max(MIN_BODY_WIDTH, slot * 0.55);
 
 	const extra = includePrice === undefined ? [] : [includePrice];
 	const lo = Math.min(...candles.map((c) => c.low), ...extra);
@@ -141,13 +153,18 @@ export function buildCandleChart(
 		const highY = yFor(c.high);
 		const lowY = yFor(c.low);
 
-		const body = `M${r(x - bodyWidth / 2)} ${r(bodyY)}h${r(bodyWidth)}v${r(bodyHeight)}h${r(-bodyWidth)}Z`;
-		const wick = `M${r(x)} ${r(highY)}V${r(lowY)}`;
+		const box = (inset: number) =>
+			`M${r(x - bodyWidth / 2 + inset)} ${r(bodyY + inset)}h${r(bodyWidth - 2 * inset)}v${r(bodyHeight - 2 * inset)}h${r(-(bodyWidth - 2 * inset))}Z`;
+		// Above and below the body only, so no wick shows through a hollow one.
+		const bodyBottom = bodyY + bodyHeight;
+		const wick =
+			(highY < bodyY ? `M${r(x)} ${r(highY)}V${r(bodyY)}` : '') +
+			(lowY > bodyBottom ? `M${r(x)} ${r(bodyBottom)}V${r(lowY)}` : '');
 		if (up) {
-			paths.upBodies += body;
+			paths.upBodies += box(0);
 			paths.upWicks += wick;
 		} else {
-			paths.downBodies += body;
+			paths.downBodies += box(HOLLOW_STROKE / 2);
 			paths.downWicks += wick;
 		}
 		placed.push({

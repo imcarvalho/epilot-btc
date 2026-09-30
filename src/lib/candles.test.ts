@@ -94,6 +94,39 @@ describe('buildCandleChart', () => {
 		expect(chart.downBodies.match(/M/g)).toHaveLength(1);
 	});
 
+	it('insets falling bodies for their outline and keeps every wick outside the body', () => {
+		const chart = buildCandleChart(
+			[candle(0, 100, 110, 90, 120), candle(1, 110, 100, 90, 120)],
+			size,
+		);
+		const [up, down] = chart.candles;
+		const coords = (path: string) => path.match(/-?[\d.]+/g)!.map(Number);
+		// M x y h w v h h -w: the hollow one starts half a stroke in, both ways.
+		const [upX, upY] = coords(chart.upBodies);
+		const [downX, downY, downW] = coords(chart.downBodies);
+		expect(downY).toBeCloseTo(down.bodyY + 0.5, 1);
+		expect(upY).toBeCloseTo(up.bodyY, 1);
+		expect(downX - (down.x - up.x)).toBeCloseTo(upX + 0.5, 1);
+		expect(downW).toBeCloseTo(coords(chart.upBodies)[2] - 1, 1);
+		// Two segments per candle, meeting the body at its edges, never crossing it.
+		for (const [path, c] of [
+			[chart.upWicks, up],
+			[chart.downWicks, down],
+		] as const) {
+			const ys = coords(path).filter((_, i) => i % 3 !== 0);
+			expect(ys).toHaveLength(4);
+			expect(ys[0]).toBeCloseTo(c.highY, 1);
+			expect(ys[1]).toBeCloseTo(c.bodyY, 1);
+			expect(ys[2]).toBeCloseTo(c.bodyY + c.bodyHeight, 1);
+			expect(ys[3]).toBeCloseTo(c.lowY, 1);
+		}
+	});
+
+	it('draws no wick where the body reaches the high or the low', () => {
+		const chart = buildCandleChart([candle(0, 100, 110, 100, 110)], size);
+		expect(chart.upWicks).toBe('');
+	});
+
 	it('maps the hour onto the width by time, so a missing minute leaves a gap', () => {
 		const chart = buildCandleChart(
 			[candle(0, 100, 110), candle(59, 100, 110)],
