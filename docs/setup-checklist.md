@@ -40,7 +40,6 @@ Blocks Amplify, which deploys from the repository.
 - [x] The Amplify compute role (`epilot-btc-amplify-compute`) has `PlayersTableAccessPolicyArn` attached, and is set on the app
 - [x] Environment variables set on the app: `PLAYERS_TABLE_NAME`, `PLAYERS_TABLE_REGION`, `CRON_SECRET` (index names are constants in code). `amplify.yml` copies them into `.env.production` so the SSR runtime sees them
 - [x] App recreated in `eu-central-1`, next to the table. The first one had landed in `eu-north-1` by accident (the console's region selector)
-- [x] Old `eu-north-1` app `d2wmdgm5qnm2sa` deleted, with its logging role and policy (`AmplifySSRLoggingRole-8dba662f-...`)
 
 Do this as soon as there is something buildable - Amplify needs a `package.json` and a build command, so it comes after the Next scaffold, not before. Everything after that point should deploy on a push, because the deployed link is the deliverable most likely to fail and the only one that cannot be recovered afterwards.
 
