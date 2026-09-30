@@ -1,6 +1,6 @@
 # Setup checklist
 
-**Live:** https://main.dalnijp0oanzq.amplifyapp.com/ · **Repo:** `imcarvalho/epilot-btc` (private until delivery)
+**Live:** https://main.dalnijp0oanzq.amplifyapp.com/ · **Repo:** `imcarvalho/epilot-btc` (public)
 
 Accounts and one-off admin, in dependency order. Everything here is a human task - accounts, cards, credentials and consent screens are not the agent's to create. The agent runs `cdk bootstrap` and deploys once credentials exist.
 

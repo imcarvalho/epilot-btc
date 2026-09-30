@@ -3,6 +3,7 @@
 Written and reviewed before any code. Both are the source of truth; `CLAUDE.md` at the repository root is the index into them.
 
 - **`product-spec.md`** - what is being built and why. Rules (§2), scope (§3), user flow (§4), the screens (§5), the reasoning behind each state (§6), copy (§7), acceptance criteria (§8), build order (§9).
+- **`onboarding.md`** - how the code actually works: what to read first, how one round runs end to end, the seams that repeat, why A and not B, and the parts that are subtler than they look. Written from the code rather than the specs, so it is the place to start before changing anything.
 - **`engineering-spec.md`** - how it is built. The principle (§1), architecture and why Next.js (§2), resolution and its two triggers (§3), concurrency (§4), price data (§5), identity and leaderboard (§6), frontend (§7), operations (§8), test plan (§9), definition of done (§10), risks (§11).
 
 `screens/mockups/` holds the seven designs at 2880x2240 and `screens/mockups/small/` the 1440x1120 versions the product spec embeds. They are **mockups, not screenshots** - drawn before the code, and kept as the design intent the build was aimed at. `flows/` holds the user-flow diagram and its Mermaid source.

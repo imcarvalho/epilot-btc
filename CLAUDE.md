@@ -148,6 +148,10 @@ The screen:
 
 - `src/auth.ts` - Google sign-in via Auth.js (scope `openid`, JWT session carrying only `google:<sub>`); its `signIn` callback runs `signIn` in `src/lib/game.ts`, the one-time anonymous merge: one transaction that writes the account onto the board, deletes the anonymous item if unchanged, and increments `BOARD#GLOBAL`. Signed-in players have no TTL. Route handlers read identity through `playerIdFrom` (session first, then the anonymous cookie); without `AUTH_SECRET` sign-in is off. `src/lib/sign-in.ts` holds what the screen says afterwards
 
+## Onboarding
+
+`docs/onboarding.md` is the guided path through this codebase: read-this-first order, one round traced end to end, the repeating seams (injected deps, the store interface, pure functions, conditional writes), the decisions with their reversals, and the handful of parts that are subtler than they look. It is written from the code, so when the code changes in a way that makes one of its claims wrong, fix it there too.
+
 ## Screens: mockups and screenshots
 
 `docs/screens/mockups/` holds the seven artboards drawn before the code, and `mockups/explorations/` two layouts tried and set aside. **They are mockups, and the product spec now says so at the top of §5.** They are kept, not replaced: they are the evidence the design came before the build, which is half of what this exercise is being judged on.
