@@ -145,6 +145,12 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/auth.ts` - Google sign-in via Auth.js (scope `openid`, JWT session carrying only `google:<sub>`); its `signIn` callback runs `signIn` in `src/lib/game.ts`, the one-time anonymous merge: one transaction that writes the account onto the board, deletes the anonymous item if unchanged, and increments `BOARD#GLOBAL`. Signed-in players have no TTL. Route handlers read identity through `playerIdFrom` (session first, then the anonymous cookie); without `AUTH_SECRET` sign-in is off. `src/lib/sign-in.ts` holds what the screen says afterwards
 
+## Screens: mockups and screenshots
+
+`docs/screens/mockups/` holds the seven artboards drawn before the code, and `mockups/explorations/` two layouts tried and set aside. **They are mockups, and the product spec now says so at the top of §5.** They are kept, not replaced: they are the evidence the design came before the build, which is half of what this exercise is being judged on.
+
+Screenshots of the running app are a different artefact and belong in `docs/screens/app/`, never mixed into `mockups/`. When capturing them, drive a local run with Playwright and the fake feed in `src/lib/testing/` rather than pointing at the deployed site: the awkward states - time up with an unchanged price, a delayed feed, a loss - cannot be forced against the live market, and a screenshot set missing exactly those states misses the ones the spec argues hardest about. Capture at 1440x1120, the mockups' frame, so the two can be compared side by side.
+
 ## Regenerating the diagrams
 
 `docs/flows/*.mmd` is the source; the `.png` beside it is derived and committed so the specs can embed it. **They are edited together, never separately** - a `.mmd` changed without re-rendering leaves the picture in the product spec contradicting the text, which is how a reviewer finds an inconsistency before you do.

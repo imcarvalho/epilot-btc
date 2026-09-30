@@ -67,35 +67,37 @@ The Mermaid source is in `flows/00-user-flow.mmd`.
 
 ## 5. The screens
 
+**Every image in this section is a mockup, made before the code existed.** They are the design intent the build was aimed at, not screenshots of the running app - so where the two differ, the app is what is true and this section is the argument it was built from. The mockups live in `screens/mockups/`, and `screens/mockups/explorations/` holds two layouts that were tried and set aside.
+
 Designed against the flow above. The visual language is the Dracula palette on a near-black ground, with pastel gradients reserved for the two hero actions, built on the Astryx component library.
 
 **Day zero.** The first thing anyone sees: no guesses, no history, nobody on the board. The chart is the exception, and deliberately so - the market has an hour behind it whether or not anyone has played, so the one thing alive on an otherwise empty screen is the thing the game is about. Both empty cards say what will fill them rather than apologising for being empty, and the score shows a plain `0` with no success rate and no streak beside it (6.5).
 
-![Day zero: a full hour of candles, the two buttons ready, a welcome strip, and two empty cards explaining what will fill them](screens/small/00-day-zero.png)
+![Day zero: a full hour of candles, the two buttons ready, a welcome strip, and two empty cards explaining what will fill them](screens/mockups/small/00-day-zero.png)
 
 **Ready to guess.** The same screen once there is a history behind it: chart and the two buttons are the hero, the guess area is an empty state, leaderboard and history sit quietly at the bottom.
 
-![Ready to guess: the hour of candles, the two gradient buttons, an empty guess strip, and the leaderboard and history below](screens/small/01-ready.png)
+![Ready to guess: the hour of candles, the two gradient buttons, an empty guess strip, and the leaderboard and history below](screens/mockups/small/01-ready.png)
 
 **Guess in play.** The chosen button stays lit and marked, the other goes flat and disabled, and the strip under them carries the locked price, the countdown and whether the price has moved.
 
-![Guess in play: Higher chosen and marked, Lower disabled, countdown at 47 seconds, price has moved](screens/small/02-guess-in-play.png)
+![Guess in play: Higher chosen and marked, Lower disabled, countdown at 47 seconds, price has moved](screens/mockups/small/02-guess-in-play.png)
 
 **The minute, live.** Optional, and the reason the waiting minute is worth watching: the chart switches from the hour to the minute itself, drawn live from the game price at one point per second, against the dashed line where the guess was locked.
 
-![The minute view: a live line above the dashed locked-in price, twenty seconds left, labelled ahead by 118 dollars, provisional](screens/small/03b-tension.png)
+![The minute view: a live line above the dashed locked-in price, twenty seconds left, labelled ahead by 118 dollars, provisional](screens/mockups/small/03b-tension.png)
 
 **Time up, price unchanged.** The state everyone forgets. The countdown holds at zero, the last candles sit flat on the locked price, and the app says what it is waiting for.
 
-![Time up: countdown at zero, flat candles on the dashed line, price has not moved](screens/small/03-time-up.png)
+![Time up: countdown at zero, flat candles on the dashed line, price has not moved](screens/mockups/small/03-time-up.png)
 
 **Correct.** Confetti, a mint banner, the score and streak updated, and a new row at the top of the history.
 
-![Correct guess: confetti, a green banner reading correct, the price went up, plus one, score five](screens/small/04-correct.png)
+![Correct guess: confetti, a green banner reading correct, the price went up, plus one, score five](screens/mockups/small/04-correct.png)
 
 **Wrong.** The same banner shape in coral, so the two outcomes are clearly the same kind of event - but no confetti, and the streak reads as ended rather than zero.
 
-![Wrong guess: a coral banner reading not this time, the price went down, minus one, score three](screens/small/05-wrong.png)
+![Wrong guess: a coral banner reading not this time, the price went down, minus one, score three](screens/mockups/small/05-wrong.png)
 
 **On a phone.** The screens above are drawn at desktop width. On a phone the same screen is repacked so the price, the chart and both buttons fit on the first screen, since that is the game and everything else is context. The top bar packs into as few rows as fit: the name beside the title, then the score, then sign-in. The feed badge ("Coinbase BTC/USD · 1-minute candles · live") moves into the price card beside its title, because it describes the price and not the app, and it does so at every width. The chart is shorter, and its price labels move inside the plot so the plot keeps its full width. Higher and Lower stay side by side, so the two choices are always seen together. When nothing is in play, the guess strip is only a prompt, so on a phone it drops below the buttons it points at. A guess in play and a result sit right under the chart they are about, so the price and the chart still lead the screen. A warning (a delayed feed, a guess that did not go through) is what is happening, and it stays on top.
 
