@@ -4,8 +4,6 @@ Guess whether BTC/USD will be higher or lower one minute from now. Right +1, wro
 
 **Live: https://main.dalnijp0oanzq.amplifyapp.com**
 
-A take-home exercise for epilot. Everything in the build order is in: the fair guess-and-resolve loop, the waiting states and result moments, the last-hour chart, the scoreboard with a generated name, Google sign-in, the leaderboard, the live minute and confetti.
-
 ## Quickstart
 
 You need **Node 24** (`.nvmrc`; the Astryx CLI that builds the theme needs >= 22.13) and **Java 17+** on your `PATH` (for [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html), which stands in for the table). No AWS account, no Google client and no `.env` file are needed.
