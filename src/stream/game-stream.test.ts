@@ -170,6 +170,49 @@ describe('the game stream', () => {
 		expect(t.count('leaderboard')).toBe(2);
 	});
 
+	it('sends the board again when another player moves the podium', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		t.onTick((clock) => {
+			if (clock === T0 + 5_000) {
+				t.store.listTopOfBoard = async () => [
+					{
+						playerId: 'google:someone-else',
+						publicName: 'QuietOtter',
+						score: 3,
+						wins: 3,
+						losses: 0,
+					},
+				];
+			}
+		});
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 25_000,
+			sleep: t.sleep,
+		});
+		const boards = t.events.filter((e) => e.type === 'leaderboard');
+		expect(boards).toHaveLength(2);
+		expect(boards[1]).toMatchObject({
+			data: {
+				podium: [
+					{
+						publicName: 'QuietOtter',
+					},
+				],
+			},
+		});
+	});
+
+	it('does not send an unchanged board again', async () => {
+		const t = setup();
+		const { playerId } = await createAnonymousPlayer(t.deps);
+		await runGameStream(t.deps, playerId, t.sink, {
+			lifetimeMs: 35_000,
+			sleep: t.sleep,
+		});
+		expect(t.count('leaderboard')).toBe(1);
+	});
+
 	it('sends the hour only when the shared cache refreshes it', async () => {
 		const t = setup();
 		const { playerId } = await createAnonymousPlayer(t.deps);

@@ -15,7 +15,7 @@
 import type { StreamEvent } from '@/lib/contracts';
 import { getState, type GameDeps } from '@/lib/game';
 import { getHourCandles } from '@/lib/hour-candles';
-import { getLeaderboard } from '@/lib/leaderboard';
+import { getLeaderboard, PODIUM_CACHE_MS } from '@/lib/leaderboard';
 
 export interface StreamSink {
 	send(event: StreamEvent): void;
@@ -68,7 +68,9 @@ export function formatEvent({ type, data }: StreamEvent): string {
  * - `candles` whenever the shared hour is refreshed, every ten seconds - or
  *   once as null, if there is no hour at all (Coinbase down, nothing cached).
  * - `leaderboard` at once, and again whenever a result lands or the player
- *   signs in, which are the only things that move it for them.
+ *   signs in. Other players move it too, so it is also read again each time
+ *   the shared podium can have changed (`PODIUM_CACHE_MS`), and sent if it
+ *   did.
  * - `gone`, and the stream ends, if the player no longer exists.
  *
  * A failed tick is logged (`stream-tick-failed`) and skipped; the stream ends
@@ -82,6 +84,8 @@ export async function runGameStream(
 ): Promise<void> {
 	const started = deps.now();
 	let boardKey: string | null = null;
+	let boardReadAt = -Infinity;
+	let boardSent: string | null = null;
 	// When the hour sent last was fetched; 0 once "no hour" has been said.
 	let candlesAt: number | null = null;
 
@@ -106,14 +110,20 @@ export async function runGameStream(
 			});
 
 			const key = `${state.lastResult?.id ?? ''}|${state.signedIn}`;
-			if (key !== boardKey) {
+			if (key !== boardKey || deps.now() - boardReadAt >= PODIUM_CACHE_MS) {
 				const board = await getLeaderboard(deps, playerId);
+				const sent = JSON.stringify(board);
 				// Only after it is read, so a failed read is tried again next tick.
+				const moved = key !== boardKey || sent !== boardSent;
 				boardKey = key;
-				sink.send({
-					type: 'leaderboard',
-					data: board,
-				});
+				boardReadAt = deps.now();
+				if (moved) {
+					boardSent = sent;
+					sink.send({
+						type: 'leaderboard',
+						data: board,
+					});
+				}
 			}
 
 			if (candles && candles.updatedAt !== candlesAt) {
