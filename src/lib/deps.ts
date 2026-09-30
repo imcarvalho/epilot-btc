@@ -23,6 +23,24 @@ import { fetchHourCandles } from './hour-candles';
 import { fetchTape } from './settlement';
 import { createSharedTape } from './shared-tape';
 
+/**
+ * The SDK waits on a hung connection indefinitely by default (and only warns
+ * at `requestTimeout` unless told to throw), and the stream reads the store
+ * every second: a call that has not answered in two seconds is abandoned and
+ * retried once, so a stalled call costs about four seconds of ticks (logged
+ * as `stream-tick-failed`) rather than the stream. DynamoDB answers
+ * in milliseconds; a retried conditional write that had in fact landed fails
+ * its condition, and is read back like any lost race.
+ */
+export const DYNAMO_TIMEOUTS = {
+	requestHandler: {
+		connectionTimeout: 1_000,
+		requestTimeout: 2_000,
+		throwOnRequestTimeout: true,
+	},
+	maxAttempts: 2,
+};
+
 let deps: GameDeps | undefined;
 
 export function getDeps(): GameDeps {
@@ -40,6 +58,7 @@ export function getDeps(): GameDeps {
 			region: process.env.PLAYERS_TABLE_REGION || 'eu-central-1',
 			// Local development against DynamoDB Local only; unset in every deployed environment.
 			endpoint: process.env.DYNAMODB_ENDPOINT || undefined,
+			...DYNAMO_TIMEOUTS,
 		}),
 	);
 
