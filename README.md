@@ -84,9 +84,14 @@ Named here rather than found later:
 - **OpenNext with CDK** instead of Amplify Hosting, for control over the CloudFront distribution: what a country flag beside each name or CloudFront-level caching of the podium would have needed.
 - **A Vite SPA plus one Lambda** instead of Next: worth revisiting if sign-in, and with it the leaderboard, ever left scope.
 
-### Future work
+### Possible Future work
 
-Sign-in providers beyond Google and self-service account deletion; leaderboards over time windows and a country view; an opponent bot (a scheduled job playing a fixed strategy under a reserved player); other trading pairs; variable stakes or guess windows. Unique display names: today two players can share a generated name, and a short id after it (`AmazingWeasel:123`) would tell them apart.
+- Sign-in providers beyond Google and self-service account deletion;
+- leaderboards over time windows and a country view
+- an opponent bot (a scheduled job playing a fixed strategy under a reserved player)
+- other trading pairs;
+- variable stakes or guess windows;
+- Unique display names: today two players can share a generated name, and a short id after it (`AmazingWeasel:123`) would tell them apart.
 
 ## Where things are
 
