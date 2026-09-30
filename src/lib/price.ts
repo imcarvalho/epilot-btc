@@ -2,12 +2,12 @@
  * The game price: the only price that can affect an outcome.
  *
  * Engineering spec §5. Read server-side from Coinbase Exchange's ticker -
- * the same market the browser's chart and live minute draw from, so the
+ * the same market the chart and live minute draw from, so the
  * locked price, the settled price and the provisional line all describe one
  * market (Coinbase's retail spot price sits $20-30 away from it). Cached in one item so a
  * single fetch per window serves every player, and marked stale after 15 s so
- * that nothing resolves against an old number (§3, "A stale price resolves
- * nothing"). On failure the last known price is served with its own
+ * that nobody locks in at an old number (§3, "An unreadable market resolves
+ * nothing"; this price never settles a guess, the tape does). On failure the last known price is served with its own
  * timestamp: the game degrades - it reports the feed as delayed - rather than
  * breaking.
  *
@@ -30,7 +30,7 @@ export const PRICE_URL = coinbaseUrl('ticker');
  */
 export const PRICE_CACHE_MS = 1_000;
 
-/** Older than this, a price resolves nothing and the feed is reported as delayed. */
+/** Older than this, a price takes no guesses and the feed is reported as delayed. */
 export const PRICE_STALE_MS = 15_000;
 
 /** The last trade on the BTC-USD book: `{ price, time, bid, ask, ... }`. */

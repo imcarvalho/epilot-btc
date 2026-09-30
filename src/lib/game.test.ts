@@ -1,7 +1,7 @@
 /**
  * Engineering spec §9: the cycle end to end over a store with DynamoDB's
  * conditional semantics - a double guess is refused, resolution is
- * idempotent, a stale price blocks it, and the sweep picks up a guess left
+ * idempotent, an unreadable market blocks it, and the sweep picks up a guess left
  * by a closed browser exactly once, even when it races the player's own read.
  * And §6.2: first sign-in carries the anonymous player over exactly once.
  */
@@ -594,7 +594,7 @@ describe('the sweep', () => {
 		});
 	});
 
-	it('resolves nothing on a stale feed', async () => {
+	it('resolves nothing when the market cannot be read', async () => {
 		const { deps, advance, setFeed } = setup(100_000);
 		const { playerId } = await createAnonymousPlayer(deps);
 		await placeGuess(deps, playerId, 'up');

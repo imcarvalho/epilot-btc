@@ -108,7 +108,7 @@ The backend cycle (build order item 1, server half) is built on top of them:
 - `src/lib/identity.ts` - the anonymous identity cookie (`btc_player`): the bare uuid in an `httpOnly` cookie, the `anon:` prefix added on the server
 - `src/lib/spoken.ts` - what a screen reader hears where the screen shows a symbol ("plus 1", "minus 1", "42 points")
 - `src/lib/contracts.ts` - request schemas (Zod, strict) and response types, shared with the client
-- `src/app/api/{player,stream-token,guess,cron/resolve}/route.ts` - thin adapters over `game.ts`
+- `src/app/api/{player,stream-token,snapshot,guess,cron/resolve}/route.ts` - thin adapters over `game.ts` (`snapshot` is one stream tick, polled when the stream cannot be opened)
 - `src/app/actions.ts` - sign-in and sign-out as server actions, plain forms that work before hydration
 
 The game stream (eng §3.1): `src/stream/game-stream.ts` (`runGameStream`, host-independent) is run by `src/stream/lambda.ts` (the CDK stack's `GameStream` Function URL, bundled from `src/`) in production and by `src/app/api/stream/route.ts` locally (`LOCAL_STREAM=1`, set by `dev:local` and the e2e servers). `src/lib/stream-token.ts` signs the ticket with the secret in SSM `/btc-guess/stream-secret`, also set as `STREAM_SECRET` on Amplify with `STREAM_URL`.
@@ -138,7 +138,7 @@ The screen (build order item 1, client half, first-visit state):
 
 - `src/lib/confetti.ts` + `Confetti` - confetti on a win only, laid out by a pure function over an injected random source; aria-hidden, and never generated under `prefers-reduced-motion`
 
-- `src/lib/axis.ts` - the charts' price axis: gridlines at round prices, labelled in a shared right-hand gutter (`Y_AXIS_GUTTER`), or inside the plot below a 480px chart width (`gutterOf`), hidden from assistive technology since the summary and inspector already give the prices
+- `src/lib/axis.ts` - the charts' price axis: gridlines at round prices, labelled in a shared right-hand gutter (`Y_AXIS_GUTTER` in `charts/chart-parts.tsx`), or inside the plot below a 480px chart width (`gutterOf`, beside it), hidden from assistive technology since the summary and inspector already give the prices
 - `src/lib/chart-inspect.ts` + `Inspector` - reading the charts tick by tick: hover shows a crosshair and tooltip, and a transparent slider over the plot gives the keyboard and screen readers the same readings (`utils/readout.ts` writes them)
 
 - `src/lib/leaderboard.ts` - the board: podium from the sparse `byScore` index (cached 10 s), the caller's rank by a COUNT query (equal scores share a rank), the total from a counter item; sent on the stream; no ids or real names in any response. Only players with the `board` attribute are on it, and nothing writes that attribute until sign-in - so the board is empty until then
@@ -169,4 +169,4 @@ The product spec embeds `flows/00-user-flow.png`, so a regenerated diagram means
 
 ## Definition of done
 
-Engineering spec §10. The short version: no client-supplied price or timestamp can affect an outcome and this is visible in the network tab; guess creation and resolution are each idempotent under concurrent calls; a guess abandoned by a closed browser still resolves; a stale feed blocks resolution and says so; sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks (`src/auth.test.ts`); the leaderboard and the sweep are both served from indexes rather than scans.
+Engineering spec §10. The short version: no client-supplied price or timestamp can affect an outcome and this is visible in the network tab; guess creation and resolution are each idempotent under concurrent calls; a guess abandoned by a closed browser still resolves; a market history that cannot be read blocks resolution and says so, and a stale price blocks new guesses; sign-in rejects malformed, expired and wrongly-audienced tokens and forged callbacks (`src/auth.test.ts`); the leaderboard and the sweep are both served from indexes rather than scans.

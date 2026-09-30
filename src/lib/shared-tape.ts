@@ -1,7 +1,7 @@
 /**
  * One tape read per process, shared by every stream and the sweep.
  *
- * Engineering spec §3 ("A stale price resolves nothing"). Reading the trade
+ * Engineering spec §3 ("An unreadable market resolves nothing"). Reading the trade
  * history is the expensive Coinbase call (up to five pages and a candle
  * call), and every waiting player's stream asks for it each second. So, like
  * the game price (price.ts), a read is shared while it is in flight, served
